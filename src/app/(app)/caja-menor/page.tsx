@@ -53,6 +53,7 @@ export default async function CajaMenorPage({
       supabase
         .from("v_balance_mensual")
         .select("*")
+        .lt("mes", `${mes}-01`)
         .order("mes", { ascending: false })
         .limit(12),
     ]);

@@ -82,39 +82,46 @@ export function ListaGastos({ gastos, puedeEliminar }: Props) {
             {dia.gastos.map((g) => {
               const Icono = CATEGORIA_ICONO[g.categoria];
               return (
-                <li key={g.id} className="flex items-center gap-3 px-4 py-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-700">
-                    <Icono className="size-5" aria-hidden />
+                <li key={g.id} className="flex items-center gap-3 py-3 pr-2 pl-4">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-600">
+                    <Icono className="size-[18px]" strokeWidth={1.5} aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{CATEGORIA_LABEL[g.categoria]}</p>
+                    <p className="truncate text-[15px] font-medium">{CATEGORIA_LABEL[g.categoria]}</p>
                     {g.descripcion && (
-                      <p className="truncate text-sm text-stone-600">{g.descripcion}</p>
+                      <p className="truncate text-[13px] text-stone-500">{g.descripcion}</p>
                     )}
                   </div>
-                  <p className="shrink-0 font-semibold"><Dinero valor={g.monto} /></p>
-                  {g.comprobanteUrl && (
-                    <a
-                      href={g.comprobanteUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label="Ver comprobante"
-                      className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink active:bg-stone-100"
-                    >
-                      <Receipt className="size-5" aria-hidden />
-                    </a>
-                  )}
-                  {puedeEliminar && (
-                    <button
-                      type="button"
-                      onClick={() => borrar(g)}
-                      disabled={pendiente}
-                      aria-label="Eliminar gasto"
-                      className="flex size-11 shrink-0 items-center justify-center rounded-full text-brick-700 active:bg-brick-50 disabled:opacity-50"
-                    >
-                      <Trash2 className="size-5" aria-hidden />
-                    </button>
-                  )}
+                  {/* Importe arriba; acciones (recibo / eliminar) apagadas debajo, sin competir con la cifra */}
+                  <div className="flex shrink-0 flex-col items-end pr-2">
+                    <p className="text-[15px]">
+                      <Dinero valor={g.monto} />
+                    </p>
+                    <div className="-mr-2 flex items-center">
+                      {g.comprobanteUrl && (
+                        <a
+                          href={g.comprobanteUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label="Ver comprobante"
+                          className="flex size-9 items-center justify-center rounded-full text-stone-400 transition-colors hover:text-ink active:text-ink"
+                        >
+                          <Receipt className="size-4" strokeWidth={1.5} aria-hidden />
+                        </a>
+                      )}
+                      {puedeEliminar && (
+                        <button
+                          type="button"
+                          onClick={() => borrar(g)}
+                          disabled={pendiente}
+                          aria-label="Eliminar gasto"
+                          className="flex size-9 items-center justify-center rounded-full text-stone-400 transition-colors hover:text-brick-600 active:text-brick-600 disabled:opacity-40"
+                        >
+                          <Trash2 className="size-4" strokeWidth={1.5} aria-hidden />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </li>
               );
             })}

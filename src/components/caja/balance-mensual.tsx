@@ -56,6 +56,11 @@ export function BalanceMensual({
   mes: string;
 }) {
   const negativa = actual.utilidadReal < 0;
+  // Margen operativo sobre ingresos (solo si hubo ingresos ese mes).
+  const margen =
+    actual.ingresos > 0 ? Math.round((actual.utilidadReal / actual.ingresos) * 100) : null;
+  // Solo meses realmente anteriores al seleccionado (YYYY-MM se ordena como texto).
+  const anteriores = historial.filter((f) => f.mes < mes);
 
   return (
     <div className="space-y-6">
@@ -81,7 +86,14 @@ export function BalanceMensual({
       </div>
 
       <div className="rounded-2xl bg-ink p-6 text-paper">
-        <p className="text-[13px] text-stone-400">Utilidad neta real</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[13px] text-stone-400">Utilidad neta real</p>
+          {margen !== null && (
+            <span className="rounded-full bg-white/10 px-2.5 py-1 font-mono text-[12px] text-stone-300 tabular-nums">
+              Margen {margen} %
+            </span>
+          )}
+        </div>
         <p
           className={`mt-2 text-[34px] leading-none font-medium tracking-tight ${
             negativa ? "text-accent-500" : ""
@@ -89,18 +101,15 @@ export function BalanceMensual({
         >
           <Dinero valor={actual.utilidadReal} />
         </p>
-        <p className="mt-4 text-[12px] text-stone-400">
-          (Ingresos − Costo de repuestos) − Caja menor
-        </p>
       </div>
 
-      {historial.length > 0 && (
+      {anteriores.length > 0 && (
         <section>
           <h3 className="mb-2.5 px-0.5 text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">
             Meses anteriores
           </h3>
           <ul className="divide-y divide-stone-200/70 overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-soft">
-            {historial.map((f) => (
+            {anteriores.map((f) => (
               <li key={f.mes}>
                 <Link
                   href={hrefCaja("balance", f.mes)}
