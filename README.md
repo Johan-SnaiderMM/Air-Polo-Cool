@@ -37,14 +37,15 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
 
 ## Despliegue
 
-Producción: https://polo-air-cool.vercel.app (proyecto `polo-air-cool` en Vercel).
+Producción: https://polo-air-cool.vercel.app · Repositorio: https://github.com/Johan-SnaiderMM/Air-Polo-Cool
 
-- **Automático:** `.claude/settings.json` define un hook `Stop` que ejecuta `scripts/auto-deploy.mjs` al terminar
-  cada respuesta de Claude Code. Si el código cambió, corre `typecheck` + `lint` + `test` y, solo si pasan,
-  hace `vercel deploy --prod`. Si algo falla, no se despliega y el error vuelve a Claude para corregirlo.
-- **Manual:** `npm run deploy` (fuerza un despliegue). Requiere `npx vercel login` una vez por equipo.
+- **Vercel ↔ GitHub:** cada push a `main` despliega a producción automáticamente (integración Git de Vercel).
+- **Hook de Claude Code:** `.claude/settings.json` ejecuta `scripts/auto-deploy.mjs` al terminar cada respuesta.
+  Si hay cambios corre `typecheck`, `lint`, pruebas y `build`; solo si todo pasa hace commit y push. Si algo falla,
+  no se sube nada y el error vuelve a Claude para corregirlo.
+- **CI en GitHub:** `.github/workflows/ci.yml` repite las verificaciones en cada push y pull request.
+- **Manual:** `git push` (despliega) o `npm run deploy` (CLI de Vercel directo; requiere `npx vercel login`).
 - Las variables de entorno viven en Vercel (Project Settings > Environment Variables); cambiarlas requiere redesplegar.
-- Alternativa más robusta a futuro: subir el código a GitHub y conectar el repositorio en Vercel (despliegue en cada push).
 
 ## Estructura
 

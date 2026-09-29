@@ -1,28 +1,24 @@
 #!/usr/bin/env node
 /**
- * Despliegue automático a Vercel (producción) cuando el código cambió.
+ * Publicación automática: verifica, sube a GitHub y Vercel despliega (integración Git).
  *
  * Se ejecuta como hook `Stop` de Claude Code (al terminar cada respuesta) o a mano:
- *   node scripts/auto-deploy.mjs             -> despliega si hay cambios
- *   node scripts/auto-deploy.mjs --baseline  -> marca el código actual como ya desplegado
- *   node scripts/auto-deploy.mjs --force     -> despliega aunque no haya cambios
+ *   node scripts/auto-deploy.mjs           -> si hay cambios: checks -> commit -> push a main
+ *   node scripts/auto-deploy.mjs --force   -> despliega directo con la CLI de Vercel (sin git)
  *
- * Flujo: huella del código -> typecheck + lint + tests -> vercel deploy --prod.
- * Si algo falla NO se despliega (producción queda intacta) y el error se devuelve
+ * Flujo: ¿hay cambios? -> typecheck + lint + tests + build -> git commit + push.
+ * Si algo falla NO se sube nada (producción queda intacta) y el error se devuelve
  * a Claude (exit 2) para que lo corrija.
  */
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, appendFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const raiz = process.cwd();
 const dirVercel = join(raiz, ".vercel");
-const archivoHuella = join(dirVercel, "last-deploy-hash");
 const archivoLog = join(dirVercel, "auto-deploy.log");
-
-const IGNORAR_DIRS = new Set(["node_modules", ".next", ".vercel", ".git", ".claude", "coverage"]);
-const IGNORAR_ARCHIVOS = /^(\.env.*|.*\.log|tsconfig\.tsbuildinfo|next-env\.d\.ts)$/;
+const RAMA = "main";
+const COAUTOR = "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>";
 
 const args = new Set(process.argv.slice(2));
 
@@ -31,36 +27,25 @@ function log(msg) {
   appendFileSync(archivoLog, `[${new Date().toISOString()}] ${msg}\n`);
 }
 
-/** Hook: responde a Claude Code. */
+/** Respuesta al hook de Claude Code. */
 function salir({ codigo = 0, mensaje, error }) {
   if (error) process.stderr.write(`${error}\n`);
   if (mensaje) process.stdout.write(JSON.stringify({ systemMessage: mensaje }) + "\n");
   process.exit(codigo);
 }
 
-function huellaDelCodigo() {
-  const hash = createHash("sha256");
-  const recorrer = (dir) => {
-    for (const nombre of readdirSync(dir).sort()) {
-      const ruta = join(dir, nombre);
-      const st = statSync(ruta);
-      if (st.isDirectory()) {
-        if (!IGNORAR_DIRS.has(nombre)) recorrer(ruta);
-      } else if (!IGNORAR_ARCHIVOS.test(nombre)) {
-        hash.update(relative(raiz, ruta).replaceAll("\\", "/"));
-        hash.update(readFileSync(ruta));
-      }
-    }
-  };
-  recorrer(raiz);
-  return hash.digest("hex");
-}
-
-function ejecutar(comando, argumentos) {
-  const r = spawnSync(comando, argumentos, { cwd: raiz, encoding: "utf8", shell: true, maxBuffer: 32 * 1024 * 1024 });
+function ejecutar(comando, argumentos, opciones = {}) {
+  const r = spawnSync(comando, argumentos, {
+    cwd: raiz,
+    encoding: "utf8",
+    shell: true,
+    maxBuffer: 32 * 1024 * 1024,
+    ...opciones,
+  });
   return { ok: r.status === 0, salida: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 }
 
+const git = (...a) => ejecutar("git", a);
 const cola = (texto, n = 25) => texto.trim().split(/\r?\n/).slice(-n).join("\n");
 
 // ---------- stdin del hook (evita bucles si Claude ya está corrigiendo) ----------
@@ -73,49 +58,63 @@ try {
 }
 const yaReintentando = entrada.stop_hook_active === true;
 
-// ---------- ¿hay cambios? ----------
-const huella = huellaDelCodigo();
-const anterior = existsSync(archivoHuella) ? readFileSync(archivoHuella, "utf8").trim() : "";
-
-if (args.has("--baseline")) {
-  mkdirSync(dirVercel, { recursive: true });
-  writeFileSync(archivoHuella, huella);
-  console.log("Huella actual registrada como desplegada.");
-  process.exit(0);
+function fallar(titulo, detalle) {
+  log(`FALLO ${titulo}\n${detalle}`);
+  const texto = `Publicación cancelada: ${titulo}. No se subió nada; producción no cambió.\n${detalle}`;
+  // Con stop_hook_active no se vuelve a bloquear (evita bucles infinitos).
+  salir(
+    yaReintentando
+      ? { mensaje: `Publicación cancelada: ${titulo}.`, error: texto }
+      : { codigo: 2, error: texto }
+  );
 }
 
-if (!args.has("--force") && huella === anterior) process.exit(0);
-
-if (!existsSync(join(dirVercel, "project.json"))) {
-  salir({ error: "Auto-deploy: falta .vercel/project.json (ejecuta `npx vercel link`)." });
+// ---------- modo manual directo (CLI de Vercel, sin pasar por git) ----------
+if (args.has("--force")) {
+  const d = ejecutar("npx", ["--yes", "vercel@latest", "deploy", "--prod", "--yes"], { stdio: "inherit" });
+  process.exit(d.ok ? 0 : 1);
 }
 
-// ---------- verificaciones (si fallan, no se despliega) ----------
+if (!existsSync(join(raiz, ".git"))) {
+  salir({ error: "Auto-deploy: esta carpeta no es un repositorio git." });
+}
+
+// ---------- ¿hay algo que publicar? ----------
+const estado = git("status", "--porcelain").salida.trim();
+const sinSubir = git("rev-list", "--count", `origin/${RAMA}..HEAD`).salida.trim();
+const hayCommitsPendientes = Number(sinSubir) > 0;
+if (!estado && !hayCommitsPendientes) process.exit(0);
+
+// ---------- verificaciones (si fallan, no se sube nada) ----------
 for (const [nombre, cmd] of [
   ["typecheck", ["run", "typecheck"]],
   ["lint", ["run", "lint"]],
-  ["tests", ["test"]],
+  ["pruebas", ["test"]],
+  ["build", ["run", "build"]],
 ]) {
   const r = ejecutar("npm", cmd);
-  if (!r.ok) {
-    const detalle = cola(r.salida);
-    log(`FALLO ${nombre}\n${detalle}`);
-    const texto = `Auto-deploy cancelado: falló "${nombre}". Producción no se modificó. Corrige y vuelve a terminar.\n${detalle}`;
-    // Con stop_hook_active no se vuelve a bloquear (evita bucles infinitos).
-    salir(yaReintentando ? { mensaje: `Auto-deploy cancelado: falló ${nombre}.`, error: texto } : { codigo: 2, error: texto });
-  }
+  if (!r.ok) fallar(`falló "${nombre}"`, cola(r.salida));
 }
 
-// ---------- despliegue ----------
-const d = ejecutar("npx", ["--yes", "vercel@latest", "deploy", "--prod", "--yes"]);
-if (!d.ok) {
-  const detalle = cola(d.salida, 40);
-  log(`FALLO deploy\n${detalle}`);
-  const texto = `Auto-deploy: Vercel rechazó el despliegue (revisa el build). Producción no cambió.\n${detalle}`;
-  salir(yaReintentando ? { mensaje: "Auto-deploy: falló el build en Vercel.", error: texto } : { codigo: 2, error: texto });
+// ---------- commit + push ----------
+if (estado) {
+  const archivos = estado.split(/\r?\n/).length;
+  const add = git("add", "-A");
+  if (!add.ok) fallar("git add", cola(add.salida));
+  const fecha = new Date().toLocaleString("es-CO", { timeZone: "America/Bogota" });
+  const commit = ejecutar("git", [
+    "commit", "-q",
+    "-m", `"Actualización automática (${archivos} archivos) · ${fecha}"`,
+    "-m", `"${COAUTOR}"`,
+  ]);
+  if (!commit.ok) fallar("git commit", cola(commit.salida));
 }
 
-const url = /Production URL:\s*(https?:\/\/\S+?)"/.exec(d.salida)?.[1] ?? "https://polo-air-cool.vercel.app";
-writeFileSync(archivoHuella, huella);
-log(`OK desplegado -> ${url}`);
-salir({ mensaje: `🚀 Cambios desplegados en Vercel: ${url}` });
+const push = git("push", "origin", RAMA);
+if (!push.ok) fallar("git push (¿credenciales de GitHub o red?)", cola(push.salida));
+
+log("OK push a GitHub -> Vercel despliega");
+salir({
+  mensaje:
+    "🚀 Cambios subidos a GitHub; Vercel está desplegando: https://polo-air-cool.vercel.app (≈1 min).",
+});
