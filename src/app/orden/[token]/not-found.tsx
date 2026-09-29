@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { LinkIcon, Snowflake } from "lucide-react";
+import Image from "next/image";
+import { LinkIcon } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Enlace no válido",
@@ -9,9 +10,7 @@ export const metadata: Metadata = {
 export default function OrdenNoEncontrada() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 text-center">
-      <span className="flex size-16 items-center justify-center rounded-2xl bg-ink text-white">
-        <Snowflake className="size-9" aria-hidden />
-      </span>
+      <Image src="/logo.png" alt="" width={80} height={80} priority className="size-20 rounded-full" />
       <h1 className="font-serif text-2xl font-medium tracking-tight">Polo Air Cool</h1>
       <p className="flex items-center gap-2 text-lg font-semibold">
         <LinkIcon className="size-5" aria-hidden /> Enlace no válido

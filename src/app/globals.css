@@ -2,24 +2,43 @@
 
 /*
  * SISTEMA DE DISEÑO · Polo Air Cool
- * Estética sobria y editorial (papel cálido + tinta carbón). Reglas:
- *  - Fondo "paper" marfil; superficies blancas con borde de 1px muy tenue.
- *  - "ink" (carbón) para texto y acciones primarias. Nada de bloques de color saturado.
- *  - "accent" (terracota) solo en detalles y llamadas a la acción clave.
- *  - Estados (sage / ochre / brick / dusk): tonos desaturados, siempre en tinte suave
- *    con texto oscuro del mismo matiz; nunca colores planos brillantes.
+ * Misma interfaz sobria y editorial, ahora con los colores del logo
+ * (azul eléctrico, azul marino profundo, cian hielo y plata). Reglas:
+ *  - Fondo "paper" blanco hielo; superficies blancas con borde de 1px muy tenue.
+ *  - "ink" (azul marino casi negro) para texto y acciones primarias.
+ *  - "accent" (azul de marca) solo en llamadas a la acción clave y detalles.
+ *  - "ice" (cian hielo) solo como brillo sobre fondos oscuros.
+ *  - Estados (sage / ochre / brick / dusk): tonos desaturados en tinte suave con texto
+ *    oscuro del mismo matiz; el azul de marca NO se usa para estados.
+ *  - Los grises (stone) se redefinen fríos para armonizar con el azul.
  */
 @theme {
-  --color-paper: #f7f6f2;
-  --color-ink: #1f1e1d;
-  --color-ink-soft: #3a3836;
+  --color-paper: #f4f7fb;
+  --color-ink: #0b1633;
+  --color-ink-soft: #1a2a55;
 
-  /* Terracota / arcilla */
-  --color-accent-50: #fbf1ec;
-  --color-accent-100: #f6e2d9;
-  --color-accent-500: #d97757;
-  --color-accent-600: #c1532f;
-  --color-accent-700: #a24326;
+  /* Azul de marca (del logo) */
+  --color-accent-50: #eef4ff;
+  --color-accent-100: #dce8fe;
+  --color-accent-500: #4b8df8;
+  --color-accent-600: #1e56d8;
+  --color-accent-700: #1743b0;
+
+  /* Cian hielo (brillos sobre fondo oscuro) */
+  --color-ice-300: #9ddbff;
+  --color-ice-400: #5cc2ff;
+
+  /* Grises fríos (sustituyen a los cálidos de stone) */
+  --color-stone-50: #f6f8fb;
+  --color-stone-100: #edf1f6;
+  --color-stone-200: #dfe5ee;
+  --color-stone-300: #c9d2df;
+  --color-stone-400: #94a1b5;
+  --color-stone-500: #6b7a90;
+  --color-stone-600: #4e5b70;
+  --color-stone-700: #3a4557;
+  --color-stone-800: #263043;
+  --color-stone-900: #172033;
 
   /* Salvia (ok / listo) */
   --color-sage-50: #eff3ef;
@@ -60,11 +79,11 @@
   --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
 }
 
-/* Sombra casi invisible y difusa (nunca dura). */
+/* Sombra casi invisible y difusa (nunca dura), con matiz azulado. */
 @utility shadow-soft {
   box-shadow:
-    0 1px 2px rgb(31 30 29 / 0.03),
-    0 6px 20px -10px rgb(31 30 29 / 0.08);
+    0 1px 2px rgb(11 22 51 / 0.03),
+    0 6px 20px -10px rgb(11 22 51 / 0.09);
 }
 
 html {

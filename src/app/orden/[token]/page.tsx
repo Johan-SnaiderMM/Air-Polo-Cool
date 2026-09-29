@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
   BadgeCheck,
@@ -189,7 +190,7 @@ export default async function PortalOrdenPage({
       <header className="border-b border-stone-200/60 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-xl items-center justify-between gap-3 px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <span className="size-2 rounded-full bg-accent-600" aria-hidden />
+            <Image src="/logo.png" alt="" width={36} height={36} priority className="size-9 rounded-full" />
             <p className="font-serif text-2xl leading-none font-medium tracking-tight">
               Polo Air Cool
             </p>

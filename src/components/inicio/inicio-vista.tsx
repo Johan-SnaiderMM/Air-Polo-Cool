@@ -39,7 +39,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
  * Decisiones de diseño:
  *  - Un solo bloque para el estado del taller: cifra total + barra segmentada + rejilla 2×2
  *    que respira, en lugar de cuatro columnas apretadas.
- *  - Alertas como filas separadas por hairlines dentro de UNA tarjeta; el terracota
+ *  - Alertas como filas separadas por hairlines dentro de UNA tarjeta; el ocre
  *    aparece solo cuando hay algo que atender (cifra > 0).
  *  - Utilidad en tarjeta carbón con cifra monoespaciada; sin verde/rojo saturado.
  */
@@ -153,7 +153,7 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
             </div>
             <span
               className={`font-mono text-xl tabular-nums ${
-                datos.garantiasPorVencer > 0 ? "text-accent-600" : "text-stone-400"
+                datos.garantiasPorVencer > 0 ? "text-ochre-700" : "text-stone-400"
               }`}
             >
               {datos.garantiasPorVencer}
@@ -173,7 +173,7 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
               </div>
               <span
                 className={`font-mono text-xl tabular-nums ${
-                  datos.criticosTotal > 0 ? "text-accent-600" : "text-stone-400"
+                  datos.criticosTotal > 0 ? "text-ochre-700" : "text-stone-400"
                 }`}
               >
                 {datos.criticosTotal}
@@ -203,14 +203,14 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
         <p className="text-[13px] text-stone-400">Utilidad neta · {datos.mesEtiqueta}</p>
         <p
           className={`mt-2 text-[34px] leading-none font-medium tracking-tight ${
-            utilidadNegativa ? "text-accent-500" : ""
+            utilidadNegativa ? "text-brick-300" : ""
           }`}
         >
           <Dinero valor={datos.utilidadMes} />
         </p>
         <Link
           href="/caja-menor?vista=balance"
-          className="mt-5 inline-flex items-center gap-1 text-[13px] text-stone-300 underline decoration-stone-600 underline-offset-4 transition-colors active:text-white"
+          className="mt-5 inline-flex items-center gap-1 text-[13px] text-ice-300 underline decoration-ice-300/40 underline-offset-4 transition-colors active:text-white"
         >
           Ver balance completo
           <ArrowUpRight className="size-3.5" aria-hidden />

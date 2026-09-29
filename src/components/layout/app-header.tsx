@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useSyncExternalStore } from "react";
 import { LogOut } from "lucide-react";
 import { cerrarSesion } from "@/app/login/actions";
@@ -28,8 +29,8 @@ export function AppHeader() {
     <header className="sticky top-0 z-40 border-b border-stone-200/60 bg-paper/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-5">
         <div className="flex items-center gap-2.5">
-          {/* Marca: punto terracota + nombre en serif */}
-          <span className="size-2 rounded-full bg-accent-600" aria-hidden />
+          {/* Marca: logo circular + nombre en serif */}
+          <Image src="/logo.png" alt="" width={32} height={32} priority className="size-8 rounded-full" />
           <span className="font-serif text-[22px] leading-none font-medium tracking-tight">
             Polo Air Cool
           </span>

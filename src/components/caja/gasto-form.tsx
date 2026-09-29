@@ -201,7 +201,7 @@ export function GastoForm() {
         )}
       </div>
 
-      {/* 3) Registrar: terracota profundo; deshabilitado = gris plano (no "pastel") */}
+      {/* 3) Registrar: azul de marca; deshabilitado = gris plano (no "pastel") */}
       <button
         type="submit"
         disabled={!listo || pendiente}

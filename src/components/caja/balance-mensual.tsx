@@ -44,7 +44,7 @@ function Linea({
 /**
  * Balance mensual: tres conceptos en una única tarjeta con hairlines (se lee como un
  * extracto) y el resultado en una tarjeta carbón. Sin iconos de colores ni semáforos
- * chillones: un resultado negativo solo tiñe la cifra de terracota.
+ * chillones: un resultado negativo solo tiñe la cifra de ladrillo.
  */
 export function BalanceMensual({
   actual,
@@ -89,14 +89,14 @@ export function BalanceMensual({
         <div className="flex items-center justify-between gap-3">
           <p className="text-[13px] text-stone-400">Utilidad neta real</p>
           {margen !== null && (
-            <span className="rounded-full bg-white/10 px-2.5 py-1 font-mono text-[12px] text-stone-300 tabular-nums">
+            <span className="rounded-full bg-white/10 px-2.5 py-1 font-mono text-[12px] text-ice-300 tabular-nums">
               Margen {margen} %
             </span>
           )}
         </div>
         <p
           className={`mt-2 text-[34px] leading-none font-medium tracking-tight ${
-            negativa ? "text-accent-500" : ""
+            negativa ? "text-brick-300" : ""
           }`}
         >
           <Dinero valor={actual.utilidadReal} />
@@ -127,7 +127,7 @@ export function BalanceMensual({
                   <span className="flex items-center gap-2">
                     <Dinero
                       valor={f.utilidadReal}
-                      className={`text-[15px] ${f.utilidadReal < 0 ? "text-accent-600" : ""}`}
+                      className={`text-[15px] ${f.utilidadReal < 0 ? "text-brick-600" : ""}`}
                     />
                     <ArrowUpRight className="size-3.5 text-stone-300" aria-hidden />
                   </span>

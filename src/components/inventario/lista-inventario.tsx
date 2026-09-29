@@ -24,9 +24,9 @@ const ESTILO_NIVEL = {
     texto: "Agotado",
   },
   critico: {
-    borde: "border-accent-500/60",
-    fondo: "bg-accent-50",
-    chip: "bg-accent-500 text-white",
+    borde: "border-ochre-300",
+    fondo: "bg-ochre-50",
+    chip: "bg-ochre-500 text-white",
     texto: "Por agotarse",
   },
   ok: {
@@ -68,7 +68,7 @@ export function ListaInventario({ items }: { items: Tables<"inventario">[] }) {
                         nivel === "agotado"
                           ? "text-brick-700"
                           : nivel === "critico"
-                            ? "text-accent-700"
+                            ? "text-ochre-700"
                             : ""
                       }`}
                     >
