@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/auto-deploy.mjs",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

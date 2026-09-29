@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/*
+ * SISTEMA DE DISEÑO · Polo Air Cool
+ * Estética sobria y editorial (papel cálido + tinta carbón). Reglas:
+ *  - Fondo "paper" marfil; superficies blancas con borde de 1px muy tenue.
+ *  - "ink" (carbón) para texto y acciones primarias. Nada de bloques de color saturado.
+ *  - "accent" (terracota) solo en detalles y llamadas a la acción clave.
+ *  - Estados (sage / ochre / brick / dusk): tonos desaturados, siempre en tinte suave
+ *    con texto oscuro del mismo matiz; nunca colores planos brillantes.
+ */
+@theme {
+  --color-paper: #f7f6f2;
+  --color-ink: #1f1e1d;
+  --color-ink-soft: #3a3836;
+
+  /* Terracota / arcilla */
+  --color-accent-50: #fbf1ec;
+  --color-accent-100: #f6e2d9;
+  --color-accent-500: #d97757;
+  --color-accent-600: #c75d3a;
+  --color-accent-700: #a54a2c;
+
+  /* Salvia (ok / listo) */
+  --color-sage-50: #eff3ef;
+  --color-sage-100: #e2eae1;
+  --color-sage-300: #b7cab6;
+  --color-sage-500: #6f9a7c;
+  --color-sage-600: #557f63;
+  --color-sage-700: #426a51;
+  --color-sage-800: #345040;
+
+  /* Ocre (atención suave / por vencer) */
+  --color-ochre-50: #faf5e8;
+  --color-ochre-100: #f3ebd3;
+  --color-ochre-300: #e3d09a;
+  --color-ochre-500: #b8923f;
+  --color-ochre-700: #86691f;
+  --color-ochre-800: #6b5418;
+
+  /* Ladrillo (error / vencido) */
+  --color-brick-50: #faf0ed;
+  --color-brick-100: #f4dfd9;
+  --color-brick-300: #e0aa9d;
+  --color-brick-500: #bd6a57;
+  --color-brick-600: #a95640;
+  --color-brick-700: #93432f;
+  --color-brick-800: #7a372b;
+
+  /* Pizarra azulada (en proceso) */
+  --color-dusk-100: #e6ecf1;
+  --color-dusk-500: #6f8ba0;
+  --color-dusk-700: #3f5a6d;
+  --color-dusk-800: #33495a;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+}
+
+/* Sombra casi invisible y difusa (nunca dura). */
+@utility shadow-soft {
+  box-shadow:
+    0 1px 2px rgb(31 30 29 / 0.03),
+    0 6px 20px -10px rgb(31 30 29 / 0.08);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  background: var(--color-paper);
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  /* Evita el "rebote" que rompe la sensación de app en modo standalone */
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-100);
+}
