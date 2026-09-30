@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ExternalLink, Snowflake, Send } from "lucide-react";
+import { Snowflake, Send } from "lucide-react";
 import { enviarWhatsAppOrden } from "@/app/(app)/ordenes/notificaciones-actions";
 import type { PlantillaWhatsApp } from "@/lib/whatsapp";
 
@@ -36,7 +36,6 @@ export type BotonWhatsApp = {
 type Props = {
   ordenId: string;
   botones: BotonWhatsApp[];
-  urlPublica: string;
   /** Hay proveedor (Evolution/WAHA) configurado en el servidor. */
   automaticoConfigurado: boolean;
 };
@@ -44,7 +43,6 @@ type Props = {
 export function NotificacionesWhatsApp({
   ordenId,
   botones,
-  urlPublica,
   automaticoConfigurado,
 }: Props) {
   const [pendiente, iniciar] = useTransition();
@@ -108,19 +106,6 @@ export function NotificacionesWhatsApp({
           </li>
         ))}
 
-        <li>
-          <a
-            href={urlPublica}
-            target="_blank"
-            rel="noreferrer"
-            className="flex min-h-14 items-center gap-3.5 px-5 py-2 transition-colors active:bg-stone-50"
-          >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500">
-              <ExternalLink className="size-[18px]" strokeWidth={1.5} aria-hidden />
-            </span>
-            <span className="flex-1 text-[15px] font-medium">Ver portal del cliente</span>
-          </a>
-        </li>
       </ul>
 
       <p className="px-1 text-[12px] text-stone-500">

@@ -228,7 +228,6 @@ export default async function OrdenPage({
           <NotificacionesWhatsApp
             ordenId={orden.id}
             botones={botonesWhatsApp}
-            urlPublica={contexto.urlPublica}
             automaticoConfigurado={envioAutomaticoConfigurado()}
           />
         </div>
