@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
 import { autorONull } from "@/lib/autor";
 import { validarItems, VIGENCIAS_DIAS, type ItemCotizacion } from "@/lib/cotizaciones";
 import { mensajeDeError } from "@/lib/errores";
@@ -11,6 +10,8 @@ import type { DatosVehiculoOrden } from "@/lib/offline/operaciones";
 import { asegurarVehiculo } from "@/lib/servidor/operaciones";
 import { esUuid, normalizarPlaca, normalizarTelefono } from "@/lib/ordenes";
 import type { EstadoCotizacion } from "@/types/database";
+import { texto } from "@/lib/formularios";
+import { exigirSesion, obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 export type CotizacionFormState = { error?: string };
 export type AccionCotizacion = { ok: true; ordenId?: string } | { ok: false; error: string };
@@ -18,11 +19,6 @@ export type AccionCotizacion = { ok: true; ordenId?: string } | { ok: false; err
 // Las cotizaciones requieren conexión (se emiten desde el escritorio del taller, no en campo).
 
 const ESTADOS_MANUALES: EstadoCotizacion[] = ["borrador", "enviada", "aprobada", "rechazada"];
-
-function texto(fd: FormData, campo: string): string {
-  const v = fd.get(campo);
-  return typeof v === "string" ? v.trim() : "";
-}
 
 type VehiculoForm =
   | { modo: "existente"; vehiculo: { id: string } }
@@ -43,9 +39,7 @@ export async function guardarCotizacion(
   _prev: CotizacionFormState,
   formData: FormData
 ): Promise<CotizacionFormState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const { supabase } = await exigirSesion();
 
   const cotizacionId = texto(formData, "cotizacion_id");
   const editando = cotizacionId !== "";
@@ -168,9 +162,8 @@ export async function cambiarEstadoCotizacion(datos: {
   estado: EstadoCotizacion;
 }): Promise<AccionCotizacion> {
   if (!esUuid(datos.id) || !ESTADOS_MANUALES.includes(datos.estado)) return { ok: false, error: "Datos inválidos." };
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const { data: actual } = await supabase.from("cotizaciones").select("estado").eq("id", datos.id).maybeSingle();
   if (!actual) return { ok: false, error: "La cotización no existe." };
@@ -188,9 +181,8 @@ export async function cambiarEstadoCotizacion(datos: {
 /** Convierte la cotización en una orden de trabajo (atómico, en la base de datos). */
 export async function convertirCotizacion(datos: { id: string; autor: string }): Promise<AccionCotizacion> {
   if (!esUuid(datos.id)) return { ok: false, error: "Cotización inválida." };
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const { data, error } = await supabase.rpc("convertir_cotizacion", {
     p_id: datos.id,

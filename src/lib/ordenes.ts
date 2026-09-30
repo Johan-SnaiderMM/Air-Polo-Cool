@@ -9,16 +9,6 @@ export const ESTADO_LABEL: Record<EstadoOrden, string> = {
   cancelado: "Cancelado",
 };
 
-/** Pastilla de estado: tinte suave desaturado con texto oscuro del mismo matiz. */
-export const ESTADO_BADGE: Record<EstadoOrden, string> = {
-  recibido: "bg-stone-100 text-stone-700",
-  diagnostico: "bg-ochre-50 text-ochre-800",
-  en_proceso: "bg-dusk-100 text-dusk-800",
-  listo: "bg-sage-100 text-sage-800",
-  entregado: "bg-stone-100 text-stone-500",
-  cancelado: "bg-brick-50 text-brick-700",
-};
-
 /**
  * Superficie de cada estado (badge, selector y modal): degradado muy tenue + micro-borde a tono.
  * Usa los tonos desaturados del sistema (ochre = ámbar, dusk = pizarra, sage = salvia).

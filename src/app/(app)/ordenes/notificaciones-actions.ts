@@ -1,9 +1,9 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
 import { cargarContextoOrden, enviarWhatsApp } from "@/lib/notificaciones";
 import { esUuid } from "@/lib/ordenes";
 import type { PlantillaWhatsApp } from "@/lib/whatsapp";
+import { obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 export type EnvioAccionResultado = { ok: true; mensaje: string } | { ok: false; error: string };
 
@@ -22,9 +22,8 @@ export async function enviarWhatsAppOrden(datos: {
     return { ok: false, error: "Datos inválidos." };
   }
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const contexto = await cargarContextoOrden(supabase, ordenId);
   if (!contexto) return { ok: false, error: "No se encontró la orden o el cliente." };

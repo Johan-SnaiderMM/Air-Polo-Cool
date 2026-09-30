@@ -1,4 +1,4 @@
-import type { CategoriaGasto } from "@/types/database";
+import type { CategoriaGasto, MedioPago } from "@/types/database";
 
 export const CATEGORIAS: CategoriaGasto[] = [
   "ayudante",
@@ -14,14 +14,6 @@ export const CATEGORIA_LABEL: Record<CategoriaGasto, string> = {
   flete_acarreo: "Flete",
   herramienta_consumible: "Herramienta",
   otros: "Otros",
-};
-
-export const CATEGORIA_AYUDA: Record<CategoriaGasto, string> = {
-  ayudante: "Jornal / pago de ayudante",
-  alimentacion_refrigerio: "Gaseosas, almuerzos, café",
-  flete_acarreo: "Transporte de piezas",
-  herramienta_consumible: "Discos, lijas, cintas",
-  otros: "Otros gastos del taller",
 };
 
 export function esCategoria(valor: unknown): valor is CategoriaGasto {
@@ -92,23 +84,21 @@ export function etiquetaDia(fecha: string): string {
 
 // ---------- Cobros por medio de pago ----------
 
-export type MedioCobro = "efectivo" | "transferencia" | "tarjeta" | "otro";
-
-export const MEDIO_COBRO_LABEL: Record<MedioCobro, string> = {
+export const MEDIO_PAGO_LABEL: Record<MedioPago, string> = {
   efectivo: "Efectivo",
   transferencia: "Transferencia",
   tarjeta: "Tarjeta",
   otro: "Otro",
 };
 
-export type TotalesMedio = Record<MedioCobro, number> & { total: number };
+export type TotalesMedio = Record<MedioPago, number> & { total: number };
 
 /**
  * Suma lo cobrado por medio de pago, neto de devoluciones y sin contar pagos anulados.
  * Solo sirve para saber CÓMO entró la plata (efectivo vs. transferencia); no hay saldo físico.
  */
 export function totalesPorMedio(
-  pagos: { medio: MedioCobro; monto: number; es_devolucion: boolean; anulado?: boolean }[]
+  pagos: { medio: MedioPago; monto: number; es_devolucion: boolean; anulado?: boolean }[]
 ): TotalesMedio {
   const t: TotalesMedio = { efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0, total: 0 };
   for (const p of pagos) {

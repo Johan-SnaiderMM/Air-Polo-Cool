@@ -16,15 +16,13 @@ import { RentabilidadOrdenes, type FilaRentabilidad } from "@/components/caja/re
 import { SelectorMes, hrefCaja, type VistaCaja } from "@/components/caja/selector-mes";
 import { Dinero } from "@/components/ui/dinero";
 import { etiquetaMes, totalesPorMedio } from "@/lib/caja";
+import { BUCKET_FACTURAS, VIGENCIA_URL_INTERNA_SEGUNDOS } from "@/lib/almacenamiento";
+import { esErrorDeMigracion } from "@/lib/errores";
 
 export const metadata: Metadata = { title: "Caja" };
 
-const BUCKET_FACTURAS = "facturas-gastos";
-const VIGENCIA_URL_SEGUNDOS = 60 * 60;
 const LIMITE_GASTOS = 500;
 
-/** Códigos de PostgREST/Postgres que indican que falta ejecutar una migración SQL. */
-const CODIGOS_MIGRACION = new Set(["PGRST205", "PGRST202", "PGRST204", "42P01", "42703"]);
 
 const PESTANAS: { id: VistaCaja; label: string }[] = [
   { id: "gastos", label: "Gastos" },
@@ -78,7 +76,7 @@ export default async function CajaMenorPage({
       .order("created_at", { ascending: false })
       .limit(500);
 
-    const errorMigracion = !!error?.code && CODIGOS_MIGRACION.has(error.code);
+    const errorMigracion = esErrorDeMigracion(error);
     const pagos = data ?? [];
     const cobros: CobroVista[] = pagos.slice(0, 100).map((p) => ({
       id: p.id,
@@ -135,7 +133,7 @@ export default async function CajaMenorPage({
     ]);
 
     const errorMigracion = [filaMes.error, cartera.error, rentab.error].some(
-      (e) => e?.code && CODIGOS_MIGRACION.has(e.code)
+      (e) => esErrorDeMigracion(e)
     );
 
     const aFila = (r: NonNullable<typeof filaMes.data>): FilaBalance => ({
@@ -230,12 +228,12 @@ export default async function CajaMenorPage({
 
     const { data, error } = await consulta;
     const filas = data ?? [];
-    const errorMigracion = !!error?.code && CODIGOS_MIGRACION.has(error.code);
+    const errorMigracion = esErrorDeMigracion(error);
 
     // Bucket privado: se firman URLs temporales de los comprobantes.
     const rutas = filas.flatMap((g) => (g.comprobante_url ? [g.comprobante_url] : []));
     const firmadas = rutas.length
-      ? await supabase.storage.from(BUCKET_FACTURAS).createSignedUrls(rutas, VIGENCIA_URL_SEGUNDOS)
+      ? await supabase.storage.from(BUCKET_FACTURAS).createSignedUrls(rutas, VIGENCIA_URL_INTERNA_SEGUNDOS)
       : { data: [] };
     const urlPorRuta = new Map(
       (firmadas.data ?? []).flatMap((s) => (s.path && s.signedUrl ? [[s.path, s.signedUrl] as const] : []))

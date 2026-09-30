@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
 import { autorONull } from "@/lib/autor";
 import { esCategoria, hoyBogota } from "@/lib/caja";
 import { mensajeDeError } from "@/lib/errores";
 import { esUuid } from "@/lib/ordenes";
+import { obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 /**
  * Acciones de caja que requieren conexión (auditoría y cálculo en el servidor).
@@ -14,14 +14,7 @@ import { esUuid } from "@/lib/ordenes";
  */
 export type AccionCaja = { ok: true; mensaje?: string; id?: string } | { ok: false; error: string };
 
-const SESION = { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." } as const;
 const MAX_MONTO = 9_999_999_999;
-
-async function contexto() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  return { supabase, user: data.user };
-}
 
 const esFecha = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(`${f}T00:00:00Z`));
 
@@ -43,8 +36,8 @@ export async function editarGasto(datos: {
   ordenId: string | null;
   autor: string;
 }): Promise<AccionCaja> {
-  const { supabase, user } = await contexto();
-  if (!user) return SESION;
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   if (!esUuid(datos.id)) return { ok: false, error: "Gasto inválido." };
   if (!esFecha(datos.fecha) || datos.fecha > hoyBogota()) {
@@ -71,8 +64,8 @@ export async function editarGasto(datos: {
 }
 
 export async function anularGasto(datos: { id: string; motivo: string; autor: string }): Promise<AccionCaja> {
-  const { supabase, user } = await contexto();
-  if (!user) return SESION;
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
   if (!esUuid(datos.id)) return { ok: false, error: "Gasto inválido." };
   if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
 

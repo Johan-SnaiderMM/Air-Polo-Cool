@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { LineaFirma, Membrete, SeccionImpresa } from "@/components/print/membrete";
 import { BarraImpresion } from "@/components/print/boton-imprimir";
 import { Dinero } from "@/components/ui/dinero";
-import { CATEGORIAS, CATEGORIA_LABEL, MEDIO_COBRO_LABEL, etiquetaMes, normalizarMes, rangoMes, totalesPorMedio } from "@/lib/caja";
+import { CATEGORIAS, CATEGORIA_LABEL, MEDIO_PAGO_LABEL, etiquetaMes, normalizarMes, rangoMes, totalesPorMedio } from "@/lib/caja";
 import { formatearFecha } from "@/lib/ordenes";
 
 export const metadata: Metadata = { title: "Reporte de balance" };
@@ -102,7 +102,7 @@ export default async function ReporteBalancePage({
               .filter((m) => m === "efectivo" || m === "transferencia" || porMedio[m] !== 0)
               .map((m) => (
                 <div key={m} className="flex justify-between">
-                  <dt className="text-stone-500">{MEDIO_COBRO_LABEL[m]}</dt>
+                  <dt className="text-stone-500">{MEDIO_PAGO_LABEL[m]}</dt>
                   <dd>
                     <Dinero valor={porMedio[m]} />
                   </dd>

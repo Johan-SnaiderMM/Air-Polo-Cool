@@ -1,27 +1,15 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
 import { mensajeDeError } from "@/lib/errores";
 import { esUuid, normalizarPlaca, normalizarTelefono } from "@/lib/ordenes";
 import type { TipoGasSugerido } from "@/types/database";
+import { numeroOpcional, texto } from "@/lib/formularios";
+import { exigirSesion } from "@/utils/supabase/sesion";
 
 export type EdicionState = { error?: string; ok?: string };
 
 const GASES: TipoGasSugerido[] = ["R134a", "R1234yf", "otro"];
-
-function texto(formData: FormData, campo: string): string {
-  const valor = formData.get(campo);
-  return typeof valor === "string" ? valor.trim() : "";
-}
-
-/** "" -> null; número válido -> number; cualquier otra cosa -> NaN. */
-function numeroOpcional(valor: string): number | null {
-  if (valor === "") return null;
-  const n = Number(valor.replace(",", "."));
-  return Number.isFinite(n) ? n : NaN;
-}
 
 // ---------------------------------------------------------------------
 // Vehículo
@@ -31,9 +19,7 @@ export async function editarVehiculo(
   _prev: EdicionState,
   formData: FormData
 ): Promise<EdicionState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const { supabase } = await exigirSesion();
 
   const id = texto(formData, "vehiculo_id");
   if (!esUuid(id)) return { error: "Vehículo inválido." };
@@ -95,9 +81,7 @@ export async function editarCliente(
   _prev: EdicionState,
   formData: FormData
 ): Promise<EdicionState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const { supabase } = await exigirSesion();
 
   const id = texto(formData, "cliente_id");
   const vehiculoId = texto(formData, "vehiculo_id"); // solo para refrescar la pantalla

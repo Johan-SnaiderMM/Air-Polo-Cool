@@ -40,13 +40,6 @@ export type EstadoPago = "sin_total" | "sin_pago" | "parcial" | "pagado" | "sobr
 /** Autoría simple: solo dos operadores, sin roles nuevos. */
 export type Autor = "Polo" | "Soporte técnico";
 
-export type TipoMovCaja =
-  | "fondo_inicial"
-  | "reposicion"
-  | "retiro"
-  | "ajuste_sobrante"
-  | "ajuste_faltante";
-
 export type EstadoCotizacion =
   | "borrador"
   | "enviada"
@@ -54,7 +47,6 @@ export type EstadoCotizacion =
   | "rechazada"
   | "convertida";
 
-export type ResultadoCierre = "cuadrado" | "faltante" | "sobrante";
 export type EstadoMantenimiento = "vencido" | "proximo" | "lejano";
 
 /** Checklist de pertenencias al ingreso (ordenes_servicio.pertenencias). */
@@ -495,58 +487,6 @@ export type Database = {
           },
         ];
       };
-      cierres_caja: {
-        Row: {
-          id: string;
-          fecha: string;
-          saldo_sistema: number;
-          conteo_fisico: number;
-          diferencia: number;
-          resultado: ResultadoCierre;
-          /** { "50000": 3, "20000": 2, ... } */
-          desglose: Json;
-          notas: string | null;
-          autor: Autor | null;
-          registrado_por: string | null;
-          created_at: string;
-          anulado: boolean;
-          anulado_motivo: string | null;
-          anulado_por: string | null;
-          anulado_at: string | null;
-        };
-        /** Solo se crea con cerrar_caja(). */
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      caja_movimientos: {
-        Row: {
-          id: string;
-          fecha: string;
-          tipo: TipoMovCaja;
-          monto: number;
-          notas: string | null;
-          autor: Autor | null;
-          registrado_por: string | null;
-          cierre_id: string | null;
-          created_at: string;
-          anulado: boolean;
-          anulado_motivo: string | null;
-          anulado_por: string | null;
-          anulado_at: string | null;
-        };
-        /** Directo solo fondo_inicial / reposicion / retiro. */
-        Insert: {
-          id?: string;
-          fecha?: string;
-          tipo: Extract<TipoMovCaja, "fondo_inicial" | "reposicion" | "retiro">;
-          monto: number;
-          notas?: string | null;
-          autor?: Autor | null;
-        };
-        Update: Record<string, never>;
-        Relationships: [];
-      };
       cotizaciones: {
         Row: {
           id: string;
@@ -727,17 +667,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      v_caja_diaria: {
-        Row: {
-          fecha: string | null;
-          entradas: number | null;
-          salidas: number | null;
-          cobros_efectivo: number | null;
-          gastos: number | null;
-          neto_dia: number | null;
-        };
-        Relationships: [];
-      };
       v_rentabilidad_orden: {
         Row: {
           orden_id: string | null;
@@ -818,28 +747,6 @@ export type Database = {
         Args: { p_id: string; p_motivo: string; p_autor: Autor | null };
         Returns: Database["public"]["Tables"]["gastos_caja_menor"]["Row"];
       };
-      cerrar_caja: {
-        Args: {
-          p_fecha: string;
-          p_conteo: number;
-          p_desglose: Json;
-          p_notas: string | null;
-          p_autor: Autor | null;
-        };
-        Returns: Database["public"]["Tables"]["cierres_caja"]["Row"];
-      };
-      anular_cierre: {
-        Args: { p_id: string; p_motivo: string };
-        Returns: Database["public"]["Tables"]["cierres_caja"]["Row"];
-      };
-      anular_movimiento_caja: {
-        Args: { p_id: string; p_motivo: string };
-        Returns: Database["public"]["Tables"]["caja_movimientos"]["Row"];
-      };
-      fn_saldo_caja: {
-        Args: { p_hasta?: string };
-        Returns: number;
-      };
       convertir_cotizacion: {
         Args: { p_id: string; p_autor: Autor | null };
         Returns: string;
@@ -867,7 +774,6 @@ export type Database = {
       tipo_unidad: TipoUnidad;
       categoria_gasto: CategoriaGasto;
       medio_pago: MedioPago;
-      tipo_mov_caja: TipoMovCaja;
       estado_cotizacion: EstadoCotizacion;
     };
     CompositeTypes: Record<string, never>;

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
 import { validarOperacion } from "@/lib/offline/operaciones";
 import { ejecutarOperacion, type ResultadoOperacion } from "@/lib/servidor/operaciones";
 import type { OrdenLocal, Snapshot, VehiculoLocal } from "@/lib/offline/snapshot";
+import { obtenerSesion } from "@/utils/supabase/sesion";
 
 /**
  * Punto de entrada ÚNICO de escritura para lo que puede hacerse sin conexión.
@@ -14,9 +14,8 @@ import type { OrdenLocal, Snapshot, VehiculoLocal } from "@/lib/offline/snapshot
  * FormData: `op` (JSON de la operación) y, si aplica, `archivo` (imagen comprimida).
  */
 export async function procesarOperacion(formData: FormData): Promise<ResultadoOperacion> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) {
+  const { supabase, user } = await obtenerSesion();
+  if (!user) {
     return {
       ok: false,
       error: "Tu sesión expiró. Inicia sesión para sincronizar.",
@@ -79,9 +78,8 @@ const LIMITE_ORDENES = 300;
 
 /** Datos de referencia para trabajar sin conexión (se guardan en IndexedDB). */
 export async function obtenerSnapshot(): Promise<Snapshot | null> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return null;
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return null;
 
   const [vehiculos, ordenes, saldos] = await Promise.all([
     supabase

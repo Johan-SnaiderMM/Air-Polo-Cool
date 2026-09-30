@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/utils/supabase/server";
-import { CATEGORIA_LABEL, normalizarMes, rangoMes } from "@/lib/caja";
+import { CATEGORIA_LABEL, MEDIO_PAGO_LABEL, normalizarMes, rangoMes } from "@/lib/caja";
 import { construirCsv } from "@/lib/csv";
 import {
   ENCABEZADOS_LIBRO,
@@ -8,26 +7,18 @@ import {
   ordenarLibro,
   type FilaLibro,
 } from "@/lib/libro";
-import type { MedioPago } from "@/types/database";
+import { obtenerSesion } from "@/utils/supabase/sesion";
 
 // Los datos son del usuario y cambian a cada rato: nunca se cachea.
 export const dynamic = "force-dynamic";
-
-const MEDIO: Record<MedioPago, string> = {
-  efectivo: "Efectivo",
-  transferencia: "Transferencia",
-  tarjeta: "Tarjeta",
-  otro: "Otro",
-};
 
 /**
  * GET /caja-menor/exportar?mes=YYYY-MM
  * CSV del libro de movimientos del mes (gastos y cobros, con medio de pago) listo para Excel.
  */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return new NextResponse("No autorizado", { status: 401 });
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return new NextResponse("No autorizado", { status: 401 });
 
   const mes = normalizarMes(request.nextUrl.searchParams.get("mes") ?? undefined);
   const { desde, hasta } = rangoMes(mes);
@@ -82,7 +73,7 @@ export async function GET(request: NextRequest) {
       descripcion: p.notas,
       monto: p.monto,
       sentido: p.es_devolucion ? "Salida" : "Entrada",
-      medio: MEDIO[p.medio],
+      medio: MEDIO_PAGO_LABEL[p.medio],
       placa: p.ordenes_servicio?.vehiculos?.placa ?? null,
       autor: p.autor,
       anulado: p.anulado,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { autorONull, esAutor, inicialAutor } from "@/lib/autor";
 import { celdaCsv, construirCsv } from "@/lib/csv";
-import { ENCABEZADOS_LIBRO, filaALibroCsv, ordenarLibro, totalesLibro, type FilaLibro } from "@/lib/libro";
+import { ENCABEZADOS_LIBRO, filaALibroCsv, ordenarLibro, type FilaLibro } from "@/lib/libro";
 import { totalesPorMedio } from "@/lib/caja";
 import { plantillasValidas, PLANTILLAS_POR_DEFECTO } from "@/lib/plantillas-gasto";
 import { variacion } from "@/components/caja/grafico-categorias";
@@ -74,15 +74,6 @@ describe("libro de movimientos", () => {
     expect(fila).toHaveLength(12);
     expect(fila[9]).toBe("Anulado");
     expect(fila[10]).toBe("error");
-  });
-  it("los totales de control ignoran los anulados", () => {
-    const t = totalesLibro([
-      f({ sentido: "Entrada", monto: 500 }),
-      f({ sentido: "Salida", monto: 200 }),
-      f({ sentido: "Salida", monto: 999, anulado: true }),
-      f({ sentido: "—", monto: 12345 }),
-    ]);
-    expect(t).toEqual({ entradas: 500, salidas: 200, neto: 300 });
   });
 });
 

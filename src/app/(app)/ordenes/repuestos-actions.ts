@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
 import { mensajeDeError } from "@/lib/errores";
 import { admiteDecimales, redondearDinero } from "@/lib/inventario";
 import { esUuid } from "@/lib/ordenes";
 import type { TipoUnidad } from "@/types/database";
+import { obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 export type AccionResultado = { ok: true; mensaje?: string } | { ok: false; error: string };
 
@@ -17,11 +17,6 @@ export type ItemBuscado = {
   stock_actual: number;
   precio_venta: number;
   costo_compra: number;
-};
-
-const SESION_EXPIRADA: AccionResultado = {
-  ok: false,
-  error: "Tu sesión expiró. Vuelve a ingresar.",
 };
 
 function refrescar(ordenId: string) {
@@ -38,9 +33,8 @@ export async function buscarInventario(consulta: string): Promise<ItemBuscado[]>
   const q = consulta.replace(/[%_,()*\\]/g, " ").trim();
   if (q.length < 2) return [];
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return [];
 
   const { data } = await supabase
     .from("inventario")
@@ -74,9 +68,8 @@ export async function agregarRepuesto(datos: {
     return { ok: false, error: "Ingresa una cantidad mayor a 0." };
   }
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return SESION_EXPIRADA;
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const { data: item } = await supabase
     .from("inventario")
@@ -114,9 +107,8 @@ export async function eliminarRepuesto(datos: {
     return { ok: false, error: "Datos inválidos." };
   }
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return SESION_EXPIRADA;
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const { data, error } = await supabase
     .from("orden_repuestos")
@@ -145,9 +137,8 @@ export async function eliminarRepuesto(datos: {
 export async function recalcularTotal(ordenId: string): Promise<AccionResultado> {
   if (!esUuid(ordenId)) return { ok: false, error: "Orden inválida." };
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return SESION_EXPIRADA;
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const [{ data: orden, error: errOrden }, { data: lineas, error: errLineas }] =
     await Promise.all([

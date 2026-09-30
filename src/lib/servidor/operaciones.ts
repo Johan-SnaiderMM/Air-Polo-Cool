@@ -1,13 +1,14 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
-import { mensajeDeError } from "@/lib/errores";
+import { esErrorDeMigracion, mensajeDeError } from "@/lib/errores";
 import {
   esErrorTransitorio,
   type DatosVehiculoOrden,
   type Operacion,
 } from "@/lib/offline/operaciones";
 import { normalizarPlaca, normalizarTelefono } from "@/lib/ordenes";
+import { BUCKET_EVIDENCIAS, BUCKET_FACTURAS } from "@/lib/almacenamiento";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -15,8 +16,6 @@ export type ResultadoOperacion =
   | { ok: true; duplicado?: boolean }
   | { ok: false; error: string; permanente: boolean; sesion?: boolean };
 
-const BUCKET_EVIDENCIAS = "evidencias-ordenes";
-const BUCKET_FACTURAS = "facturas-gastos";
 const MAX_BYTES_IMAGEN = 3 * 1024 * 1024;
 const MIME_EXT: Record<string, "webp" | "jpg"> = { "image/webp": "webp", "image/jpeg": "jpg" };
 
@@ -209,7 +208,7 @@ export async function ejecutarOperacion(
       const conVinculo = repuestoId ? { ...fila, orden_repuesto_id: repuestoId } : fila;
       let { error } = await supabase.from("evidencias_fotograficas").insert(conVinculo);
       // Si falta ejecutar fase5.sql (columna inexistente) la foto se guarda igual, sin vínculo.
-      if (error && repuestoId && (error.code === "PGRST204" || error.code === "42703")) {
+      if (error && repuestoId && esErrorDeMigracion(error)) {
         ({ error } = await supabase.from("evidencias_fotograficas").insert(fila));
       }
       if (error) {

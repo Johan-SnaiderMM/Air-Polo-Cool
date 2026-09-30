@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { autorONull } from "@/lib/autor";
@@ -15,6 +14,9 @@ import { agregarHistorial, armarLineaHistorial } from "@/lib/historial-estado";
 import { pertenenciasONull } from "@/lib/offline/operaciones";
 import { OPCIONES_GARANTIA, esEstado, esUuid } from "@/lib/ordenes";
 import type { EstadoOrden, Json } from "@/types/database";
+import { BUCKET_EVIDENCIAS } from "@/lib/almacenamiento";
+import { numeroOpcional, texto } from "@/lib/formularios";
+import { exigirSesion, obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 // La CREACIÓN de órdenes y la subida de fotos pasan por la cola offline
 // (src/app/(app)/sync/actions.ts). Aquí quedan la búsqueda, la edición y el borrado
@@ -31,8 +33,6 @@ export type VehiculoResultado = {
 
 export type OrdenFormState = { error?: string; ok?: string };
 export type SubidaResultado = { ok: true } | { ok: false; error: string };
-
-const BUCKET_EVIDENCIAS = "evidencias-ordenes";
 
 /**
  * Aviso automático al pasar a Listo / Entregado (opt-in: WHATSAPP_AUTO_ENVIO=true).
@@ -52,18 +52,6 @@ async function avisarPorWhatsApp(
   return r.ok ? { ok: true } : { ok: false, error: r.error };
 }
 
-function texto(formData: FormData, campo: string): string {
-  const valor = formData.get(campo);
-  return typeof valor === "string" ? valor.trim() : "";
-}
-
-/** "" -> null; número válido -> number; cualquier otra cosa -> NaN. */
-function numeroOpcional(valor: string): number | null {
-  if (valor === "") return null;
-  const n = Number(valor.replace(",", "."));
-  return Number.isFinite(n) ? n : NaN;
-}
-
 // ---------------------------------------------------------------------
 // Búsqueda de vehículos (selector del formulario)
 // ---------------------------------------------------------------------
@@ -72,9 +60,8 @@ export async function buscarVehiculos(consulta: string): Promise<VehiculoResulta
   const q = consulta.trim();
   if (q.length < 2) return [];
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return [];
 
   const filtro = await filtroVehiculos(supabase, q);
   if (!filtro) return [];
@@ -101,9 +88,7 @@ export async function buscarVehiculos(consulta: string): Promise<VehiculoResulta
 // ---------------------------------------------------------------------
 
 export async function guardarOrden(_prev: OrdenFormState, formData: FormData): Promise<OrdenFormState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const { supabase } = await exigirSesion();
 
   const ordenId = texto(formData, "orden_id");
   if (!esUuid(ordenId)) return { error: "Orden inválida." };
@@ -201,9 +186,8 @@ export async function eliminarEvidencia(datos: {
   const { ordenId, evidenciaId } = datos;
   if (!esUuid(ordenId) || !esUuid(evidenciaId)) return { ok: false, error: "Datos inválidos." };
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const { data: fila } = await supabase
     .from("evidencias_fotograficas")
@@ -247,9 +231,8 @@ export async function asignarFotoARepuesto(datos: {
     return { ok: false, error: "Datos inválidos." };
   }
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const { data, error } = await supabase
     .from("evidencias_fotograficas")
@@ -285,9 +268,8 @@ export async function cambiarEstadoOrden(datos: {
   mantenimientoMeses: number | null;
   autor: string | null;
 }): Promise<CambioEstadoResultado> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   if (!esUuid(datos.ordenId)) return { ok: false, error: "Orden inválida." };
   if (!esEstado(datos.estado)) return { ok: false, error: "Estado inválido." };

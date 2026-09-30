@@ -90,8 +90,6 @@ export type Operacion =
   | { tipo: "orden.crear"; datos: DatosOrden }
   | { tipo: "evidencia.subir"; datos: DatosEvidencia; conArchivo: true };
 
-export type TipoOperacion = Operacion["tipo"];
-
 export function nuevoId(): string {
   return crypto.randomUUID();
 }

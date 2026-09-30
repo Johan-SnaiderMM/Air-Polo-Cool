@@ -25,6 +25,7 @@ import {
   normalizarTelefono,
 } from "@/lib/ordenes";
 import type { EstadoOrden, Pertenencias } from "@/types/database";
+import { numeroOpcional } from "@/lib/formularios";
 
 const INPUT =
   "h-14 w-full rounded-xl border border-stone-300/70 bg-white px-4 text-base outline-none focus:border-stone-400 focus:ring-2 focus:ring-stone-900/10";
@@ -66,12 +67,6 @@ type Props =
       /** ISO de la entrega, si ya fue entregada. */
       fechaEntrega: string | null;
     };
-
-const numeroONull = (t: string): number | null => {
-  if (t.trim() === "") return null;
-  const n = Number(t.replace(",", "."));
-  return Number.isFinite(n) ? n : NaN;
-};
 
 /**
  * Orden de servicio (crear / editar).
@@ -123,7 +118,7 @@ export function OrdenForm(props: Props) {
       const d = vehiculo.datos;
       const telefono = normalizarTelefono(d.cliente_telefono);
       const placa = normalizarPlaca(d.placa);
-      const anio = numeroONull(d.anio);
+      const anio = numeroOpcional(d.anio);
       if (!d.cliente_nombre.trim()) return setErrorCrear("Ingresa el nombre del cliente.");
       if (!telefono) return setErrorCrear("WhatsApp inválido. Usa 10 dígitos (300 123 4567) o el formato +57…");
       if (!/^[A-Z0-9]{5,8}$/.test(placa)) return setErrorCrear("La placa debe tener entre 5 y 8 letras/números.");
@@ -144,9 +139,9 @@ export function OrdenForm(props: Props) {
       };
     }
 
-    const km = numeroONull(v.kilometraje);
-    const manoObra = numeroONull(v.mano_obra) ?? 0;
-    const total = numeroONull(v.total_cobrado) ?? 0;
+    const km = numeroOpcional(v.kilometraje);
+    const manoObra = numeroOpcional(v.mano_obra) ?? 0;
+    const total = numeroOpcional(v.total_cobrado) ?? 0;
     if (km !== null && (Number.isNaN(km) || km < 0 || !Number.isInteger(km))) {
       return setErrorCrear("El kilometraje debe ser un número entero mayor o igual a 0.");
     }

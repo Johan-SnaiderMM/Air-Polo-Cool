@@ -15,6 +15,7 @@ import { comprimirImagen } from "@/lib/imagen";
 import { MEDIOS_PAGO, nuevoId } from "@/lib/offline/operaciones";
 import { formatearMoneda } from "@/lib/ordenes";
 import type { Autor, EstadoOrden, MedioPago } from "@/types/database";
+import { MEDIO_PAGO_LABEL } from "@/lib/caja";
 
 export type PagoVista = {
   id: string;
@@ -28,13 +29,6 @@ export type PagoVista = {
   anulado: boolean;
   anuladoMotivo: string | null;
   comprobanteUrl: string | null;
-};
-
-const MEDIO_LABEL: Record<MedioPago, string> = {
-  efectivo: "Efectivo",
-  transferencia: "Transferencia",
-  tarjeta: "Tarjeta",
-  otro: "Otro",
 };
 
 const ESTADO_PAGO = {
@@ -196,7 +190,7 @@ export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props)
             <li key={p.id} className="flex items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className={`text-[15px] font-medium ${p.anulado ? "text-stone-400 line-through" : ""}`}>
-                  {p.esDevolucion ? "Devolución" : "Abono"} · {MEDIO_LABEL[p.medio]}
+                  {p.esDevolucion ? "Devolución" : "Abono"} · {MEDIO_PAGO_LABEL[p.medio]}
                   {p.anulado && (
                     <span className="ml-2 rounded-full bg-brick-50 px-2 py-0.5 align-middle text-[11px] font-medium text-brick-700 no-underline">
                       Anulado
@@ -273,14 +267,14 @@ export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props)
                   : "border-stone-200/80 bg-white text-stone-500 active:bg-stone-50"
               }`}
             >
-              {MEDIO_LABEL[m]}
+              {MEDIO_PAGO_LABEL[m]}
             </button>
           ))}
         </div>
         <p className="text-[12px] text-stone-500">
           {medio === "efectivo"
             ? "Se registra como cobro en efectivo."
-            : "Se registra como cobro por " + MEDIO_LABEL[medio].toLowerCase() + " (queda en el banco / datáfono)."}
+            : "Se registra como cobro por " + MEDIO_PAGO_LABEL[medio].toLowerCase() + " (queda en el banco / datáfono)."}
         </p>
 
         {medio !== "efectivo" && (

@@ -1,24 +1,12 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
 import { mensajeDeError } from "@/lib/errores";
 import { admiteDecimales, esTipoUnidad } from "@/lib/inventario";
+import { numeroOpcional, texto } from "@/lib/formularios";
+import { exigirSesion } from "@/utils/supabase/sesion";
 
 export type InventarioFormState = { error?: string; ok?: string };
-
-function texto(formData: FormData, campo: string): string {
-  const valor = formData.get(campo);
-  return typeof valor === "string" ? valor.trim() : "";
-}
-
-/** "" -> null; número válido -> number; cualquier otra cosa -> NaN. */
-function numeroOpcional(valor: string): number | null {
-  if (valor === "") return null;
-  const n = Number(valor.replace(",", "."));
-  return Number.isFinite(n) ? n : NaN;
-}
 
 const noNegativo = (n: number | null) => n !== null && !Number.isNaN(n) && n >= 0;
 
@@ -30,9 +18,7 @@ export async function crearItem(
   _prev: InventarioFormState,
   formData: FormData
 ): Promise<InventarioFormState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const { supabase } = await exigirSesion();
 
   const codigo = texto(formData, "codigo");
   const nombre = texto(formData, "nombre");
@@ -92,9 +78,7 @@ export async function ajustarStock(
   _prev: InventarioFormState,
   formData: FormData
 ): Promise<InventarioFormState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const { supabase } = await exigirSesion();
 
   const id = texto(formData, "inventario_id");
   const cantidad = numeroOpcional(texto(formData, "cantidad"));
@@ -153,9 +137,7 @@ export async function editarItem(
   _prev: InventarioFormState,
   formData: FormData
 ): Promise<InventarioFormState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const { supabase } = await exigirSesion();
 
   const id = texto(formData, "inventario_id");
   const codigo = texto(formData, "codigo");

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Dinero } from "@/components/ui/dinero";
-import { MEDIO_COBRO_LABEL, type MedioCobro, type TotalesMedio } from "@/lib/caja";
+import { MEDIO_PAGO_LABEL, type TotalesMedio } from "@/lib/caja";
 import { formatearFechaCorta } from "@/lib/ordenes";
+import type { MedioPago } from "@/types/database";
 
 export type CobroVista = {
   id: string;
@@ -9,13 +10,13 @@ export type CobroVista = {
   fecha: string;
   placa: string | null;
   cliente: string | null;
-  medio: MedioCobro;
+  medio: MedioPago;
   monto: number;
   esDevolucion: boolean;
   referencia: string | null;
 };
 
-const MEDIOS_VISIBLES: MedioCobro[] = ["efectivo", "transferencia"];
+const MEDIOS_VISIBLES: MedioPago[] = ["efectivo", "transferencia"];
 
 /**
  * Cobros del mes por medio de pago. No hay "saldo de caja": solo cómo entró la plata
@@ -24,7 +25,7 @@ const MEDIOS_VISIBLES: MedioCobro[] = ["efectivo", "transferencia"];
 export function CobrosMes({ totales, cobros }: { totales: TotalesMedio; cobros: CobroVista[] }) {
   const otros = totales.tarjeta + totales.otro;
   const filas: { etiqueta: string; valor: number }[] = [
-    ...MEDIOS_VISIBLES.map((m) => ({ etiqueta: MEDIO_COBRO_LABEL[m], valor: totales[m] })),
+    ...MEDIOS_VISIBLES.map((m) => ({ etiqueta: MEDIO_PAGO_LABEL[m], valor: totales[m] })),
     ...(otros !== 0 ? [{ etiqueta: "Tarjeta / otros", valor: otros }] : []),
   ];
 
@@ -80,7 +81,7 @@ export function CobrosMes({ totales, cobros }: { totales: TotalesMedio; cobros: 
                           c.medio === "efectivo" ? "bg-sage-100 text-sage-800" : "bg-accent-100 text-accent-700"
                         }`}
                       >
-                        {MEDIO_COBRO_LABEL[c.medio]}
+                        {MEDIO_PAGO_LABEL[c.medio]}
                       </span>
                       {c.esDevolucion && <span className="text-brick-700">Devolución</span>}
                       {c.referencia && <span className="truncate">Ref. {c.referencia}</span>}

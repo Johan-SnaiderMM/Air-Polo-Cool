@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
 import { mensajeDeError } from "@/lib/errores";
 import { esUuid } from "@/lib/ordenes";
+import { obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 export type AccionPago = { ok: true; mensaje?: string } | { ok: false; error: string };
 
@@ -16,9 +16,8 @@ export async function anularPago(datos: {
   if (!esUuid(datos.pagoId) || !esUuid(datos.ordenId)) return { ok: false, error: "Datos inválidos." };
   if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
 
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
 
   const { error } = await supabase.rpc("anular_pago", {
     p_pago_id: datos.pagoId,

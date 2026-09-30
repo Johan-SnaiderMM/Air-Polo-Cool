@@ -26,12 +26,10 @@ import { enlaceWhatsApp, PLANTILLA_LABEL, type PlantillaWhatsApp } from "@/lib/w
 import { PagosOrden, type PagoVista } from "@/components/ordenes/pagos-orden";
 import { pertenenciasONull } from "@/lib/offline/operaciones";
 import { Printer } from "lucide-react";
+import { BUCKET_EVIDENCIAS, BUCKET_FACTURAS, VIGENCIA_URL_INTERNA_SEGUNDOS } from "@/lib/almacenamiento";
 
 export const metadata: Metadata = { title: "Orden" };
 
-const BUCKET_EVIDENCIAS = "evidencias-ordenes";
-const BUCKET_FACTURAS = "facturas-gastos";
-const VIGENCIA_URL_SEGUNDOS = 60 * 60;
 
 export default async function OrdenPage({
   params,
@@ -96,7 +94,7 @@ export default async function OrdenPage({
   // Comprobantes de pagos (bucket privado): URLs firmadas temporales.
   const rutasPagos = (filasPagos ?? []).flatMap((p) => (p.comprobante_url ? [p.comprobante_url] : []));
   const firmadasPagos = rutasPagos.length
-    ? await supabase.storage.from(BUCKET_FACTURAS).createSignedUrls(rutasPagos, VIGENCIA_URL_SEGUNDOS)
+    ? await supabase.storage.from(BUCKET_FACTURAS).createSignedUrls(rutasPagos, VIGENCIA_URL_INTERNA_SEGUNDOS)
     : { data: [] };
   const urlPago = new Map((firmadasPagos.data ?? []).map((x) => [x.path, x.signedUrl]));
   const pagos: PagoVista[] = (filasPagos ?? []).map((p) => ({
@@ -147,7 +145,7 @@ export default async function OrdenPage({
   const firmadas = rutas.length
     ? await supabase.storage
         .from(BUCKET_EVIDENCIAS)
-        .createSignedUrls(rutas, VIGENCIA_URL_SEGUNDOS)
+        .createSignedUrls(rutas, VIGENCIA_URL_INTERNA_SEGUNDOS)
     : { data: [] };
   const urlPorRuta = new Map(
     (firmadas.data ?? []).map((s) => [s.path, s.signedUrl])

@@ -4,6 +4,19 @@ export type ErrorSupabase = {
   hint?: string | null;
 };
 
+/** Códigos de PostgREST/Postgres que indican que falta ejecutar una migración SQL. */
+const CODIGOS_MIGRACION = new Set([
+  "PGRST202", // función no encontrada (RPC de una fase)
+  "PGRST204", // columna no encontrada en el esquema
+  "PGRST205", // tabla no encontrada en el esquema
+  "42P01", // relation does not exist
+  "42703", // undefined column
+]);
+
+export function esErrorDeMigracion(error: { code?: string } | null | undefined): boolean {
+  return !!error?.code && CODIGOS_MIGRACION.has(error.code);
+}
+
 /** Traduce errores de Postgres/PostgREST a mensajes claros para el taller. */
 export function mensajeDeError(error: ErrorSupabase): string {
   // Reglas del trigger de repuestos (fn_mover_stock / fn_orden_repuestos_stock):
@@ -18,13 +31,7 @@ export function mensajeDeError(error: ErrorSupabase): string {
   if (/diagnostico_inicial|trabajos_a_realizar/.test(error.message)) {
     return "Falta ejecutar polo_air_cool_fase2.sql en Supabase (columnas de diagnóstico y trabajos).";
   }
-  if (
-    error.code === "PGRST202" || // función no encontrada (RPC de la fase 3/4)
-    error.code === "PGRST205" || // tabla no encontrada en el esquema
-    error.code === "42P01" || // relation does not exist
-    error.code === "42703" ||
-    error.code === "PGRST204"
-  ) {
+  if (esErrorDeMigracion(error)) {
     return "Falta ejecutar polo_air_cool_fase3.sql / polo_air_cool_fase4.sql en Supabase (tablas o funciones nuevas).";
   }
   // Errores lanzados por nuestras funciones SQL (RAISE EXCEPTION): ya vienen en español y son claros.

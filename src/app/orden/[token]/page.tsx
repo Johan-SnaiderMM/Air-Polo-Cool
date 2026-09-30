@@ -30,6 +30,7 @@ import {
 import type { EstadoOrden, OrdenPublica, SemaforoGarantia, TipoEvidencia } from "@/types/database";
 
 import { Dinero } from "@/components/ui/dinero";
+import { BUCKET_EVIDENCIAS, VIGENCIA_URL_PORTAL_SEGUNDOS } from "@/lib/almacenamiento";
 // Página pública: sin cookies ni sesión. Nunca cachear (URLs firmadas con caducidad).
 export const dynamic = "force-dynamic";
 
@@ -40,8 +41,6 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 };
 
-const BUCKET_EVIDENCIAS = "evidencias-ordenes";
-const VIGENCIA_URL_SEGUNDOS = 2 * 60 * 60;
 /** Tokens de 22 caracteres base64url; se acota para rechazar basura antes de tocar la BD. */
 const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -103,7 +102,7 @@ async function firmarFotos(evidencias: OrdenPublica["evidencias"]) {
     .from(BUCKET_EVIDENCIAS)
     .createSignedUrls(
       visibles.map((e) => e.url_imagen),
-      VIGENCIA_URL_SEGUNDOS
+      VIGENCIA_URL_PORTAL_SEGUNDOS
     );
 
   const urls = new Map<string, string>();

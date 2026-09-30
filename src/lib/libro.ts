@@ -12,7 +12,7 @@ export type FilaLibro = {
   concepto: string; // categoría del gasto, concepto del cobro, …
   descripcion: string | null;
   monto: number;
-  sentido: "Entrada" | "Salida" | "—";
+  sentido: "Entrada" | "Salida";
   medio: string;
   placa: string | null;
   autor: string | null;
@@ -58,16 +58,4 @@ export function filaALibroCsv(f: FilaLibro): (string | number | null)[] {
     f.motivoAnulacion,
     f.referencia,
   ];
-}
-
-/** Totales de control del libro (solo registros vigentes). */
-export function totalesLibro(filas: FilaLibro[]) {
-  let entradas = 0;
-  let salidas = 0;
-  for (const f of filas) {
-    if (f.anulado) continue;
-    if (f.sentido === "Entrada") entradas += f.monto;
-    else if (f.sentido === "Salida") salidas += f.monto;
-  }
-  return { entradas, salidas, neto: entradas - salidas };
 }
