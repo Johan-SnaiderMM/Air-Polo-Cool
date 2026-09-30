@@ -52,6 +52,18 @@ describe("validarOperacion: pago, caja y evidencia", () => {
     expect(validarOperacion({ tipo: "evidencia.subir", datos: { id: ID, orden_id: ID2, tipo: "prueba_tecnica", extension: "exe" } }).ok).toBe(false);
     expect(validarOperacion({ tipo: "evidencia.subir", datos: { id: ID, orden_id: ID2, tipo: "selfie", extension: "webp" } }).ok).toBe(false);
   });
+  it("evidencia: solo las fotos de repuesto pueden ligarse a un repuesto", () => {
+    const ev = (tipo: string, orden_repuesto_id?: unknown) =>
+      validarOperacion({ tipo: "evidencia.subir", datos: { id: ID, orden_id: ID2, tipo, extension: "webp", orden_repuesto_id } });
+    const ok = ev("repuesto_viejo", ID2);
+    expect(ok.ok && ok.valor.tipo === "evidencia.subir" && ok.valor.datos.orden_repuesto_id).toBe(ID2);
+    expect(ev("repuesto_nuevo", ID2).ok).toBe(true);
+    expect(ev("ingreso", ID2).ok).toBe(false);
+    expect(ev("repuesto_viejo", "no-es-uuid").ok).toBe(false);
+    // Sin vínculo (o una operación vieja de la cola, anterior a la fase 5): queda null.
+    const sin = ev("repuesto_viejo");
+    expect(sin.ok && sin.valor.tipo === "evidencia.subir" && sin.valor.datos.orden_repuesto_id).toBeNull();
+  });
   it("rechaza tipos desconocidos y basura", () => {
     expect(validarOperacion({ tipo: "borrar.todo", datos: {} }).ok).toBe(false);
     expect(validarOperacion(null).ok).toBe(false);

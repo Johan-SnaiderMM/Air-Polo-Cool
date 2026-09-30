@@ -218,3 +218,35 @@ export async function eliminarEvidencia(datos: {
   revalidatePath(`/ordenes/${ordenId}`);
   return { ok: true };
 }
+
+/**
+ * Liga (o desliga con `null`) una foto de repuesto retirado / instalado a un repuesto de la orden.
+ * Sirve para asignar las fotos anteriores a la fase 5 o corregir una mal asignada.
+ */
+export async function asignarFotoARepuesto(datos: {
+  ordenId: string;
+  evidenciaId: string;
+  ordenRepuestoId: string | null;
+}): Promise<SubidaResultado> {
+  const { ordenId, evidenciaId, ordenRepuestoId } = datos;
+  if (!esUuid(ordenId) || !esUuid(evidenciaId) || (ordenRepuestoId !== null && !esUuid(ordenRepuestoId))) {
+    return { ok: false, error: "Datos inválidos." };
+  }
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+
+  const { data, error } = await supabase
+    .from("evidencias_fotograficas")
+    .update({ orden_repuesto_id: ordenRepuestoId })
+    .eq("id", evidenciaId)
+    .eq("orden_id", ordenId)
+    .select("id");
+
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  if (!data || data.length === 0) return { ok: false, error: "No se encontró la foto." };
+
+  revalidatePath(`/ordenes/${ordenId}`);
+  return { ok: true };
+}

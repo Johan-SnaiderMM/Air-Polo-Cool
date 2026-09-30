@@ -13,6 +13,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    2. `polo_air_cool_fase2.sql`
    3. `polo_air_cool_fase3.sql` (pagos y abonos de clientes; ver su bloque opcional de migración al final)
    4. `polo_air_cool_fase4.sql` (gastos auditables, cobros por medio de pago, cotizaciones, pertenencias, mantenimiento)
+   5. `polo_air_cool_fase5.sql` (cada foto de repuesto retirado / instalado queda ligada a su repuesto; el portal la muestra pieza por pieza)
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
    (`admin` u `operario`) con el SQL que aparece al inicio de `polo_air_cool_fase1.sql`.
    Sin rol, el login se rechaza.
@@ -64,6 +65,13 @@ En la base de datos las columnas siguen llamándose `marca`, `modelo` (= línea)
 | `/cartera` | Cuentas por cobrar por cliente, con recordatorio de saldo por WhatsApp |
 | `/vehiculos`, `/garantias` | Historial por placa; garantías y **mantenimientos preventivos** con recordatorio por WhatsApp |
 | `/caja-menor` | **Gastos** (POS, plantillas, fecha, orden asociada, edición/anulación auditada), **Cobros** (efectivo vs. transferencia del mes), **Balance** (base cobrado, gráfica por categoría, rentabilidad, CSV/PDF) |
+
+## Fotos de repuestos
+
+Al tomar una foto de **repuesto retirado** o **instalado**, primero se elige de qué repuesto de la orden es. En la
+bitácora las fotos se agrupan «Por repuesto» (retirado | instalado) y el cliente las ve igual en su enlace. Las fotos
+anteriores a la fase 5 quedan «sin asignar» y se ligan con el selector «Asignar a…». Si se quita un repuesto de la
+orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, solo sin el vínculo.
 
 ## Reglas contables
 

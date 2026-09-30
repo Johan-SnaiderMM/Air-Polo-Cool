@@ -188,9 +188,30 @@ export async function ejecutarOperacion(
       const ruta = `${d.orden_id}/${d.id}.${img.ext}`;
       const { error: errSubida } = await subir(supabase, BUCKET_EVIDENCIAS, ruta, img.archivo);
       if (errSubida) return fallo(`No se pudo subir la foto: ${errSubida.message}`, false);
-      const { error } = await supabase
-        .from("evidencias_fotograficas")
-        .insert({ id: d.id, orden_id: d.orden_id, url_imagen: ruta, tipo: d.tipo, notas: d.notas });
+      // Solo se liga si el repuesto sigue siendo de esta orden (pudo quitarse mientras no había red).
+      let repuestoId: string | null = null;
+      if (d.orden_repuesto_id) {
+        const { data: linea } = await supabase
+          .from("orden_repuestos")
+          .select("id")
+          .eq("id", d.orden_repuesto_id)
+          .eq("orden_id", d.orden_id)
+          .maybeSingle();
+        repuestoId = linea?.id ?? null;
+      }
+      const fila: Database["public"]["Tables"]["evidencias_fotograficas"]["Insert"] = {
+        id: d.id,
+        orden_id: d.orden_id,
+        url_imagen: ruta,
+        tipo: d.tipo,
+        notas: d.notas,
+      };
+      const conVinculo = repuestoId ? { ...fila, orden_repuesto_id: repuestoId } : fila;
+      let { error } = await supabase.from("evidencias_fotograficas").insert(conVinculo);
+      // Si falta ejecutar fase5.sql (columna inexistente) la foto se guarda igual, sin vínculo.
+      if (error && repuestoId && (error.code === "PGRST204" || error.code === "42703")) {
+        ({ error } = await supabase.from("evidencias_fotograficas").insert(fila));
+      }
       if (error) {
         if (error.code === "23505") return { ok: true, duplicado: true };
         await supabase.storage.from(BUCKET_EVIDENCIAS).remove([ruta]);

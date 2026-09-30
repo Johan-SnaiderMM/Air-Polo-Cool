@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { TipoEvidencia } from "@/types/database";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -50,11 +51,28 @@ export default async function OrdenPage({
 
   if (!orden) notFound();
 
-  const { data: filas } = await supabase
+  // orden_repuesto_id existe desde la fase 5; si aún no se ejecutó se reintenta sin esa columna.
+  const conVinculo = await supabase
     .from("evidencias_fotograficas")
-    .select("id, tipo, notas, url_imagen, created_at")
+    .select("id, tipo, notas, url_imagen, created_at, orden_repuesto_id")
     .eq("orden_id", id)
     .order("created_at", { ascending: true });
+  const filas: {
+    id: string;
+    tipo: TipoEvidencia;
+    notas: string | null;
+    url_imagen: string;
+    created_at: string;
+    orden_repuesto_id?: string | null;
+  }[] | null = conVinculo.error
+    ? (
+        await supabase
+          .from("evidencias_fotograficas")
+          .select("id, tipo, notas, url_imagen, created_at")
+          .eq("orden_id", id)
+          .order("created_at", { ascending: true })
+      ).data
+    : conVinculo.data;
 
   const [{ data: filasRepuestos }, { data: sesion }, { data: filasPagos }] = await Promise.all([
     supabase
@@ -132,6 +150,7 @@ export default async function OrdenPage({
     tipo: f.tipo,
     notas: f.notas,
     created_at: f.created_at,
+    orden_repuesto_id: f.orden_repuesto_id ?? null,
     url: urlPorRuta.get(f.url_imagen) ?? null,
   }));
 
@@ -217,8 +236,13 @@ export default async function OrdenPage({
 
       <div className="space-y-3">
         <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Bitácora fotográfica</h3>
-        <CapturaFotos ordenId={orden.id} />
-        <GaleriaEvidencias evidencias={evidencias} ordenId={orden.id} puedeEliminar={esAdmin} />
+        <CapturaFotos ordenId={orden.id} repuestos={lineas.map((l) => ({ id: l.id, nombre: l.nombre }))} />
+        <GaleriaEvidencias
+          evidencias={evidencias}
+          repuestos={lineas.map((l) => ({ id: l.id, nombre: l.nombre }))}
+          ordenId={orden.id}
+          puedeEliminar={esAdmin}
+        />
       </div>
 
       <div className="space-y-3">

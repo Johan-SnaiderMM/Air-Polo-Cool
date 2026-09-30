@@ -133,7 +133,7 @@ describe("almacén local (IndexedDB)", () => {
     const foto = new Blob(["foto"], { type: "image/webp" });
     const a = await encolarOperacion(gasto(1000));
     const b = await encolarOperacion(
-      { tipo: "evidencia.subir", conArchivo: true, datos: { id: ID, orden_id: ID, tipo: "ingreso", extension: "webp", notas: null } },
+      { tipo: "evidencia.subir", conArchivo: true, datos: { id: ID, orden_id: ID, tipo: "ingreso", extension: "webp", notas: null, orden_repuesto_id: null } },
       foto
     );
     const cola = await listarCola();
@@ -147,7 +147,7 @@ describe("almacén local (IndexedDB)", () => {
 
   it("eliminar un ítem borra también su foto", async () => {
     const seq = await encolarOperacion(
-      { tipo: "evidencia.subir", conArchivo: true, datos: { id: ID, orden_id: ID, tipo: "ingreso", extension: "webp", notas: null } },
+      { tipo: "evidencia.subir", conArchivo: true, datos: { id: ID, orden_id: ID, tipo: "ingreso", extension: "webp", notas: null, orden_repuesto_id: null } },
       new Blob(["x"], { type: "image/webp" })
     );
     const blobId = (await listarCola())[0].blobId!;

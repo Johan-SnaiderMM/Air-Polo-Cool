@@ -95,6 +95,8 @@ export type OrdenPublica = {
     anio: number | null;
   };
   repuestos: {
+    /** Fase 5 (polo_air_cool_fase5.sql): id de la línea; ausente si aún no se ejecutó. */
+    id?: string;
     nombre: string;
     cantidad: number;
     unidad: TipoUnidad;
@@ -104,6 +106,8 @@ export type OrdenPublica = {
     tipo: Exclude<TipoEvidencia, "factura_compra">;
     url_imagen: string;
     notas: string | null;
+    /** Fase 5: a qué repuesto (id de línea) pertenece la foto. */
+    orden_repuesto_id?: string | null;
   }[];
 };
 
@@ -275,6 +279,8 @@ export type Database = {
           tipo: TipoEvidencia;
           notas: string | null;
           created_at: string;
+          /** Fase 5: línea de repuesto de la orden a la que pertenece la foto (viejo / nuevo). */
+          orden_repuesto_id: string | null;
         };
         Insert: {
           id?: string;
@@ -283,6 +289,7 @@ export type Database = {
           tipo: TipoEvidencia;
           notas?: string | null;
           created_at?: string;
+          orden_repuesto_id?: string | null;
         };
         Update: {
           id?: string;
@@ -291,6 +298,7 @@ export type Database = {
           tipo?: TipoEvidencia;
           notas?: string | null;
           created_at?: string;
+          orden_repuesto_id?: string | null;
         };
         Relationships: [
           {

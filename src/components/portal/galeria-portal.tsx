@@ -52,8 +52,8 @@ export function GaleriaPortal({ secciones }: { secciones: SeccionGaleria[] }) {
   return (
     <>
       <div className="space-y-6">
-        {secciones.map((s) => (
-          <div key={s.titulo}>
+        {secciones.map((s, si) => (
+          <div key={`${si}-${s.titulo}`}>
             <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">{s.titulo}</h3>
             {s.descripcion && <p className="mb-2 text-sm text-stone-600">{s.descripcion}</p>}
 

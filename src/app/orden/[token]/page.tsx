@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { agruparPorRepuesto } from "@/lib/fotos-repuesto";
 import { notFound } from "next/navigation";
 import {
   BadgeCheck,
@@ -132,18 +133,20 @@ export default async function PortalOrdenPage({
     console.warn("[portal] SUPABASE_SERVICE_ROLE_KEY no configurada: no se pueden firmar fotos.");
   }
 
-  const fotosDe = (tipo: keyof typeof ETIQUETA_TIPO): FotoPortal[] =>
-    visibles.flatMap((e) => {
-      const url = urls.get(e.url_imagen);
-      return e.tipo === tipo && url
-        ? [{ url, alt: `${ETIQUETA_TIPO[tipo]} · ${vehiculo.placa}`, notas: e.notas }]
-        : [];
-    });
+  const aFoto = (e: (typeof visibles)[number], etiqueta: string): FotoPortal[] => {
+    const url = urls.get(e.url_imagen);
+    return url ? [{ url, alt: `${etiqueta} · ${vehiculo.placa}`, notas: e.notas }] : [];
+  };
+  const fotosDe = (lista: typeof visibles, tipo: keyof typeof ETIQUETA_TIPO): FotoPortal[] =>
+    lista.filter((e) => e.tipo === tipo).flatMap((e) => aFoto(e, ETIQUETA_TIPO[tipo]));
 
-  const ingreso = fotosDe("ingreso");
-  const viejo = fotosDe("repuesto_viejo");
-  const nuevo = fotosDe("repuesto_nuevo");
-  const pruebas = fotosDe("prueba_tecnica");
+  // Fase 5: las fotos de repuesto ligadas a su repuesto se muestran pieza por pieza;
+  // el resto (sin asignar, ingreso, pruebas) se agrupa por tipo como antes.
+  const { grupos, sueltas } = agruparPorRepuesto(visibles, repuestos);
+  const ingreso = fotosDe(sueltas, "ingreso");
+  const viejo = fotosDe(sueltas, "repuesto_viejo");
+  const nuevo = fotosDe(sueltas, "repuesto_nuevo");
+  const pruebas = fotosDe(sueltas, "prueba_tecnica");
 
   const secciones: SeccionGaleria[] = [];
   if (ingreso.length > 0) {
@@ -153,9 +156,27 @@ export default async function PortalOrdenPage({
       columnas: [{ titulo: "Ingreso", tono: "neutro", fotos: ingreso }],
     });
   }
+  grupos.forEach(({ repuesto, retirado, instalado }, i) => {
+    secciones.push({
+      titulo: repuesto.nombre,
+      descripcion: i === 0 ? "Cada repuesto: el que retiramos y el nuevo que instalamos." : undefined,
+      columnas: [
+        {
+          titulo: "Retirado",
+          tono: "rojo",
+          fotos: retirado.flatMap((e) => aFoto(e, `Retirado: ${repuesto.nombre}`)),
+        },
+        {
+          titulo: "Instalado",
+          tono: "verde",
+          fotos: instalado.flatMap((e) => aFoto(e, `Instalado: ${repuesto.nombre}`)),
+        },
+      ],
+    });
+  });
   if (viejo.length > 0 || nuevo.length > 0) {
     secciones.push({
-      titulo: "Antes y después",
+      titulo: grupos.length > 0 ? "Otros repuestos" : "Antes y después",
       descripcion: "Comparativa del repuesto retirado y el nuevo instalado.",
       columnas: [
         { titulo: "Retirado", tono: "rojo", fotos: viejo },

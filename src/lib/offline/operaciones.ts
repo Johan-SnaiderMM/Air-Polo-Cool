@@ -79,6 +79,8 @@ export type DatosEvidencia = {
   tipo: TipoEvidencia;
   extension: "webp" | "jpg";
   notas: string | null;
+  /** Línea de repuesto de la orden a la que pertenece la foto (solo viejo / nuevo). */
+  orden_repuesto_id: string | null;
 };
 
 /** `conArchivo`: la operación trae una imagen adjunta (comprobante / evidencia). */
@@ -198,6 +200,11 @@ export function validarOperacion(entrada: unknown): Validacion<Operacion> {
       if (!esTipoEvidencia(d.tipo)) return { ok: false, error: "Tipo de foto inválido." };
       const extension = extensionValida(d.extension);
       if (!extension) return { ok: false, error: "Formato de imagen inválido." };
+      const esDeRepuesto = d.tipo === "repuesto_viejo" || d.tipo === "repuesto_nuevo";
+      const repuestoId = d.orden_repuesto_id ?? null;
+      if (repuestoId !== null && (!esUuid(String(repuestoId)) || !esDeRepuesto)) {
+        return { ok: false, error: "Solo las fotos de repuesto pueden ligarse a un repuesto." };
+      }
       return {
         ok: true,
         valor: {
@@ -209,6 +216,7 @@ export function validarOperacion(entrada: unknown): Validacion<Operacion> {
             tipo: d.tipo,
             extension,
             notas: textoONull(d.notas),
+            orden_repuesto_id: repuestoId === null ? null : String(repuestoId),
           },
         },
       };
