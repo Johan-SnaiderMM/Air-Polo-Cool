@@ -4,13 +4,14 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { autorONull } from "@/lib/autor";
-import { validarItems, VIGENCIAS_DIAS, type ItemCotizacion } from "@/lib/cotizaciones";
+import { validar } from "@/lib/esquemas/comunes";
+import { cotizacionFormSchema, seleccionVehiculoSchema } from "@/lib/esquemas/cotizacion";
 import { mensajeDeError } from "@/lib/errores";
 import type { DatosVehiculoOrden } from "@/lib/offline/operaciones";
 import { asegurarVehiculo } from "@/lib/servidor/operaciones";
-import { esUuid, normalizarPlaca, normalizarTelefono } from "@/lib/ordenes";
+import { esUuid } from "@/lib/ordenes";
 import type { EstadoCotizacion } from "@/types/database";
-import { texto } from "@/lib/formularios";
+import { jsonODescartar, texto } from "@/lib/formularios";
 import { exigirSesion, obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 export type CotizacionFormState = { error?: string };
@@ -19,20 +20,6 @@ export type AccionCotizacion = { ok: true; ordenId?: string } | { ok: false; err
 // Las cotizaciones requieren conexión (se emiten desde el escritorio del taller, no en campo).
 
 const ESTADOS_MANUALES: EstadoCotizacion[] = ["borrador", "enviada", "aprobada", "rechazada"];
-
-type VehiculoForm =
-  | { modo: "existente"; vehiculo: { id: string } }
-  | {
-      modo: "nuevo";
-      datos: {
-        cliente_nombre: string;
-        cliente_telefono: string;
-        placa: string;
-        marca: string;
-        modelo: string;
-        anio: string;
-      };
-    };
 
 /** Crea o actualiza una cotización con todos sus ítems. */
 export async function guardarCotizacion(
@@ -45,60 +32,27 @@ export async function guardarCotizacion(
   const editando = cotizacionId !== "";
   if (editando && !esUuid(cotizacionId)) return { error: "Cotización inválida." };
 
-  // ---- Ítems ----
-  let crudos: unknown;
-  try {
-    crudos = JSON.parse(texto(formData, "items") || "[]");
-  } catch {
-    return { error: "Los ítems no tienen un formato válido." };
-  }
-  const val = validarItems(crudos);
-  if (!val.ok) return { error: val.error };
-  const items: ItemCotizacion[] = val.items;
-
-  const manoObra = Number(texto(formData, "mano_obra") || "0");
-  if (!Number.isFinite(manoObra) || manoObra < 0 || manoObra > 9_999_999_999) {
-    return { error: "La mano de obra debe ser un valor mayor o igual a 0." };
-  }
-  if (items.length === 0 && manoObra === 0) {
-    return { error: "Agrega al menos un ítem o la mano de obra." };
-  }
-  const vigencia = Number(texto(formData, "vigencia_dias") || "15");
-  if (!(VIGENCIAS_DIAS as readonly number[]).includes(vigencia)) return { error: "Vigencia inválida." };
-  const notas = texto(formData, "notas").slice(0, 1000) || null;
-  const autor = autorONull(texto(formData, "autor"));
+  // ---- Campos e ítems (reglas en src/lib/esquemas/cotizacion.ts) ----
+  const form = validar(cotizacionFormSchema, {
+    items: jsonODescartar(texto(formData, "items") || "[]"),
+    mano_obra: texto(formData, "mano_obra"),
+    vigencia_dias: texto(formData, "vigencia_dias"),
+    notas: texto(formData, "notas"),
+    autor: texto(formData, "autor"),
+  });
+  if (!form.ok) return { error: form.error };
+  const { items, mano_obra: manoObra, vigencia_dias: vigencia, notas, autor } = form.valor;
 
   // ---- Vehículo (solo al crear) ----
   let vehiculoId = "";
   if (!editando) {
-    let sel: VehiculoForm;
-    try {
-      sel = JSON.parse(texto(formData, "vehiculo")) as VehiculoForm;
-    } catch {
-      return { error: "Selecciona un vehículo o registra uno nuevo." };
-    }
+    const sel = validar(seleccionVehiculoSchema, jsonODescartar(texto(formData, "vehiculo")));
+    if (!sel.ok) return { error: sel.error };
 
-    let datos: DatosVehiculoOrden;
-    if (sel.modo === "existente" && esUuid(String(sel.vehiculo?.id))) {
-      datos = { nuevo: false, id: sel.vehiculo.id };
-    } else if (sel.modo === "nuevo") {
-      const d = sel.datos;
-      const anio = d.anio.trim() === "" ? null : Number(d.anio);
-      if (anio !== null && !Number.isInteger(anio)) return { error: "El modelo (año) no es válido." };
-      datos = {
-        nuevo: true,
-        id: randomUUID(),
-        cliente_id: randomUUID(),
-        cliente_nombre: d.cliente_nombre.trim(),
-        cliente_telefono: normalizarTelefono(d.cliente_telefono) ?? "",
-        placa: normalizarPlaca(d.placa),
-        marca: d.marca.trim(),
-        modelo: d.modelo.trim(),
-        anio,
-      };
-    } else {
-      return { error: "Selecciona un vehículo o registra uno nuevo." };
-    }
+    // Los ids del vehículo y cliente nuevos se generan aquí; asegurarVehiculo revalida y es idempotente.
+    const datos: DatosVehiculoOrden = sel.valor.nuevo
+      ? { ...sel.valor, id: randomUUID(), cliente_id: randomUUID() }
+      : sel.valor;
 
     const r = await asegurarVehiculo(supabase, datos);
     if (!r.ok) return { error: r.res.ok ? "No se pudo registrar el vehículo." : r.res.error };

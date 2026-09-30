@@ -180,14 +180,14 @@ encolar o enviar) y el servidor (que nunca confía en lo que recibe):
 
 - `comunes.ts` — piezas reutilizables (id, fecha, monto, WhatsApp, placa, año…), cada una con su mensaje en español, y
   `validar(esquema, datos)` que devuelve `{ ok, valor }` o el mensaje del primer problema.
-- `vehiculo.ts`, `orden.ts`, `gasto.ts`, `inventario.ts` — formularios y ediciones (los números llegan como texto).
+- `vehiculo.ts`, `orden.ts`, `gasto.ts`, `inventario.ts`, `cotizacion.ts` — formularios y ediciones (los números llegan como texto). En cotizaciones, el error de un ítem nombra el ítem o su descripción.
 - `operaciones.ts` — las operaciones offline (gasto, pago, foto, orden nueva). **Los tipos** (`Operacion`, `DatosGasto`…)
   **se derivan del esquema**: el validador y el tipo no pueden desincronizarse.
 
 Para añadir un campo: declara la regla en el esquema de su entidad y úsala donde corresponda; las claves se declaran en el
 orden en que deben validarse (el usuario ve el primer error). Las reglas que dependen de la base de datos (¿existe el
-ítem?, ¿qué unidad tiene?) siguen en la acción. Aún con validación propia, fuera de los esquemas: cotizaciones
-(`lib/cotizaciones.ts`) y las comprobaciones de los formularios de gasto y pago en el navegador.
+ítem?, ¿qué unidad tiene?) siguen en la acción. Única validación fuera de los esquemas: las comprobaciones de los
+formularios de gasto y pago en el navegador (el servidor las vuelve a aplicar).
 
 ## Pruebas de las acciones que mueven dinero o estado
 

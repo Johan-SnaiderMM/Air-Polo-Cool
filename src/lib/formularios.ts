@@ -10,3 +10,12 @@ export function numeroOpcional(valor: string): number | null {
   const n = Number(valor.replace(",", "."));
   return Number.isFinite(n) ? n : NaN;
 }
+
+/** Texto JSON de un formulario → valor, o `undefined` si no es JSON válido (el esquema lo rechaza con su mensaje). */
+export function jsonODescartar(texto: string): unknown {
+  try {
+    return JSON.parse(texto);
+  } catch {
+    return undefined;
+  }
+}
