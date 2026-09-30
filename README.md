@@ -173,6 +173,10 @@ con los tipos: tablas, vistas, columnas, nulabilidad, columnas opcionales al ins
   `npx supabase login` y `npx supabase gen types typescript --project-id <ref>`, y comparar el resultado con
   `database.ts`. Requiere tu sesión de Supabase, por eso no está automatizado.
 
+## Pruebas de las acciones que mueven dinero o estado
+
+`src/test/supabase-falso.ts` es un Supabase simulado que registra cada consulta, RPC y subida a Storage. Con él se prueban (junto a cada archivo, `*.test.ts`) los pagos (`anularPago`), los gastos (`editarGasto` / `anularGasto`), el cambio de estado y la edición de la orden, los repuestos (stock y total), fotos, y el punto único de escritura offline (`procesarOperacion` / `ejecutarOperacion`): qué le piden a la base, cómo reaccionan a errores (duplicado, sin permiso, sin sesión, conexión) y que nunca quedan archivos huérfanos. Las reglas propias de Postgres (triggers, RLS) se verifican aparte con PGlite (`database.contract.test.ts`).
+
 ## Pendiente conocido
 
 - El service worker no se pudo probar en un navegador real durante el desarrollo (el navegador embebido no admite

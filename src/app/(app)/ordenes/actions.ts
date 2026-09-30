@@ -275,7 +275,7 @@ export async function cambiarEstadoOrden(datos: {
   if (!esEstado(datos.estado)) return { ok: false, error: "Estado inválido." };
   const estado = datos.estado;
 
-  const nota = datos.nota.replace(/s+/g, " ").trim().slice(0, 200);
+  const nota = datos.nota.replace(/\s+/g, " ").trim().slice(0, 200);
   if (estado === "cancelado" && nota.length < 3) {
     return { ok: false, error: "Escribe el motivo de la cancelación." };
   }
