@@ -7,7 +7,7 @@ import { cargarDetalleOrden } from "@/lib/datos/ordenes";
 import { mesesMantenimiento } from "@/lib/datos/mapeo";
 import { esUuid } from "@/lib/ordenes";
 import { CambiarEstado } from "@/components/ordenes/cambiar-estado";
-import { OrdenForm } from "@/components/ordenes/orden-form";
+import { OrdenFormEditar } from "@/components/ordenes/orden-form-editar";
 import { Colapsable } from "@/components/ui/colapsable";
 import { CapturaFotos } from "@/components/ordenes/captura-fotos";
 import { GaleriaEvidencias } from "@/components/ordenes/galeria-evidencias";
@@ -184,10 +184,9 @@ export default async function OrdenPage({
 
       <div className="space-y-3">
         <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Datos de la orden</h3>
-        <OrdenForm
+        <OrdenFormEditar
           // Remonta el formulario cuando cambian los montos o el estado desde fuera de él.
           key={`${orden.mano_obra}-${orden.total_cobrado}-${orden.estado}-${orden.mantenimiento_meses ?? 0}`}
-          modo="editar"
           ordenId={orden.id}
           fechaEntrega={orden.fecha_entrega}
           valores={{

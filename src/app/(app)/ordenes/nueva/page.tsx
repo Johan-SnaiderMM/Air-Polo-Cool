@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { esUuid } from "@/lib/ordenes";
-import { OrdenForm } from "@/components/ordenes/orden-form";
+import { OrdenFormCrear } from "@/components/ordenes/orden-form-crear";
 import type { VehiculoResultado } from "@/app/(app)/ordenes/actions";
 
 export const metadata: Metadata = { title: "Nueva orden" };
@@ -49,7 +49,7 @@ export default async function NuevaOrdenPage({
         <h2 className="font-serif text-[26px] leading-tight font-medium tracking-tight">Nueva orden</h2>
       </div>
 
-      <OrdenForm modo="crear" vehiculoInicial={vehiculoInicial} />
+      <OrdenFormCrear vehiculoInicial={vehiculoInicial} />
 
       <p className="text-center text-sm text-stone-500">
         Al crear la orden podrás adjuntar las fotos de ingreso.
