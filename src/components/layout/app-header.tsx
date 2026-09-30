@@ -2,26 +2,28 @@
 
 import Image from "next/image";
 import { useCallback, useState } from "react";
-import { CloudOff, Snowflake, LogOut } from "lucide-react";
+import { CloudOff, FlaskConical, Snowflake, LogOut, Wrench } from "lucide-react";
 import { cerrarSesion } from "@/app/login/actions";
 import { PendientesDrawer } from "@/components/sync/pendientes-drawer";
-import { useAutor } from "@/components/sync/autor-provider";
+import { PanelSoporte } from "@/components/soporte/panel-soporte";
 import { useSync } from "@/components/sync/sync-provider";
 import { limpiarCacheReferencia } from "@/lib/offline/almacen";
-import type { Autor } from "@/types/database";
+import type { EstadoSoporte } from "@/lib/datos/soporte";
 
 /**
  * Cabecera mimetizada con el papel: sin franja de color, solo marca y un
  * hairline inferior. Translúcida para que el contenido "pase por debajo".
  *
  * Derecha: estado de conexión REAL (navigator.onLine + último intento de red),
- * sello de autoría y salida. El estado abre el panel de sincronización.
+ * el panel de soporte (solo para ese usuario) y salida. El estado abre el panel de sincronización.
+ * Bajo la cabecera, una franja avisa cuando se trabaja en modo prueba o hay mantenimiento activo.
  */
-export function AppHeader() {
+export function AppHeader({ soporte }: { soporte: EstadoSoporte }) {
   const { online, pendientes, fallidas, sincronizando, sesionExpirada } = useSync();
-  const { autor, cambiarAutor, opciones } = useAutor();
   const [panel, setPanel] = useState(false);
+  const [panelSoporte, setPanelSoporte] = useState(false);
   const cerrar = useCallback(() => setPanel(false), []);
+  const cerrarSoporte = useCallback(() => setPanelSoporte(false), []);
 
   const hayAlerta = fallidas > 0 || sesionExpirada;
   const etiqueta = !online ? "Sin red" : pendientes > 0 ? `${pendientes}` : "";
@@ -78,18 +80,16 @@ export function AppHeader() {
             {etiqueta}
           </button>
 
-          <select
-            aria-label="Registrado por"
-            value={autor}
-            onChange={(e) => cambiarAutor(e.target.value as Autor)}
-            className="h-8 max-w-[5.5rem] rounded-full border border-stone-200/80 bg-white px-2.5 text-[12px] font-medium text-ink outline-none focus:border-stone-400"
-          >
-            {opciones.map((a) => (
-              <option key={a} value={a}>
-                {a === "Soporte técnico" ? "Soporte" : a}
-              </option>
-            ))}
-          </select>
+          {soporte.esSoporte && (
+            <button
+              type="button"
+              onClick={() => setPanelSoporte(true)}
+              aria-label="Panel de soporte"
+              className="flex size-10 items-center justify-center rounded-full text-stone-500 transition-colors active:bg-stone-200/60"
+            >
+              <Wrench className="size-[18px]" strokeWidth={1.75} aria-hidden />
+            </button>
+          )}
 
           <form action={cerrarSesion} onSubmit={alCerrarSesion}>
             <button
@@ -103,7 +103,21 @@ export function AppHeader() {
         </div>
       </div>
 
+      {soporte.modoPrueba && (
+        <p className="flex items-center justify-center gap-1.5 bg-ochre-100 px-4 py-1.5 text-center text-[12px] font-semibold text-ochre-800">
+          <FlaskConical className="size-3.5 shrink-0" aria-hidden />
+          MODO PRUEBA · estos datos no son reales
+        </p>
+      )}
+      {soporte.esSoporte && soporte.mantenimiento.activo && (
+        <p className="flex items-center justify-center gap-1.5 bg-brick-100 px-4 py-1.5 text-center text-[12px] font-semibold text-brick-800">
+          <Wrench className="size-3.5 shrink-0" aria-hidden />
+          Mantenimiento activo · Polo solo puede consultar
+        </p>
+      )}
+
       {panel && <PendientesDrawer onClose={cerrar} />}
+      {panelSoporte && <PanelSoporte estado={soporte} onClose={cerrarSoporte} />}
     </header>
   );
 }

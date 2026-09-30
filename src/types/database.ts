@@ -116,6 +116,8 @@ export type Database = {
           documento: string | null;
           created_at: string;
           updated_at: string;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -124,6 +126,7 @@ export type Database = {
           documento?: string | null;
           created_at?: string;
           updated_at?: string;
+          es_prueba?: boolean;
         };
         Update: {
           id?: string;
@@ -132,6 +135,7 @@ export type Database = {
           documento?: string | null;
           created_at?: string;
           updated_at?: string;
+          es_prueba?: boolean;
         };
         Relationships: [];
       };
@@ -149,6 +153,8 @@ export type Database = {
           tipo_gas_sugerido: TipoGasSugerido | null;
           carga_estandar_gramos: number | null;
           created_at: string;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -160,6 +166,7 @@ export type Database = {
           tipo_gas_sugerido?: TipoGasSugerido | null;
           carga_estandar_gramos?: number | null;
           created_at?: string;
+          es_prueba?: boolean;
         };
         Update: {
           id?: string;
@@ -171,6 +178,7 @@ export type Database = {
           tipo_gas_sugerido?: TipoGasSugerido | null;
           carga_estandar_gramos?: number | null;
           created_at?: string;
+          es_prueba?: boolean;
         };
         Relationships: [
           {
@@ -208,6 +216,8 @@ export type Database = {
           autor: Autor | null;
           created_at: string;
           updated_at: string;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -230,6 +240,7 @@ export type Database = {
           autor?: Autor | null;
           created_at?: string;
           updated_at?: string;
+          es_prueba?: boolean;
         };
         Update: {
           id?: string;
@@ -252,6 +263,7 @@ export type Database = {
           autor?: Autor | null;
           created_at?: string;
           updated_at?: string;
+          es_prueba?: boolean;
         };
         Relationships: [
           {
@@ -274,6 +286,8 @@ export type Database = {
           created_at: string;
           /** Fase 5: línea de repuesto de la orden a la que pertenece la foto (viejo / nuevo). */
           orden_repuesto_id: string | null;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -283,6 +297,7 @@ export type Database = {
           notas?: string | null;
           created_at?: string;
           orden_repuesto_id?: string | null;
+          es_prueba?: boolean;
         };
         Update: {
           id?: string;
@@ -292,6 +307,7 @@ export type Database = {
           notas?: string | null;
           created_at?: string;
           orden_repuesto_id?: string | null;
+          es_prueba?: boolean;
         };
         Relationships: [
           {
@@ -316,6 +332,8 @@ export type Database = {
           precio_venta: number;
           created_at: string;
           updated_at: string;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -329,6 +347,7 @@ export type Database = {
           precio_venta?: number;
           created_at?: string;
           updated_at?: string;
+          es_prueba?: boolean;
         };
         Update: {
           id?: string;
@@ -342,6 +361,7 @@ export type Database = {
           precio_venta?: number;
           created_at?: string;
           updated_at?: string;
+          es_prueba?: boolean;
         };
         Relationships: [];
       };
@@ -354,6 +374,8 @@ export type Database = {
           costo_unitario: number;
           precio_unitario: number;
           created_at: string;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -365,6 +387,7 @@ export type Database = {
           /** Si se omite, el trigger toma el precio vigente del inventario. */
           precio_unitario?: number;
           created_at?: string;
+          es_prueba?: boolean;
         };
         Update: {
           id?: string;
@@ -374,6 +397,7 @@ export type Database = {
           costo_unitario?: number;
           precio_unitario?: number;
           created_at?: string;
+          es_prueba?: boolean;
         };
         Relationships: [
           {
@@ -413,6 +437,8 @@ export type Database = {
           anulado_motivo: string | null;
           anulado_por: string | null;
           anulado_at: string | null;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         /** Inmutable: no hay política de update/delete; se anula con anular_pago(). */
         Insert: {
@@ -429,6 +455,7 @@ export type Database = {
           registrado_por?: string | null;
           autor?: Autor | null;
           created_at?: string;
+          es_prueba?: boolean;
         };
         Update: Record<string, never>;
         Relationships: [
@@ -464,6 +491,8 @@ export type Database = {
           anulado_por: string | null;
           anulado_autor: Autor | null;
           anulado_at: string | null;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -475,6 +504,7 @@ export type Database = {
           created_at?: string;
           orden_id?: string | null;
           autor?: Autor | null;
+          es_prueba?: boolean;
         };
         /** Se edita con editar_gasto() y se anula con anular_gasto(). */
         Update: Record<string, never>;
@@ -502,6 +532,8 @@ export type Database = {
           registrado_por: string | null;
           created_at: string;
           updated_at: string;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -512,6 +544,7 @@ export type Database = {
           mano_obra?: number;
           notas?: string | null;
           autor?: Autor | null;
+          es_prueba?: boolean;
         };
         Update: {
           estado?: EstadoCotizacion;
@@ -519,6 +552,7 @@ export type Database = {
           vigencia_dias?: number;
           mano_obra?: number;
           notas?: string | null;
+          es_prueba?: boolean;
         };
         Relationships: [
           {
@@ -540,6 +574,8 @@ export type Database = {
           precio_unitario: number;
           costo_unitario: number;
           created_at: string;
+          /** Fase 6: true = dato de prueba (solo lo ve el usuario de soporte en modo prueba). */
+          es_prueba: boolean;
         };
         Insert: {
           id?: string;
@@ -549,6 +585,7 @@ export type Database = {
           cantidad: number;
           precio_unitario: number;
           costo_unitario?: number;
+          es_prueba?: boolean;
         };
         Update: {
           inventario_id?: string | null;
@@ -556,6 +593,7 @@ export type Database = {
           cantidad?: number;
           precio_unitario?: number;
           costo_unitario?: number;
+          es_prueba?: boolean;
         };
         Relationships: [
           {
@@ -566,6 +604,30 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      /** Fase 6: modo (real/prueba) de cada usuario de soporte. Se cambia con cambiar_modo_prueba(). */
+      soporte_modo: {
+        Row: {
+          user_id: string;
+          prueba: boolean;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Fase 6: una sola fila. Se cambia con cambiar_mantenimiento(). */
+      mantenimiento: {
+        Row: {
+          id: boolean;
+          activo: boolean;
+          motivo: string | null;
+          desde: string | null;
+          actualizado_por: string | null;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
       };
     };
     Views: {
@@ -762,6 +824,26 @@ export type Database = {
       };
       es_admin: {
         Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      es_soporte: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      en_modo_prueba: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      en_mantenimiento: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      cambiar_modo_prueba: {
+        Args: { p_activo: boolean };
+        Returns: boolean;
+      };
+      cambiar_mantenimiento: {
+        Args: { p_activo: boolean; p_motivo?: string | null };
         Returns: boolean;
       };
       fn_generar_token_publico: {

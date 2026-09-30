@@ -52,7 +52,13 @@ export function describirOperacion(op: Operacion): string {
   }
 }
 
-/** Errores transitorios de conexión/recursos en la base: se reintentan, no se marcan como fallidos. */
+/** Código con el que la base rechaza escrituras de Polo durante el mantenimiento (fase 6). */
+export const CODIGO_MANTENIMIENTO = "PC001";
+
+/**
+ * Errores transitorios de conexión/recursos en la base (y el mantenimiento, que termina solo):
+ * se reintentan, no se marcan como fallidos.
+ */
 export function esErrorTransitorio(codigo: string | undefined): boolean {
-  return !!codigo && (codigo.startsWith("08") || codigo.startsWith("53") || codigo === "57014");
+  return !!codigo && (codigo.startsWith("08") || codigo.startsWith("53") || codigo === "57014" || codigo === CODIGO_MANTENIMIENTO);
 }

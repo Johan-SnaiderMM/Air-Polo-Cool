@@ -115,6 +115,8 @@ describe("utilidades", () => {
     expect(esErrorTransitorio("08006")).toBe(true);
     expect(esErrorTransitorio("53300")).toBe(true);
     expect(esErrorTransitorio("57014")).toBe(true);
+    expect(esErrorTransitorio("PC001")).toBe(true); // mantenimiento: termina solo, la operación espera en la cola
+    expect(esErrorTransitorio("PC002")).toBe(false); // registro de otro modo: no se arregla reintentando
     expect(esErrorTransitorio("23505")).toBe(false);
     expect(esErrorTransitorio(undefined)).toBe(false);
   });

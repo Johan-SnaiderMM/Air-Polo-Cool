@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
@@ -18,11 +19,15 @@ export const ERROR_SESION = "Tu sesión expiró. Vuelve a ingresar.";
 /** Resultado estándar de una acción sin sesión (compatible con los tipos { ok: false; error }). */
 export const SESION_EXPIRADA = { ok: false, error: ERROR_SESION } as const;
 
-export async function obtenerSesion(): Promise<{ supabase: ClienteServidor; user: User | null }> {
+/**
+ * Memoizada por petición: el layout y la página piden la sesión en la misma carga y así solo se
+ * valida una vez contra Supabase Auth.
+ */
+export const obtenerSesion = cache(async (): Promise<{ supabase: ClienteServidor; user: User | null }> => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   return { supabase, user: data.user };
-}
+});
 
 export async function exigirSesion(): Promise<{ supabase: ClienteServidor; user: User }> {
   const { supabase, user } = await obtenerSesion();

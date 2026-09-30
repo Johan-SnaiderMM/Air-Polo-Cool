@@ -27,7 +27,7 @@ export type OpcionesFalso = {
   /** Decide qué responde la «base» a cada consulta. Sin respuesta: `{ data: null }`. */
   responder?: (llamada: Llamada) => Respuesta | undefined;
   /** Usuario de la sesión; `null` = sin sesión. Por defecto, un operario. */
-  usuario?: { app_metadata?: { rol?: string } } | null;
+  usuario?: { id?: string; app_metadata?: { rol?: string; soporte?: boolean } } | null;
   /** Error al subir a Storage (por defecto, sube bien). */
   errorSubida?: ErrorFalso | null;
 };

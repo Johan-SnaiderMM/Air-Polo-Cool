@@ -15,11 +15,12 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    3. `…03_fase3_pagos.sql` (pagos y abonos de clientes; ver su bloque opcional de migración al final)
    4. `…04_fase4_gastos_cotizaciones.sql` (gastos auditables, cotizaciones, pertenencias, mantenimiento)
    5. `…05_fase5_fotos_repuesto.sql` (cada foto de repuesto retirado / instalado queda ligada a su repuesto)
+   6. `…06_fase6_soporte.sql` (usuario de soporte: modo prueba y mantenimiento; ver «Usuario de soporte»)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
    (`admin` u `operario`) con el SQL que aparece al inicio de la migración `…01_fase1_base.sql`.
-   Sin rol, el login se rechaza.
+   Sin rol, el login se rechaza. El usuario de soporte se asigna con la migración de la fase 6 (ver «Usuario de soporte»).
 3. **Variables de entorno.** Copia `.env.example` a `.env.local` y complétalo:
 
    | Variable | Uso |
@@ -85,8 +86,8 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
   No se asume que lo facturado está pagado; el saldo por cobrar sale de `pagos_orden`.
 - **Nada se borra**: gastos y pagos se **anulan con motivo** (queda quién, cuándo y por qué);
   las ediciones de un gasto guardan los valores anteriores.
-- **Autoría**: selector "Polo / Soporte" en el encabezado; se estampa en los registros nuevos. No es un login ni un rol:
-  la seguridad real sigue siendo la sesión de Supabase.
+- **Autoría**: cada operador entra con su propio usuario y el sello ("Polo" / "Soporte técnico") sale de la sesión; se
+  estampa en los registros nuevos. Es informativo: la seguridad real es la sesión y el RLS de Supabase.
 
 ## Persistencia y modo sin conexión
 
@@ -103,7 +104,6 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
 | `outbox` | IndexedDB (`polo-air-cool`) | Cola de sincronización FIFO: operaciones pendientes/fallidas |
 | `blobs` | IndexedDB | Fotos pendientes de subir (Blob nativo, sin base64) |
 | `cache` | IndexedDB | Snapshot de vehículos y órdenes (selectores offline), plantillas de gasto |
-| Operador actual | `localStorage` (`polo:autor`) | "Polo" o "Soporte técnico" |
 | Páginas visitadas | Cache Storage (`public/sw.js`) | Última copia de cada pantalla (HTML y datos RSC) |
 
 **Cómo se sincroniza** (`src/lib/offline/`):
@@ -131,6 +131,28 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
 - `src/lib/offline/` — operaciones offline (validación), almacén IndexedDB, algoritmo de sincronización y búsqueda local.
 - `src/components/sync/` — `sync-provider.tsx` compone tres hooks: `use-red` (conexión efectiva), `use-snapshot` (datos de referencia locales) y `use-cola` (registrar, sincronizar, reintentar); además el proveedor de autoría y el panel de pendientes.
 - `public/sw.js` — service worker (lectura offline de páginas ya visitadas); `public/offline.html` — pantalla sin conexión.
+
+## Usuario de soporte
+
+Un segundo usuario (`soporte@aircool.com`) con los mismos permisos que el admin, más dos poderes que se manejan desde el
+icono de llave del encabezado (solo él lo ve):
+
+- **Modo prueba.** Cada fila de las tablas operativas lleva `es_prueba` (por defecto, el modo de quien la crea). Un usuario
+  solo ve y toca filas de su modo: Polo siempre ve lo real; soporte ve lo real o lo de prueba según el interruptor. Lo de
+  prueba no suma en cobros, balance, inventario ni garantías reales (las vistas heredan el RLS), y placa, código de
+  inventario y documento son únicos *por modo*. Una franja ocre avisa mientras se trabaja en prueba. Al cambiar de modo se
+  borra lo guardado en el teléfono y no se permite si hay registros sin sincronizar (se enviarían al modo equivocado).
+  Las fotos de prueba sí se guardan en los mismos buckets (quedan ligadas a filas de prueba).
+- **Mantenimiento.** Interruptor global con motivo opcional. Mientras está activo, Polo solo consulta: la base rechaza sus
+  escrituras (`PC001`), también dentro de las funciones que se saltan el RLS (anular pago, convertir cotización…), y la app
+  le muestra una pantalla de aviso. Lo que registre sin red queda en la cola y se sube solo al terminar. Soporte sigue
+  escribiendo. Si se quedara activo sin nadie que lo apague: `update public.mantenimiento set activo = false;` en el SQL Editor.
+- **Cómo se asigna.** La migración de la fase 6 marca `app_metadata.soporte = true` (y rol `admin` si no tenía) al usuario
+  `soporte@aircool.com`; hay que cerrar sesión y volver a entrar para que el token la lleve. Si el usuario se crea después,
+  se vuelve a ejecutar la migración. La marca no la puede editar el propio usuario.
+- **Cómo se hace cumplir.** Una política RESTRICTIVA y un trigger (`fn_guardia_soporte`) por tabla, sin redefinir ninguna
+  función ni política existente. Sin sesión de usuario (service role, SQL Editor) no restringen nada. Lo prueba
+  `src/types/soporte.test.ts` contra un Postgres real en memoria.
 
 ## Seguridad (resumen)
 

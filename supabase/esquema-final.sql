@@ -29,6 +29,7 @@ cierres_caja.resultado text null default -
 cierres_caja.saldo_sistema numeric not null default -
 clientes.created_at timestamp with time zone not null default now()
 clientes.documento text null default -
+clientes.es_prueba boolean not null default en_modo_prueba()
 clientes.id uuid not null default gen_random_uuid()
 clientes.nombre text not null default -
 clientes.telefono text not null default -
@@ -38,11 +39,13 @@ cotizacion_items.costo_unitario numeric not null default 0
 cotizacion_items.cotizacion_id uuid not null default -
 cotizacion_items.created_at timestamp with time zone not null default now()
 cotizacion_items.descripcion text not null default -
+cotizacion_items.es_prueba boolean not null default en_modo_prueba()
 cotizacion_items.id uuid not null default gen_random_uuid()
 cotizacion_items.inventario_id uuid null default -
 cotizacion_items.precio_unitario numeric not null default -
 cotizaciones.autor text null default -
 cotizaciones.created_at timestamp with time zone not null default now()
+cotizaciones.es_prueba boolean not null default en_modo_prueba()
 cotizaciones.estado USER-DEFINED not null default 'borrador'::estado_cotizacion
 cotizaciones.fecha date not null default ((now() AT TIME ZONE 'America/Bogota'::text))::date
 cotizaciones.id uuid not null default gen_random_uuid()
@@ -54,6 +57,7 @@ cotizaciones.updated_at timestamp with time zone not null default now()
 cotizaciones.vehiculo_id uuid not null default -
 cotizaciones.vigencia_dias integer not null default 15
 evidencias_fotograficas.created_at timestamp with time zone not null default now()
+evidencias_fotograficas.es_prueba boolean not null default en_modo_prueba()
 evidencias_fotograficas.id uuid not null default gen_random_uuid()
 evidencias_fotograficas.notas text null default -
 evidencias_fotograficas.orden_id uuid not null default -
@@ -70,6 +74,7 @@ gastos_caja_menor.categoria USER-DEFINED not null default 'otros'::categoria_gas
 gastos_caja_menor.comprobante_url text null default -
 gastos_caja_menor.created_at timestamp with time zone not null default now()
 gastos_caja_menor.descripcion text null default -
+gastos_caja_menor.es_prueba boolean not null default en_modo_prueba()
 gastos_caja_menor.fecha date not null default ((now() AT TIME ZONE 'America/Bogota'::text))::date
 gastos_caja_menor.historial jsonb not null default '[]'::jsonb
 gastos_caja_menor.id uuid not null default gen_random_uuid()
@@ -81,6 +86,7 @@ inventario.codigo text not null default -
 inventario.costo_compra numeric not null default 0
 inventario.created_at timestamp with time zone not null default now()
 inventario.descripcion text null default -
+inventario.es_prueba boolean not null default en_modo_prueba()
 inventario.id uuid not null default gen_random_uuid()
 inventario.nombre text not null default -
 inventario.precio_venta numeric not null default 0
@@ -88,9 +94,15 @@ inventario.stock_actual numeric not null default 0
 inventario.stock_minimo numeric not null default 0
 inventario.tipo_unidad USER-DEFINED not null default 'unidad'::tipo_unidad
 inventario.updated_at timestamp with time zone not null default now()
+mantenimiento.activo boolean not null default false
+mantenimiento.actualizado_por uuid null default -
+mantenimiento.desde timestamp with time zone null default -
+mantenimiento.id boolean not null default true
+mantenimiento.motivo text null default -
 orden_repuestos.cantidad_usada numeric not null default -
 orden_repuestos.costo_unitario numeric not null default -
 orden_repuestos.created_at timestamp with time zone not null default now()
+orden_repuestos.es_prueba boolean not null default en_modo_prueba()
 orden_repuestos.id uuid not null default gen_random_uuid()
 orden_repuestos.inventario_id uuid not null default -
 orden_repuestos.orden_id uuid not null default -
@@ -99,6 +111,7 @@ ordenes_servicio.autor text null default -
 ordenes_servicio.created_at timestamp with time zone not null default now()
 ordenes_servicio.diagnostico_inicial text null default -
 ordenes_servicio.dias_garantia integer not null default 0
+ordenes_servicio.es_prueba boolean not null default en_modo_prueba()
 ordenes_servicio.estado USER-DEFINED not null default 'recibido'::estado_orden
 ordenes_servicio.fecha_entrega timestamp with time zone null default -
 ordenes_servicio.fecha_fin_garantia date null default -
@@ -123,6 +136,7 @@ pagos_orden.autor text null default -
 pagos_orden.comprobante_url text null default -
 pagos_orden.created_at timestamp with time zone not null default now()
 pagos_orden.es_devolucion boolean not null default false
+pagos_orden.es_prueba boolean not null default en_modo_prueba()
 pagos_orden.fecha date not null default ((now() AT TIME ZONE 'America/Bogota'::text))::date
 pagos_orden.id uuid not null default gen_random_uuid()
 pagos_orden.medio USER-DEFINED not null default 'efectivo'::medio_pago
@@ -131,10 +145,14 @@ pagos_orden.notas text null default -
 pagos_orden.orden_id uuid not null default -
 pagos_orden.referencia text null default -
 pagos_orden.registrado_por uuid null default auth.uid()
+soporte_modo.prueba boolean not null default false
+soporte_modo.updated_at timestamp with time zone not null default now()
+soporte_modo.user_id uuid not null default -
 vehiculos.anio smallint null default -
 vehiculos.carga_estandar_gramos numeric null default -
 vehiculos.cliente_id uuid not null default -
 vehiculos.created_at timestamp with time zone not null default now()
+vehiculos.es_prueba boolean not null default en_modo_prueba()
 vehiculos.id uuid not null default gen_random_uuid()
 vehiculos.marca text not null default -
 vehiculos.modelo text not null default -
@@ -169,6 +187,7 @@ cierres_caja: cierres_caja_pkey PRIMARY KEY (id)
 cierres_caja: cierres_caja_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 cierres_caja: cierres_caja_saldo_sistema_not_null NOT NULL saldo_sistema
 clientes: clientes_created_at_not_null NOT NULL created_at
+clientes: clientes_es_prueba_not_null NOT NULL es_prueba
 clientes: clientes_id_not_null NOT NULL id
 clientes: clientes_nombre_check CHECK ((length(btrim(nombre)) > 0))
 clientes: clientes_nombre_not_null NOT NULL nombre
@@ -185,6 +204,7 @@ cotizacion_items: cotizacion_items_cotizacion_id_not_null NOT NULL cotizacion_id
 cotizacion_items: cotizacion_items_created_at_not_null NOT NULL created_at
 cotizacion_items: cotizacion_items_descripcion_check CHECK ((length(btrim(descripcion)) > 0))
 cotizacion_items: cotizacion_items_descripcion_not_null NOT NULL descripcion
+cotizacion_items: cotizacion_items_es_prueba_not_null NOT NULL es_prueba
 cotizacion_items: cotizacion_items_id_not_null NOT NULL id
 cotizacion_items: cotizacion_items_inventario_id_fkey FOREIGN KEY (inventario_id) REFERENCES inventario(id) ON DELETE SET NULL
 cotizacion_items: cotizacion_items_pkey PRIMARY KEY (id)
@@ -192,6 +212,7 @@ cotizacion_items: cotizacion_items_precio_unitario_check CHECK ((precio_unitario
 cotizacion_items: cotizacion_items_precio_unitario_not_null NOT NULL precio_unitario
 cotizaciones: cotizaciones_autor_check CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
 cotizaciones: cotizaciones_created_at_not_null NOT NULL created_at
+cotizaciones: cotizaciones_es_prueba_not_null NOT NULL es_prueba
 cotizaciones: cotizaciones_estado_not_null NOT NULL estado
 cotizaciones: cotizaciones_fecha_not_null NOT NULL fecha
 cotizaciones: cotizaciones_id_not_null NOT NULL id
@@ -206,6 +227,7 @@ cotizaciones: cotizaciones_vehiculo_id_not_null NOT NULL vehiculo_id
 cotizaciones: cotizaciones_vigencia_dias_check CHECK (((vigencia_dias >= 1) AND (vigencia_dias <= 365)))
 cotizaciones: cotizaciones_vigencia_dias_not_null NOT NULL vigencia_dias
 evidencias_fotograficas: evidencias_fotograficas_created_at_not_null NOT NULL created_at
+evidencias_fotograficas: evidencias_fotograficas_es_prueba_not_null NOT NULL es_prueba
 evidencias_fotograficas: evidencias_fotograficas_id_not_null NOT NULL id
 evidencias_fotograficas: evidencias_fotograficas_orden_id_fkey FOREIGN KEY (orden_id) REFERENCES ordenes_servicio(id) ON DELETE CASCADE
 evidencias_fotograficas: evidencias_fotograficas_orden_id_not_null NOT NULL orden_id
@@ -219,6 +241,7 @@ gastos_caja_menor: gastos_caja_menor_anulado_not_null NOT NULL anulado
 gastos_caja_menor: gastos_caja_menor_anulado_por_fkey FOREIGN KEY (anulado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 gastos_caja_menor: gastos_caja_menor_categoria_not_null NOT NULL categoria
 gastos_caja_menor: gastos_caja_menor_created_at_not_null NOT NULL created_at
+gastos_caja_menor: gastos_caja_menor_es_prueba_not_null NOT NULL es_prueba
 gastos_caja_menor: gastos_caja_menor_fecha_not_null NOT NULL fecha
 gastos_caja_menor: gastos_caja_menor_historial_not_null NOT NULL historial
 gastos_caja_menor: gastos_caja_menor_id_not_null NOT NULL id
@@ -228,11 +251,11 @@ gastos_caja_menor: gastos_caja_menor_orden_id_fkey FOREIGN KEY (orden_id) REFERE
 gastos_caja_menor: gastos_caja_menor_pkey PRIMARY KEY (id)
 gastos_caja_menor: gastos_caja_menor_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 inventario: inventario_codigo_check CHECK ((length(btrim(codigo)) > 0))
-inventario: inventario_codigo_key UNIQUE (codigo)
 inventario: inventario_codigo_not_null NOT NULL codigo
 inventario: inventario_costo_compra_check CHECK ((costo_compra >= (0)::numeric))
 inventario: inventario_costo_compra_not_null NOT NULL costo_compra
 inventario: inventario_created_at_not_null NOT NULL created_at
+inventario: inventario_es_prueba_not_null NOT NULL es_prueba
 inventario: inventario_id_not_null NOT NULL id
 inventario: inventario_nombre_check CHECK ((length(btrim(nombre)) > 0))
 inventario: inventario_nombre_not_null NOT NULL nombre
@@ -245,11 +268,16 @@ inventario: inventario_stock_minimo_check CHECK ((stock_minimo >= (0)::numeric))
 inventario: inventario_stock_minimo_not_null NOT NULL stock_minimo
 inventario: inventario_tipo_unidad_not_null NOT NULL tipo_unidad
 inventario: inventario_updated_at_not_null NOT NULL updated_at
+mantenimiento: mantenimiento_activo_not_null NOT NULL activo
+mantenimiento: mantenimiento_id_check CHECK (id)
+mantenimiento: mantenimiento_id_not_null NOT NULL id
+mantenimiento: mantenimiento_pkey PRIMARY KEY (id)
 orden_repuestos: orden_repuestos_cantidad_usada_check CHECK ((cantidad_usada > (0)::numeric))
 orden_repuestos: orden_repuestos_cantidad_usada_not_null NOT NULL cantidad_usada
 orden_repuestos: orden_repuestos_costo_unitario_check CHECK ((costo_unitario >= (0)::numeric))
 orden_repuestos: orden_repuestos_costo_unitario_not_null NOT NULL costo_unitario
 orden_repuestos: orden_repuestos_created_at_not_null NOT NULL created_at
+orden_repuestos: orden_repuestos_es_prueba_not_null NOT NULL es_prueba
 orden_repuestos: orden_repuestos_id_not_null NOT NULL id
 orden_repuestos: orden_repuestos_inventario_id_fkey FOREIGN KEY (inventario_id) REFERENCES inventario(id) ON DELETE RESTRICT
 orden_repuestos: orden_repuestos_inventario_id_not_null NOT NULL inventario_id
@@ -264,6 +292,7 @@ ordenes_servicio: chk_ordenes_autor CHECK (((autor IS NULL) OR (autor = ANY (ARR
 ordenes_servicio: ordenes_servicio_created_at_not_null NOT NULL created_at
 ordenes_servicio: ordenes_servicio_dias_garantia_check CHECK ((dias_garantia >= 0))
 ordenes_servicio: ordenes_servicio_dias_garantia_not_null NOT NULL dias_garantia
+ordenes_servicio: ordenes_servicio_es_prueba_not_null NOT NULL es_prueba
 ordenes_servicio: ordenes_servicio_estado_not_null NOT NULL estado
 ordenes_servicio: ordenes_servicio_fecha_ingreso_not_null NOT NULL fecha_ingreso
 ordenes_servicio: ordenes_servicio_id_not_null NOT NULL id
@@ -284,6 +313,7 @@ pagos_orden: pagos_orden_anulado_not_null NOT NULL anulado
 pagos_orden: pagos_orden_anulado_por_fkey FOREIGN KEY (anulado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 pagos_orden: pagos_orden_created_at_not_null NOT NULL created_at
 pagos_orden: pagos_orden_es_devolucion_not_null NOT NULL es_devolucion
+pagos_orden: pagos_orden_es_prueba_not_null NOT NULL es_prueba
 pagos_orden: pagos_orden_fecha_not_null NOT NULL fecha
 pagos_orden: pagos_orden_id_not_null NOT NULL id
 pagos_orden: pagos_orden_medio_not_null NOT NULL medio
@@ -293,17 +323,22 @@ pagos_orden: pagos_orden_orden_id_fkey FOREIGN KEY (orden_id) REFERENCES ordenes
 pagos_orden: pagos_orden_orden_id_not_null NOT NULL orden_id
 pagos_orden: pagos_orden_pkey PRIMARY KEY (id)
 pagos_orden: pagos_orden_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
+soporte_modo: soporte_modo_pkey PRIMARY KEY (user_id)
+soporte_modo: soporte_modo_prueba_not_null NOT NULL prueba
+soporte_modo: soporte_modo_updated_at_not_null NOT NULL updated_at
+soporte_modo: soporte_modo_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+soporte_modo: soporte_modo_user_id_not_null NOT NULL user_id
 vehiculos: vehiculos_anio_check CHECK (((anio >= 1950) AND (anio <= 2100)))
 vehiculos: vehiculos_carga_estandar_gramos_check CHECK ((carga_estandar_gramos > (0)::numeric))
 vehiculos: vehiculos_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT
 vehiculos: vehiculos_cliente_id_not_null NOT NULL cliente_id
 vehiculos: vehiculos_created_at_not_null NOT NULL created_at
+vehiculos: vehiculos_es_prueba_not_null NOT NULL es_prueba
 vehiculos: vehiculos_id_not_null NOT NULL id
 vehiculos: vehiculos_marca_not_null NOT NULL marca
 vehiculos: vehiculos_modelo_not_null NOT NULL modelo
 vehiculos: vehiculos_pkey PRIMARY KEY (id)
 vehiculos: vehiculos_placa_check CHECK ((placa ~ '^[A-Z0-9]{5,8}$'::text))
-vehiculos: vehiculos_placa_key UNIQUE (placa)
 vehiculos: vehiculos_placa_not_null NOT NULL placa
 vehiculos: vehiculos_tipo_gas_sugerido_check CHECK ((tipo_gas_sugerido = ANY (ARRAY['R134a'::text, 'R1234yf'::text, 'otro'::text])))
 
@@ -340,18 +375,30 @@ CREATE INDEX idx_pagos_orden ON public.pagos_orden USING btree (orden_id) WHERE 
 CREATE INDEX idx_pagos_registrado_por ON public.pagos_orden USING btree (registrado_por)
 CREATE INDEX idx_vehiculos_cliente ON public.vehiculos USING btree (cliente_id)
 CREATE INDEX idx_vehiculos_placa_trgm ON public.vehiculos USING gin (placa extensions.gin_trgm_ops)
-CREATE UNIQUE INDEX inventario_codigo_key ON public.inventario USING btree (codigo)
 CREATE UNIQUE INDEX inventario_pkey ON public.inventario USING btree (id)
+CREATE UNIQUE INDEX mantenimiento_pkey ON public.mantenimiento USING btree (id)
 CREATE UNIQUE INDEX orden_repuestos_pkey ON public.orden_repuestos USING btree (id)
 CREATE UNIQUE INDEX ordenes_servicio_pkey ON public.ordenes_servicio USING btree (id)
 CREATE UNIQUE INDEX ordenes_servicio_token_publico_key ON public.ordenes_servicio USING btree (token_publico)
 CREATE UNIQUE INDEX pagos_orden_pkey ON public.pagos_orden USING btree (id)
+CREATE UNIQUE INDEX soporte_modo_pkey ON public.soporte_modo USING btree (user_id)
 CREATE UNIQUE INDEX ux_cierre_fecha ON public.cierres_caja USING btree (fecha) WHERE (NOT anulado)
-CREATE UNIQUE INDEX ux_clientes_documento ON public.clientes USING btree (documento) WHERE (documento IS NOT NULL)
+CREATE UNIQUE INDEX ux_clientes_documento_modo ON public.clientes USING btree (documento, es_prueba) WHERE (documento IS NOT NULL)
+CREATE UNIQUE INDEX ux_inventario_codigo_modo ON public.inventario USING btree (codigo, es_prueba)
+CREATE UNIQUE INDEX ux_vehiculos_placa_modo ON public.vehiculos USING btree (placa, es_prueba)
 CREATE UNIQUE INDEX vehiculos_pkey ON public.vehiculos USING btree (id)
-CREATE UNIQUE INDEX vehiculos_placa_key ON public.vehiculos USING btree (placa)
 
 -- TRIGGERS
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.cotizacion_items FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.cotizaciones FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.evidencias_fotograficas FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.gastos_caja_menor FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.inventario FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.orden_repuestos FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.pagos_orden FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.vehiculos FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_clientes_updated_at BEFORE UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_cot_items_bloqueo BEFORE INSERT OR DELETE OR UPDATE ON public.cotizacion_items FOR EACH ROW EXECUTE FUNCTION fn_cotizacion_items_bloqueo()
 CREATE TRIGGER trg_cotizaciones_updated_at BEFORE UPDATE ON public.cotizaciones FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
@@ -367,40 +414,52 @@ public.caja_movimientos movs_staff_insert INSERT using(-) check((( SELECT es_sta
 public.caja_movimientos movs_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.cierres_caja cierres_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.clientes clientes_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
+public.clientes clientes_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.clientes clientes_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.clientes clientes_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.clientes clientes_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
+public.cotizacion_items cotizacion_items_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.cotizacion_items cotizacion_items_staff_delete DELETE using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.cotizacion_items cotizacion_items_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.cotizacion_items cotizacion_items_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.cotizacion_items cotizacion_items_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
+public.cotizaciones cotizaciones_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.cotizaciones cotizaciones_staff_delete DELETE using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.cotizaciones cotizaciones_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.cotizaciones cotizaciones_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.cotizaciones cotizaciones_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.evidencias_fotograficas evidencias_fotograficas_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
+public.evidencias_fotograficas evidencias_fotograficas_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.evidencias_fotograficas evidencias_fotograficas_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.evidencias_fotograficas evidencias_fotograficas_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.evidencias_fotograficas evidencias_fotograficas_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.gastos_caja_menor gastos_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
 public.gastos_caja_menor gastos_admin_update UPDATE using(( SELECT es_admin() AS es_admin)) check(( SELECT es_admin() AS es_admin)) roles={authenticated}
+public.gastos_caja_menor gastos_caja_menor_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.gastos_caja_menor gastos_staff_insert INSERT using(-) check((( SELECT es_staff() AS es_staff) AND (anulado = false))) roles={authenticated}
 public.gastos_caja_menor gastos_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.inventario inventario_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
+public.inventario inventario_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.inventario inventario_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.inventario inventario_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.inventario inventario_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
+public.mantenimiento mantenimiento_lectura SELECT using(true) check(-) roles={authenticated}
 public.orden_repuestos orden_repuestos_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
+public.orden_repuestos orden_repuestos_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.orden_repuestos orden_repuestos_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.orden_repuestos orden_repuestos_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.orden_repuestos orden_repuestos_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.ordenes_servicio ordenes_servicio_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
+public.ordenes_servicio ordenes_servicio_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.ordenes_servicio ordenes_servicio_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.ordenes_servicio ordenes_servicio_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.ordenes_servicio ordenes_servicio_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
+public.pagos_orden pagos_orden_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.pagos_orden pagos_staff_insert INSERT using(-) check((( SELECT es_staff() AS es_staff) AND (NOT (registrado_por IS DISTINCT FROM ( SELECT auth.uid() AS uid))) AND (anulado = false))) roles={authenticated}
 public.pagos_orden pagos_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
+public.soporte_modo soporte_modo_propio SELECT using((user_id = ( SELECT auth.uid() AS uid))) check(-) roles={authenticated}
 public.vehiculos vehiculos_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
+public.vehiculos vehiculos_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.vehiculos vehiculos_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.vehiculos vehiculos_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.vehiculos vehiculos_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
@@ -418,9 +477,11 @@ cotizaciones t
 evidencias_fotograficas t
 gastos_caja_menor t
 inventario t
+mantenimiento t
 orden_repuestos t
 ordenes_servicio t
 pagos_orden t
+soporte_modo t
 vehiculos t
 
 -- FUNCIONES
@@ -550,6 +611,41 @@ begin
   end if;
 
   return v;
+end $function$
+
+CREATE OR REPLACE FUNCTION public.cambiar_mantenimiento(p_activo boolean, p_motivo text DEFAULT NULL::text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  if auth.uid() is null or not public.es_soporte() then
+    raise exception 'Solo el usuario de soporte puede cambiar el mantenimiento.' using errcode = '42501';
+  end if;
+  update public.mantenimiento
+     set activo = coalesce(p_activo, false),
+         motivo = case when coalesce(p_activo, false) then nullif(left(btrim(coalesce(p_motivo, '')), 200), '') end,
+         desde = case when coalesce(p_activo, false) then now() end,
+         actualizado_por = auth.uid()
+   where id;
+  return coalesce(p_activo, false);
+end $function$
+
+CREATE OR REPLACE FUNCTION public.cambiar_modo_prueba(p_activo boolean)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  if auth.uid() is null or not public.es_soporte() then
+    raise exception 'Solo el usuario de soporte puede cambiar de modo.' using errcode = '42501';
+  end if;
+  insert into public.soporte_modo (user_id, prueba)
+  values (auth.uid(), coalesce(p_activo, false))
+  on conflict (user_id) do update set prueba = excluded.prueba, updated_at = now();
+  return coalesce(p_activo, false);
 end $function$
 
 CREATE OR REPLACE FUNCTION public.cerrar_caja(p_fecha date, p_conteo numeric, p_desglose jsonb, p_notas text, p_autor text)
@@ -698,6 +794,25 @@ begin
   return v;
 end $function$
 
+CREATE OR REPLACE FUNCTION public.en_mantenimiento()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select coalesce((select activo from public.mantenimiento where id), false);
+$function$
+
+CREATE OR REPLACE FUNCTION public.en_modo_prueba()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select public.es_soporte()
+     and coalesce((select prueba from public.soporte_modo where user_id = auth.uid()), false);
+$function$
+
 CREATE OR REPLACE FUNCTION public.es_admin()
  RETURNS boolean
  LANGUAGE sql
@@ -705,6 +820,15 @@ CREATE OR REPLACE FUNCTION public.es_admin()
  SET search_path TO 'public'
 AS $function$
   select coalesce((auth.jwt() -> 'app_metadata' ->> 'rol') = 'admin', false);
+$function$
+
+CREATE OR REPLACE FUNCTION public.es_soporte()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+  select coalesce((auth.jwt() -> 'app_metadata' ->> 'soporte') = 'true', false);
 $function$
 
 CREATE OR REPLACE FUNCTION public.es_staff()
@@ -762,6 +886,29 @@ CREATE OR REPLACE FUNCTION public.fn_generar_token_publico()
 AS $function$
   select translate(rtrim(encode(gen_random_bytes(16), 'base64'), '='), '+/', '-_');
 $function$
+
+CREATE OR REPLACE FUNCTION public.fn_guardia_soporte()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  if auth.uid() is not null then
+    if public.en_mantenimiento() and not public.es_soporte() then
+      raise exception 'La app está en mantenimiento y solo permite consultar. Inténtalo de nuevo en unos minutos.'
+        using errcode = 'PC001';
+    end if;
+    if tg_op <> 'INSERT' then
+      if old.es_prueba is distinct from public.en_modo_prueba() then
+        raise exception 'Ese registro no existe en el modo actual.' using errcode = 'PC002';
+      end if;
+    end if;
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end $function$
 
 CREATE OR REPLACE FUNCTION public.fn_mover_stock(p_inventario_id uuid, p_delta numeric)
  RETURNS inventario
@@ -998,14 +1145,20 @@ anular_cierre(p_id uuid, p_motivo text) anon=f authenticated=t service_role=t
 anular_gasto(p_id uuid, p_motivo text, p_autor text) anon=f authenticated=t service_role=t
 anular_movimiento_caja(p_id uuid, p_motivo text) anon=f authenticated=t service_role=t
 anular_pago(p_pago_id uuid, p_motivo text) anon=f authenticated=t service_role=t
+cambiar_mantenimiento(p_activo boolean, p_motivo text) anon=f authenticated=t service_role=t
+cambiar_modo_prueba(p_activo boolean) anon=f authenticated=t service_role=t
 cerrar_caja(p_fecha date, p_conteo numeric, p_desglose jsonb, p_notas text, p_autor text) anon=f authenticated=t service_role=t
 convertir_cotizacion(p_id uuid, p_autor text) anon=f authenticated=t service_role=t
 editar_gasto(p_id uuid, p_fecha date, p_categoria categoria_gasto, p_monto numeric, p_descripcion text, p_orden_id uuid, p_autor text) anon=f authenticated=t service_role=t
+en_mantenimiento() anon=f authenticated=t service_role=t
+en_modo_prueba() anon=f authenticated=t service_role=t
 es_admin() anon=t authenticated=t service_role=t
+es_soporte() anon=f authenticated=t service_role=t
 es_staff() anon=t authenticated=t service_role=t
 fn_cotizacion_items_bloqueo() anon=t authenticated=t service_role=t
 fn_evidencia_repuesto_coherente() anon=f authenticated=f service_role=t
 fn_generar_token_publico() anon=t authenticated=t service_role=t
+fn_guardia_soporte() anon=f authenticated=f service_role=t
 fn_mover_stock(p_inventario_id uuid, p_delta numeric) anon=f authenticated=f service_role=t
 fn_normalizar_placa() anon=t authenticated=t service_role=t
 fn_orden_before_write() anon=t authenticated=t service_role=t
@@ -1364,9 +1517,11 @@ cotizaciones authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDA
 evidencias_fotograficas authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 gastos_caja_menor authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 inventario authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+mantenimiento authenticated REFERENCES,SELECT,TRIGGER
 orden_repuestos authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 ordenes_servicio authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 pagos_orden authenticated INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE
+soporte_modo authenticated REFERENCES,SELECT,TRIGGER
 v_balance_mensual authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 v_balance_real anon DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 v_balance_real authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
