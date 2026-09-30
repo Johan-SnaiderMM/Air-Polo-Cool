@@ -11,7 +11,7 @@ function IconoWhatsApp({ className }: { className?: string }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -65,21 +65,28 @@ export function NotificacionesWhatsApp({
 
   return (
     <div className="space-y-3">
-      <ul className="space-y-3">
+      <ul className="divide-y divide-stone-200/70 overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-soft">
         {botones.map((b) => (
-          <li key={b.plantilla} className="flex gap-2">
+          <li key={b.plantilla} className="flex items-stretch">
             <a
               href={b.href}
               target="_blank"
               rel="noreferrer"
-              className={`flex min-h-14 flex-1 items-center justify-center gap-3 rounded-xl px-4 text-base font-semibold text-white transition-colors ${
-                b.sugerido
-                  ? "bg-sage-700 active:bg-sage-800"
-                  : "bg-stone-600 active:bg-stone-700"
-              }`}
+              className="flex min-h-14 min-w-0 flex-1 items-center gap-3.5 px-5 py-2 transition-colors active:bg-stone-50"
             >
-              <IconoWhatsApp className="size-7 shrink-0" />
-              {b.label}
+              <span
+                className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+                  b.sugerido ? "bg-sage-100 text-sage-700" : "bg-stone-100 text-stone-500"
+                }`}
+              >
+                <IconoWhatsApp className="size-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{b.label}</span>
+              {b.sugerido && (
+                <span className="shrink-0 rounded-full bg-sage-100 px-2.5 py-0.5 text-[11px] font-medium text-sage-800">
+                  Sugerido
+                </span>
+              )}
             </a>
 
             {automaticoConfigurado && (
@@ -89,34 +96,38 @@ export function NotificacionesWhatsApp({
                 disabled={pendiente}
                 aria-label={`Enviar automáticamente: ${b.label}`}
                 title="Enviar automáticamente desde el WhatsApp del taller"
-                className="flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-stone-300/70 bg-white text-stone-700 active:bg-stone-100 disabled:opacity-50"
+                className="flex w-14 shrink-0 items-center justify-center border-l border-stone-200/70 text-stone-500 transition-colors active:bg-stone-50 disabled:opacity-50"
               >
                 {enviando === b.plantilla ? (
-                  <Snowflake className="size-6 animate-copo" aria-hidden />
+                  <Snowflake className="size-5 animate-copo" aria-hidden />
                 ) : (
-                  <Send className="size-6" aria-hidden />
+                  <Send className="size-5" strokeWidth={1.5} aria-hidden />
                 )}
               </button>
             )}
           </li>
         ))}
+
+        <li>
+          <a
+            href={urlPublica}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-h-14 items-center gap-3.5 px-5 py-2 transition-colors active:bg-stone-50"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500">
+              <ExternalLink className="size-[18px]" strokeWidth={1.5} aria-hidden />
+            </span>
+            <span className="flex-1 text-[15px] font-medium">Ver portal del cliente</span>
+          </a>
+        </li>
       </ul>
 
-      <p className="text-xs text-stone-500">
+      <p className="px-1 text-[12px] text-stone-500">
         {automaticoConfigurado
-          ? "El botón verde abre WhatsApp con el mensaje listo; el ícono de avión lo envía solo desde el WhatsApp del taller."
-          : "El botón abre WhatsApp con el mensaje listo para enviar. El envío automático no está configurado."}
+          ? "Toca el mensaje para abrir WhatsApp con el texto listo; el avión lo envía solo desde el WhatsApp del taller."
+          : "Toca el mensaje para abrir WhatsApp con el texto listo para enviar."}
       </p>
-
-      <a
-        href={urlPublica}
-        target="_blank"
-        rel="noreferrer"
-        className="flex h-12 items-center justify-center gap-2 rounded-xl border border-stone-300/70 bg-white text-sm font-semibold text-ink active:bg-stone-100"
-      >
-        <ExternalLink className="size-4" aria-hidden />
-        Ver portal del cliente
-      </a>
 
       {mensaje && (
         <p
