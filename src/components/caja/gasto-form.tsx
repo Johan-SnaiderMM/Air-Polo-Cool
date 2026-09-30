@@ -3,20 +3,16 @@
 import { useRef, useState, useTransition } from "react";
 import { Camera, CheckCircle2, CloudUpload, Snowflake, Undo2, X } from "lucide-react";
 import { anularGasto } from "@/app/(app)/caja-menor/actions";
+import { CamposGasto, montoDe, useValoresGasto, valoresGastoVacios } from "@/components/caja/campos-gasto";
 import { PlantillasRapidas } from "@/components/caja/plantillas-rapidas";
-import { SelectorCategoria } from "@/components/caja/selector-categoria";
-import { SelectorOrden } from "@/components/caja/selector-orden";
 import { useAutor } from "@/components/sync/autor-provider";
 import { useSync, type ResultadoRegistro } from "@/components/sync/sync-provider";
-import { PosMonto } from "@/components/ui/pos-monto";
-import { SelectorFecha } from "@/components/ui/selector-fecha";
 import { CATEGORIA_LABEL, hoyBogota } from "@/lib/caja";
 import { comprimirImagen } from "@/lib/imagen";
 import { nuevoId, type Operacion } from "@/lib/offline/operaciones";
-import type { OrdenLocal } from "@/lib/offline/snapshot";
 import type { PlantillaGasto } from "@/lib/plantillas-gasto";
 import { formatearMoneda } from "@/lib/ordenes";
-import type { Autor, CategoriaGasto } from "@/types/database";
+import type { Autor } from "@/types/database";
 
 type Mensaje =
   | { tipo: "ok"; texto: string; deshacer?: { id: string; autor: Autor } }
@@ -44,17 +40,14 @@ export function GastoForm() {
   const { autor } = useAutor();
   const inputFoto = useRef<HTMLInputElement>(null);
 
-  const [digitos, setDigitos] = useState("");
-  const [categoria, setCategoria] = useState<CategoriaGasto | null>(null);
-  const [descripcion, setDescripcion] = useState("");
-  const [fecha, setFecha] = useState(hoyBogota);
-  const [orden, setOrden] = useState<OrdenLocal | null>(null);
+  const { valores, cambiar, reiniciar } = useValoresGasto(valoresGastoVacios);
+  const { categoria, descripcion, fecha, orden } = valores;
   const [foto, setFoto] = useState<File | null>(null);
   const [previa, setPrevia] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<Mensaje | null>(null);
   const [pendiente, iniciar] = useTransition();
 
-  const monto = Number(digitos || "0");
+  const monto = montoDe(valores);
   const listo = monto > 0 && categoria !== null;
 
   function quitarFoto() {
@@ -73,11 +66,7 @@ export function GastoForm() {
   }
 
   function limpiar() {
-    setDigitos("");
-    setCategoria(null);
-    setDescripcion("");
-    setOrden(null);
-    setFecha(hoyBogota());
+    reiniciar(valoresGastoVacios());
     quitarFoto();
   }
 
@@ -168,60 +157,48 @@ export function GastoForm() {
         actual={listo && categoria ? { monto, categoria, descripcion } : null}
       />
 
-      <PosMonto id="monto" etiqueta="Monto" digitos={digitos} onChange={setDigitos} />
-
-      <SelectorCategoria value={categoria} onChange={setCategoria} />
-
-      <div className="flex items-stretch gap-2">
-        <input
-          id="descripcion"
-          aria-label="Nota (opcional)"
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          maxLength={300}
-          placeholder="Nota (opcional)"
-          autoComplete="off"
-          className="h-12 min-w-0 flex-1 rounded-xl border border-stone-200/80 bg-white px-4 text-[15px] outline-none placeholder:text-stone-400 focus:border-stone-400"
-        />
-
-        <input
-          ref={inputFoto}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={alElegirFoto}
-          className="hidden"
-        />
-        {previa ? (
-          <div className="relative size-12 shrink-0">
-            {/* Vista previa local (blob:): next/image no aplica. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previa} alt="Recibo adjunto" className="size-12 rounded-xl border border-stone-200/80 object-cover" />
-            <button
-              type="button"
-              onClick={quitarFoto}
-              aria-label="Quitar foto del recibo"
-              className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-ink text-white"
-            >
-              <X className="size-3" strokeWidth={2.5} aria-hidden />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => inputFoto.current?.click()}
-            className="flex h-12 shrink-0 items-center gap-2 rounded-xl border border-stone-200/80 bg-stone-50 px-4 text-[14px] font-medium text-stone-700 transition-colors active:bg-stone-100"
-          >
-            <Camera className="size-[18px]" strokeWidth={1.5} aria-hidden />
-            Recibo
-          </button>
-        )}
-      </div>
-
-      <div className="space-y-2.5">
-        <SelectorFecha value={fecha} onChange={setFecha} />
-        <SelectorOrden value={orden} onChange={setOrden} />
-      </div>
+      <CamposGasto
+        valores={valores}
+        onCambio={cambiar}
+        idMonto="monto"
+        notaEtiqueta="Nota (opcional)"
+        accionNota={
+          <>
+            <input
+              ref={inputFoto}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={alElegirFoto}
+              className="hidden"
+            />
+            {previa ? (
+              <div className="relative size-12 shrink-0">
+                {/* Vista previa local (blob:): next/image no aplica. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previa} alt="Recibo adjunto" className="size-12 rounded-xl border border-stone-200/80 object-cover" />
+                <button
+                  type="button"
+                  onClick={quitarFoto}
+                  aria-label="Quitar foto del recibo"
+                  className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-ink text-white"
+                >
+                  <X className="size-3" strokeWidth={2.5} aria-hidden />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => inputFoto.current?.click()}
+                className="flex h-12 shrink-0 items-center gap-2 rounded-xl border border-stone-200/80 bg-stone-50 px-4 text-[14px] font-medium text-stone-700 transition-colors active:bg-stone-100"
+              >
+                <Camera className="size-[18px]" strokeWidth={1.5} aria-hidden />
+                Recibo
+              </button>
+            )}
+          </>
+        }
+      />
 
       <button
         type="submit"

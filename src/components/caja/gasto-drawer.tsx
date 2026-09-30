@@ -3,17 +3,13 @@
 import { useState, useTransition } from "react";
 import { Ban, ExternalLink, Snowflake, Pencil } from "lucide-react";
 import { anularGasto, editarGasto } from "@/app/(app)/caja-menor/actions";
-import { SelectorCategoria } from "@/components/caja/selector-categoria";
-import { SelectorOrden } from "@/components/caja/selector-orden";
+import { CamposGasto, montoDe, useValoresGasto } from "@/components/caja/campos-gasto";
 import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
 import { Dinero } from "@/components/ui/dinero";
 import { Drawer } from "@/components/ui/drawer";
 import { FormularioAnulacion } from "@/components/ui/dialogo-motivo";
-import { PosMonto } from "@/components/ui/pos-monto";
-import { SelectorFecha } from "@/components/ui/selector-fecha";
 import { CATEGORIA_LABEL, etiquetaDia } from "@/lib/caja";
-import type { OrdenLocal } from "@/lib/offline/snapshot";
 import type { GastoVista } from "@/components/caja/lista-gastos";
 import type { CategoriaGasto } from "@/types/database";
 
@@ -22,30 +18,30 @@ type Modo = "detalle" | "editar" | "anular";
 function EditarGastoForm({ gasto, onListo }: { gasto: GastoVista; onListo: () => void }) {
   const { autor } = useAutor();
   const { snapshot, online } = useSync();
-  const [digitos, setDigitos] = useState(String(Math.round(gasto.monto)));
-  const [categoria, setCategoria] = useState<CategoriaGasto | null>(gasto.categoria);
-  const [descripcion, setDescripcion] = useState(gasto.descripcion ?? "");
-  const [fecha, setFecha] = useState(gasto.fecha);
-  const [orden, setOrden] = useState<OrdenLocal | null>(() => {
-    if (!gasto.ordenId) return null;
-    return (
-      snapshot?.ordenes.find((o) => o.id === gasto.ordenId) ?? {
-        id: gasto.ordenId,
-        placa: gasto.placa ?? "Orden",
-        marca: "",
-        modelo: "",
-        cliente: "",
-        estado: "recibido",
-        total_cobrado: 0,
-        saldo: 0,
-      }
-    );
-  });
+  const { valores, cambiar } = useValoresGasto(() => ({
+    digitos: String(Math.round(gasto.monto)),
+    categoria: gasto.categoria,
+    descripcion: gasto.descripcion ?? "",
+    fecha: gasto.fecha,
+    orden: !gasto.ordenId
+      ? null
+      : (snapshot?.ordenes.find((o) => o.id === gasto.ordenId) ?? {
+          id: gasto.ordenId,
+          placa: gasto.placa ?? "Orden",
+          marca: "",
+          modelo: "",
+          cliente: "",
+          estado: "recibido",
+          total_cobrado: 0,
+          saldo: 0,
+        }),
+  }));
   const [error, setError] = useState<string | null>(null);
   const [pendiente, iniciar] = useTransition();
 
   function guardar() {
-    if (!categoria || Number(digitos) <= 0) {
+    const { categoria, descripcion, fecha, orden } = valores;
+    if (!categoria || montoDe(valores) <= 0) {
       setError("Ingresa un monto y una categoría.");
       return;
     }
@@ -55,7 +51,7 @@ function EditarGastoForm({ gasto, onListo }: { gasto: GastoVista; onListo: () =>
         id: gasto.id,
         fecha,
         categoria,
-        monto: Number(digitos),
+        monto: montoDe(valores),
         descripcion,
         ordenId: orden?.id ?? null,
         autor,
@@ -67,18 +63,14 @@ function EditarGastoForm({ gasto, onListo }: { gasto: GastoVista; onListo: () =>
 
   return (
     <div className="space-y-4">
-      <PosMonto id="edit-monto" etiqueta="Monto" digitos={digitos} onChange={setDigitos} tamano="normal" />
-      <SelectorCategoria value={categoria} onChange={setCategoria} />
-      <input
-        aria-label="Nota"
-        value={descripcion}
-        onChange={(e) => setDescripcion(e.target.value)}
-        maxLength={300}
-        placeholder="Nota"
-        className="h-12 w-full rounded-xl border border-stone-200/80 bg-white px-4 text-[15px] outline-none focus:border-stone-400"
+      <CamposGasto
+        valores={valores}
+        onCambio={cambiar}
+        idMonto="edit-monto"
+        tamanoMonto="normal"
+        notaEtiqueta="Nota"
+        separacion="space-y-4"
       />
-      <SelectorFecha value={fecha} onChange={setFecha} />
-      <SelectorOrden value={orden} onChange={setOrden} />
 
       {!online && (
         <p className="rounded-lg bg-ochre-50 px-3 py-2 text-sm text-ochre-800">
