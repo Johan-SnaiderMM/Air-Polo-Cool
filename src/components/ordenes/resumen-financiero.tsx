@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Snowflake, RefreshCw } from "lucide-react";
 import { recalcularTotal } from "@/app/(app)/ordenes/repuestos-actions";
 import { redondearDinero } from "@/lib/inventario";
 import { formatearMoneda } from "@/lib/ordenes";
@@ -89,7 +89,7 @@ export function ResumenFinanciero({
             className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent-600 text-base font-semibold text-white active:bg-accent-700 disabled:opacity-60"
           >
             {pendiente ? (
-              <Loader2 className="size-5 animate-spin" aria-hidden />
+              <Snowflake className="size-5 animate-copo" aria-hidden />
             ) : (
               <RefreshCw className="size-5" aria-hidden />
             )}

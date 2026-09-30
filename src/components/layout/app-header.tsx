@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useState } from "react";
-import { CloudOff, Loader2, LogOut } from "lucide-react";
+import { CloudOff, Snowflake, LogOut } from "lucide-react";
 import { cerrarSesion } from "@/app/login/actions";
 import { PendientesDrawer } from "@/components/sync/pendientes-drawer";
 import { useAutor } from "@/components/sync/autor-provider";
@@ -66,7 +66,7 @@ export function AppHeader() {
             className="flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-2 text-[11px] font-medium text-stone-600 active:bg-stone-200/60"
           >
             {sincronizando ? (
-              <Loader2 className="size-3.5 animate-spin text-stone-500" aria-hidden />
+              <Snowflake className="size-3.5 animate-copo text-stone-500" aria-hidden />
             ) : !online ? (
               <CloudOff className="size-3.5 text-ochre-700" aria-hidden />
             ) : (

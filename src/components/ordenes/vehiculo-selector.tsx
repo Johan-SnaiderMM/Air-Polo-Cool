@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Car, CloudOff, Loader2, Plus, Search, X } from "lucide-react";
+import { Car, CloudOff, Snowflake, Plus, Search, X } from "lucide-react";
 import { buscarVehiculos, type VehiculoResultado } from "@/app/(app)/ordenes/actions";
 import { useSync } from "@/components/sync/sync-provider";
 import { buscarVehiculosLocal } from "@/lib/offline/snapshot";
@@ -297,7 +297,7 @@ export function VehiculoSelector({
           className={`${INPUT} pl-12 [&::-webkit-search-cancel-button]:hidden`}
         />
         {buscando && (
-          <Loader2 className="absolute top-1/2 right-4 size-5 -translate-y-1/2 animate-spin text-stone-400" aria-hidden />
+          <Snowflake className="absolute top-1/2 right-4 size-5 -translate-y-1/2 animate-copo text-stone-400" aria-hidden />
         )}
       </div>
 

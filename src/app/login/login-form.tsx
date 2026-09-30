@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Loader2 } from "lucide-react";
+import { Snowflake } from "lucide-react";
 import { iniciarSesion, type LoginState } from "./actions";
 
 export function LoginForm({ next }: { next: string }) {
@@ -57,7 +57,7 @@ export function LoginForm({ next }: { next: string }) {
         disabled={pending}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-base font-semibold text-white transition-colors active:bg-ink-soft disabled:opacity-60"
       >
-        {pending && <Loader2 className="size-5 animate-spin" aria-hidden />}
+        {pending && <Snowflake className="size-5 animate-copo" aria-hidden />}
         {pending ? "Ingresando…" : "Ingresar"}
       </button>
     </form>

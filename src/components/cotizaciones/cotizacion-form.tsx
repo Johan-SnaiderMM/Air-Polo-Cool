@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useState } from "react";
-import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Snowflake, Plus, Search, Trash2 } from "lucide-react";
 import { guardarCotizacion, type CotizacionFormState } from "@/app/(app)/cotizaciones/actions";
 import { buscarInventario, type ItemBuscado } from "@/app/(app)/ordenes/repuestos-actions";
 import { VehiculoSelector, type SeleccionVehiculo } from "@/components/ordenes/vehiculo-selector";
@@ -351,7 +351,7 @@ export function CotizacionForm(props: Props) {
         disabled={pendiente}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-base font-medium text-white active:bg-ink-soft disabled:opacity-60"
       >
-        {pendiente && <Loader2 className="size-5 animate-spin" aria-hidden />}
+        {pendiente && <Snowflake className="size-5 animate-copo" aria-hidden />}
         {editando ? "Guardar cotización" : "Crear cotización"}
       </button>
     </form>

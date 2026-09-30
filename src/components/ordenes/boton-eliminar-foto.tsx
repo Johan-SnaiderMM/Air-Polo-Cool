@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Snowflake, Trash2 } from "lucide-react";
 import { eliminarEvidencia } from "@/app/(app)/ordenes/actions";
 
 export function BotonEliminarFoto({
@@ -33,7 +33,7 @@ export function BotonEliminarFoto({
         className="absolute right-1 bottom-1 flex size-10 items-center justify-center rounded-full bg-black/60 text-white active:bg-brick-700 disabled:opacity-60"
       >
         {pendiente ? (
-          <Loader2 className="size-5 animate-spin" aria-hidden />
+          <Snowflake className="size-5 animate-copo" aria-hidden />
         ) : (
           <Trash2 className="size-5" aria-hidden />
         )}

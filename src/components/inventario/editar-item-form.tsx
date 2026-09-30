@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Snowflake } from "lucide-react";
 import { editarItem, type InventarioFormState } from "@/app/(app)/inventario/actions";
 import { UNIDAD_LABEL, admiteDecimales, formatearCantidad } from "@/lib/inventario";
 import type { Tables } from "@/types/database";
@@ -83,7 +83,7 @@ export function EditarItemForm({
         disabled={pending}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-base font-semibold text-white active:bg-ink-soft disabled:opacity-60"
       >
-        {pending && <Loader2 className="size-5 animate-spin" aria-hidden />}
+        {pending && <Snowflake className="size-5 animate-copo" aria-hidden />}
         {pending ? "Guardando…" : "Guardar cambios"}
       </button>
     </form>

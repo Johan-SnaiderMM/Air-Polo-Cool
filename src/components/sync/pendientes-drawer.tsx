@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, CloudOff, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, CloudOff, Snowflake, RefreshCw, Trash2 } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { useSync } from "@/components/sync/sync-provider";
 import { describirOperacion } from "@/lib/offline/operaciones";
@@ -115,7 +115,7 @@ export function PendientesDrawer({ onClose }: { onClose: () => void }) {
           className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink text-sm font-medium text-white active:bg-ink-soft disabled:bg-stone-200 disabled:text-stone-400"
         >
           {sincronizando ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
+            <Snowflake className="size-4 animate-copo" aria-hidden />
           ) : (
             <RefreshCw className="size-4" aria-hidden />
           )}

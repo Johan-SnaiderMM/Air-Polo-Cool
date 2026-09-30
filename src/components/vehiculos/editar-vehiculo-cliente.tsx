@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, UserRound } from "lucide-react";
+import { Snowflake, Pencil, UserRound } from "lucide-react";
 import {
   editarCliente,
   editarVehiculo,
@@ -28,7 +28,7 @@ function Pie({ state, pending, etiqueta }: { state: EdicionState; pending: boole
         disabled={pending}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-base font-semibold text-white active:bg-ink-soft disabled:opacity-60"
       >
-        {pending && <Loader2 className="size-5 animate-spin" aria-hidden />}
+        {pending && <Snowflake className="size-5 animate-copo" aria-hidden />}
         {pending ? "Guardando…" : etiqueta}
       </button>
     </>

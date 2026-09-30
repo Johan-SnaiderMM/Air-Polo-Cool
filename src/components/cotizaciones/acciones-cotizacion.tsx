@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ClipboardCheck, Loader2, Pencil, Printer, Send, X } from "lucide-react";
+import { Check, ClipboardCheck, Snowflake, Pencil, Printer, Send, X } from "lucide-react";
 import { cambiarEstadoCotizacion, convertirCotizacion } from "@/app/(app)/cotizaciones/actions";
 import { useAutor } from "@/components/sync/autor-provider";
 import type { EstadoCotizacion } from "@/types/database";
@@ -66,7 +66,7 @@ export function AccionesCotizacion({ id, estado, ordenId, whatsappHref }: Props)
           disabled={pendiente}
           className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent-600 text-base font-medium text-white active:bg-accent-700 disabled:opacity-60"
         >
-          {pendiente ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <ClipboardCheck className="size-5" aria-hidden />}
+          {pendiente ? <Snowflake className="size-5 animate-copo" aria-hidden /> : <ClipboardCheck className="size-5" aria-hidden />}
           Convertir en orden de trabajo
         </button>
       )}

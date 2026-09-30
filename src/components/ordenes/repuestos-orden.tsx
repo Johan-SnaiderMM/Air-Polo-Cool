@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Loader2, Lock, Plus, Search, Trash2, X } from "lucide-react";
+import { Snowflake, Lock, Plus, Search, Trash2, X } from "lucide-react";
 import {
   agregarRepuesto,
   buscarInventario,
@@ -216,7 +216,7 @@ export function RepuestosOrden({ ordenId, lineas, bloqueada, puedeEliminar }: Pr
             className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-base font-semibold text-white active:bg-ink-soft disabled:opacity-60"
           >
             {pendiente ? (
-              <Loader2 className="size-5 animate-spin" aria-hidden />
+              <Snowflake className="size-5 animate-copo" aria-hidden />
             ) : (
               <Plus className="size-5" aria-hidden />
             )}
@@ -240,8 +240,8 @@ export function RepuestosOrden({ ordenId, lineas, bloqueada, puedeEliminar }: Pr
               className={`${INPUT} pl-12 [&::-webkit-search-cancel-button]:hidden`}
             />
             {buscando && (
-              <Loader2
-                className="absolute top-1/2 right-4 size-5 -translate-y-1/2 animate-spin text-stone-400"
+              <Snowflake
+                className="absolute top-1/2 right-4 size-5 -translate-y-1/2 animate-copo text-stone-400"
                 aria-hidden
               />
             )}

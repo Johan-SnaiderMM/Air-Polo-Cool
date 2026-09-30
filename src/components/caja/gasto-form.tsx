@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, CheckCircle2, CloudUpload, Loader2, Undo2, X } from "lucide-react";
+import { Camera, CheckCircle2, CloudUpload, Snowflake, Undo2, X } from "lucide-react";
 import { anularGasto } from "@/app/(app)/caja-menor/actions";
 import { PlantillasRapidas } from "@/components/caja/plantillas-rapidas";
 import { SelectorCategoria } from "@/components/caja/selector-categoria";
@@ -228,7 +228,7 @@ export function GastoForm() {
         disabled={!listo || pendiente}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent-600 text-base font-medium text-white transition-colors hover:bg-accent-700 active:bg-accent-700 disabled:bg-stone-200 disabled:text-stone-400"
       >
-        {pendiente && <Loader2 className="size-5 animate-spin" aria-hidden />}
+        {pendiente && <Snowflake className="size-5 animate-copo" aria-hidden />}
         {pendiente ? "Guardando…" : categoria ? `Registrar · ${CATEGORIA_LABEL[categoria]}` : "Registrar gasto"}
       </button>
 

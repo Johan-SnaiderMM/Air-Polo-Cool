@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Ban, ExternalLink, Loader2, Pencil } from "lucide-react";
+import { Ban, ExternalLink, Snowflake, Pencil } from "lucide-react";
 import { anularGasto, editarGasto } from "@/app/(app)/caja-menor/actions";
 import { SelectorCategoria } from "@/components/caja/selector-categoria";
 import { SelectorOrden } from "@/components/caja/selector-orden";
@@ -96,7 +96,7 @@ function EditarGastoForm({ gasto, onListo }: { gasto: GastoVista; onListo: () =>
         disabled={pendiente || !online}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-base font-medium text-white active:bg-ink-soft disabled:bg-stone-200 disabled:text-stone-400"
       >
-        {pendiente && <Loader2 className="size-5 animate-spin" aria-hidden />}
+        {pendiente && <Snowflake className="size-5 animate-copo" aria-hidden />}
         Guardar cambios
       </button>
     </div>

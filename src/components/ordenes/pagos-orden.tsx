@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, useTransition } from "react";
-import { Camera, CheckCircle2, CloudUpload, ExternalLink, Loader2, X } from "lucide-react";
+import { Camera, CheckCircle2, CloudUpload, ExternalLink, Snowflake, X } from "lucide-react";
 import { anularPago } from "@/app/(app)/ordenes/pagos-actions";
 import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
@@ -378,7 +378,7 @@ export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props)
           disabled={monto <= 0 || pendiente}
           className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent-600 text-base font-medium text-white active:bg-accent-700 disabled:bg-stone-200 disabled:text-stone-400"
         >
-          {pendiente && <Loader2 className="size-5 animate-spin" aria-hidden />}
+          {pendiente && <Snowflake className="size-5 animate-copo" aria-hidden />}
           {devolucion ? "Registrar devolución" : "Registrar abono"}
         </button>
       </div>

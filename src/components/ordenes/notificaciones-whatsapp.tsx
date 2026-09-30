@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ExternalLink, Loader2, Send } from "lucide-react";
+import { ExternalLink, Snowflake, Send } from "lucide-react";
 import { enviarWhatsAppOrden } from "@/app/(app)/ordenes/notificaciones-actions";
 import type { PlantillaWhatsApp } from "@/lib/whatsapp";
 
@@ -92,7 +92,7 @@ export function NotificacionesWhatsApp({
                 className="flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-stone-300/70 bg-white text-stone-700 active:bg-stone-100 disabled:opacity-50"
               >
                 {enviando === b.plantilla ? (
-                  <Loader2 className="size-6 animate-spin" aria-hidden />
+                  <Snowflake className="size-6 animate-copo" aria-hidden />
                 ) : (
                   <Send className="size-6" aria-hidden />
                 )}

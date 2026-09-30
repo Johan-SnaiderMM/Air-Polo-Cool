@@ -1,22 +1,19 @@
 import Link from "next/link";
-import { SearchX } from "lucide-react";
+import { PaginaFria } from "@/components/ui/pagina-fria";
 
 export default function NoEncontradoApp() {
   return (
-    <section className="flex flex-col items-center gap-4 py-16 text-center">
-      <span className="flex size-16 items-center justify-center rounded-2xl bg-stone-200 text-stone-600">
-        <SearchX className="size-9" aria-hidden />
-      </span>
-      <h2 className="font-serif text-[26px] leading-tight font-medium tracking-tight">No encontrado</h2>
-      <p className="max-w-sm text-sm text-stone-600">
-        Ese registro no existe o ya no está disponible.
-      </p>
+    <PaginaFria
+      codigo="404"
+      titulo="No encontrado"
+      mensaje="Ese registro no existe o ya no está disponible. Quizá se enfrió y se archivó."
+    >
       <Link
         href="/"
-        className="flex h-14 items-center rounded-xl bg-ink px-8 text-base font-semibold text-white active:bg-ink-soft"
+        className="flex h-14 items-center justify-center rounded-xl bg-white text-base font-semibold text-ink transition-colors active:bg-stone-200"
       >
         Ir al inicio
       </Link>
-    </section>
+    </PaginaFria>
   );
 }

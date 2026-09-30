@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CloudUpload, Loader2, ShieldCheck } from "lucide-react";
+import { CloudUpload, Snowflake, ShieldCheck } from "lucide-react";
 import { guardarOrden, type OrdenFormState, type VehiculoResultado } from "@/app/(app)/ordenes/actions";
 import {
   PERTENENCIAS_VACIAS,
@@ -431,7 +431,7 @@ export function OrdenForm(props: Props) {
         disabled={pendiente}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-base font-semibold text-white transition-colors active:bg-ink-soft disabled:opacity-60"
       >
-        {pendiente && <Loader2 className="size-5 animate-spin" aria-hidden />}
+        {pendiente && <Snowflake className="size-5 animate-copo" aria-hidden />}
         {pendiente ? "Guardando…" : editando ? "Guardar cambios" : "Crear orden"}
       </button>
     </form>

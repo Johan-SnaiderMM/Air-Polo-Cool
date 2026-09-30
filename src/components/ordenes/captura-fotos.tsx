@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import {
   Camera,
   FileText,
-  Loader2,
+  Snowflake,
   PackageCheck,
   PackageX,
   Thermometer,
@@ -107,7 +107,7 @@ export function CapturaFotos({ ordenId }: { ordenId: string }) {
               }`}
             >
               {activo ? (
-                <Loader2 className="size-6 animate-spin text-stone-500" aria-hidden />
+                <Snowflake className="size-6 animate-copo text-stone-500" aria-hidden />
               ) : (
                 <Icono className="size-6 text-stone-500" strokeWidth={1.5} aria-hidden />
               )}

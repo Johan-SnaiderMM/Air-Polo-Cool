@@ -124,3 +124,124 @@ body {
     break-inside: avoid;
   }
 }
+
+/* ---------------------------------------------------------------------
+ * Animaciones "frío": ventisca (ráfagas + copos), copo giratorio y esqueleto con brillo.
+ * Todo es CSS puro (sin JS) y se reduce a estático con prefers-reduced-motion.
+ * ------------------------------------------------------------------ */
+@keyframes ventisca-rafaga {
+  0% {
+    transform: translateX(0) skewX(-20deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(380%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes ventisca-copo {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(112vw, 46px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes copo-giro {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.12);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes esqueleto-brillo {
+  0% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -30% 0;
+  }
+}
+
+@keyframes escarcha-pulso {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.ventisca-rafaga {
+  position: absolute;
+  left: -40%;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgb(157 219 255 / 0.85), rgb(255 255 255 / 0.9), transparent);
+  animation: ventisca-rafaga var(--dur, 3s) linear var(--delay, 0s) infinite;
+  will-change: transform;
+}
+
+.ventisca-copo {
+  position: absolute;
+  left: -8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: 0 0 6px rgb(157 219 255 / 0.8);
+  animation: ventisca-copo var(--dur, 4s) linear var(--delay, 0s) infinite;
+  will-change: transform;
+}
+
+.animate-copo {
+  animation: copo-giro 1.8s ease-in-out infinite;
+}
+
+.esqueleto {
+  background-color: var(--color-stone-200);
+  background-image: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.65) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: esqueleto-brillo 1.6s ease-in-out infinite;
+}
+
+.escarcha-texto {
+  background: linear-gradient(180deg, #ffffff 10%, var(--color-ice-300) 55%, var(--color-accent-500) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgb(92 194 255 / 0.35));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ventisca-rafaga,
+  .ventisca-copo {
+    animation: none;
+    opacity: 0.35;
+    left: 30%;
+  }
+  .animate-copo {
+    animation: escarcha-pulso 2s ease-in-out infinite;
+  }
+  .esqueleto {
+    animation: none;
+    background-image: none;
+  }
+}

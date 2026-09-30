@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Ban, Loader2 } from "lucide-react";
+import { Ban, Snowflake } from "lucide-react";
 
 type Resultado = { ok: true } | { ok: false; error: string };
 
@@ -66,7 +66,7 @@ export function FormularioAnulacion({
         disabled={pendiente}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-brick-700 text-base font-medium text-white active:bg-brick-800 disabled:opacity-60"
       >
-        {pendiente ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Ban className="size-5" aria-hidden />}
+        {pendiente ? <Snowflake className="size-5 animate-copo" aria-hidden /> : <Ban className="size-5" aria-hidden />}
         {etiquetaBoton}
       </button>
     </div>
