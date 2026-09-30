@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/server";
 import { cargarDetalleOrden } from "@/lib/datos/ordenes";
 import { mesesMantenimiento } from "@/lib/datos/mapeo";
 import { esUuid } from "@/lib/ordenes";
+import { BotonEliminarOrden } from "@/components/ordenes/boton-eliminar-orden";
 import { CambiarEstado } from "@/components/ordenes/cambiar-estado";
 import { OrdenFormEditar } from "@/components/ordenes/orden-form-editar";
 import { Colapsable } from "@/components/ui/colapsable";
@@ -202,6 +203,10 @@ export default async function OrdenPage({
           }}
         />
       </div>
+
+      {esAdmin && orden.estado === "recibido" && pagos.length === 0 && (
+        <BotonEliminarOrden ordenId={orden.id} placa={v?.placa ?? "este vehículo"} />
+      )}
     </section>
   );
 }

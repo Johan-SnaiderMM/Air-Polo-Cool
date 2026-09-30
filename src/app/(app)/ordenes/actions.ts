@@ -200,6 +200,49 @@ export async function eliminarEvidencia(datos: {
   return { ok: true };
 }
 
+// ---------------------------------------------------------------------
+// Eliminar una orden recién recibida (solo admin por RLS)
+// ---------------------------------------------------------------------
+
+/**
+ * Borra una orden que sigue en «Recibido» y no tiene pagos: sirve para un ingreso creado por error o
+ * duplicado. Sus fotos y repuestos se van con ella (los repuestos devuelven el stock). Cualquier otra
+ * orden se conserva: si no va a continuar, se marca como cancelada.
+ */
+export async function eliminarOrden(datos: { ordenId: string }): Promise<SubidaResultado> {
+  const { ordenId } = datos;
+  if (!esUuid(ordenId)) return { ok: false, error: "Datos inválidos." };
+
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
+
+  const { data: orden } = await supabase.from("ordenes_servicio").select("estado").eq("id", ordenId).maybeSingle();
+  if (!orden) return { ok: false, error: "La orden ya no existe." };
+  if (orden.estado !== "recibido") {
+    return { ok: false, error: "Solo se pueden eliminar órdenes en estado Recibido. Las demás se cancelan." };
+  }
+
+  // Un registro de dinero no desaparece con la orden (ni siquiera uno anulado).
+  const { count } = await supabase.from("pagos_orden").select("id", { count: "exact", head: true }).eq("orden_id", ordenId);
+  if (count) return { ok: false, error: "La orden tiene pagos registrados: no se puede eliminar. Cancélala en su lugar." };
+
+  const { data: fotos } = await supabase.from("evidencias_fotograficas").select("url_imagen").eq("orden_id", ordenId);
+
+  const { data, error } = await supabase.from("ordenes_servicio").delete().eq("id", ordenId).eq("estado", "recibido").select("id");
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  if (!data || data.length === 0) {
+    // RLS: solo el admin puede borrar; sin permiso, Postgres devuelve 0 filas.
+    return { ok: false, error: "No se pudo eliminar. Solo el administrador puede borrar órdenes." };
+  }
+
+  const rutas = (fotos ?? []).map((f) => f.url_imagen);
+  if (rutas.length > 0) await supabase.storage.from(BUCKET_EVIDENCIAS).remove(rutas);
+
+  revalidatePath("/ordenes");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 /**
  * Liga (o desliga con `null`) una foto de repuesto retirado / instalado a un repuesto de la orden.
  * Sirve para asignar las fotos anteriores a la fase 5 o corregir una mal asignada.
