@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { ListaInventario } from "@/components/inventario/lista-inventario";
-import type { Tables } from "@/types/database";
+import { listarInventario } from "@/lib/datos/inventario";
 import { SearchBar } from "@/components/ordenes/search-bar";
 
 export const metadata: Metadata = { title: "Inventario" };
@@ -18,37 +18,11 @@ export default async function InventarioPage({
   const q = (qCrudo ?? "").trim();
   const critico = filtroCrudo === "critico";
 
-  const supabase = await createClient();
-
-  // Se quitan caracteres con significado especial en .or()/ILIKE de PostgREST.
-  const busqueda = q.replace(/[%_,()*\\]/g, " ").trim();
-  const filtroTexto = busqueda
-    ? `codigo.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`
-    : null;
-
-  // Cantidad de ítems críticos (vista v_inventario_reposicion: stock_actual <= stock_minimo).
-  const { count: totalCriticos } = await supabase
-    .from("v_inventario_reposicion")
-    .select("id", { count: "exact", head: true });
-
-  let items: Tables<"inventario">[] = [];
-  let errorConsulta: string | null = null;
-
-  // El filtro crítico (stock_actual <= stock_minimo) compara columna contra columna, algo que
-  // PostgREST no expresa: se filtra aquí sobre el catálogo (cientos de ítems como mucho) en
-  // lugar de enviar cientos de ids en la URL.
-  let consulta = supabase
-    .from("inventario")
-    .select("*")
-    .order("nombre", { ascending: true })
-    .limit(critico ? 1000 : LIMITE);
-  if (filtroTexto) consulta = consulta.or(filtroTexto);
-  const { data, error } = await consulta;
-  if (error) errorConsulta = error.message;
-  items = data ?? [];
-  if (critico) {
-    items = items.filter((i) => i.stock_actual <= i.stock_minimo).slice(0, LIMITE);
-  }
+  const { items, totalCriticos, error: errorConsulta } = await listarInventario(await createClient(), {
+    q,
+    critico,
+    limite: LIMITE,
+  });
 
   const pestanas = [
     { label: "Todo", href: q ? `/inventario?q=${encodeURIComponent(q)}` : "/inventario", activa: !critico },

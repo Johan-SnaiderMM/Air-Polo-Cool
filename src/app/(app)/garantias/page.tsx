@@ -5,11 +5,10 @@ import { createClient } from "@/utils/supabase/server";
 import { ListaMantenimientos } from "@/components/garantias/lista-mantenimientos";
 import { enlaceWhatsApp, mensajeGarantia } from "@/lib/whatsapp";
 import { formatearFechaDate } from "@/lib/ordenes";
-import type { SemaforoGarantia, Views } from "@/types/database";
+import { LIMITE_GARANTIAS, cargarGarantias, contarGarantias, garantiasVisibles, type Filtro } from "@/lib/datos/garantias";
+import type { SemaforoGarantia } from "@/types/database";
 
 export const metadata: Metadata = { title: "Garantías" };
-
-type Filtro = SemaforoGarantia | "todas" | "mantenimiento";
 
 const FILTROS: { id: Filtro; label: string }[] = [
   { id: "amarillo", label: "Por vencer" },
@@ -28,8 +27,6 @@ const ESTILO: Record<SemaforoGarantia, { punto: string; texto: string; etiqueta:
 const esSemaforo = (v: string | undefined): v is SemaforoGarantia =>
   v === "verde" || v === "amarillo" || v === "rojo";
 
-type Fila = Views<"v_garantias">;
-
 export default async function GarantiasPage({
   searchParams,
 }: {
@@ -39,35 +36,9 @@ export default async function GarantiasPage({
   const filtro: Filtro =
     semaforo === "todas" || semaforo === "mantenimiento" ? semaforo : esSemaforo(semaforo) ? semaforo : "amarillo";
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("v_garantias")
-    .select("*")
-    .order("fecha_fin_garantia", { ascending: true })
-    .limit(500);
-
-  // Mantenimientos preventivos (Fase 4). Si el SQL aún no está, la lista queda vacía sin romper la página.
-  const { data: mant } = await supabase
-    .from("v_mantenimientos")
-    .select("*")
-    .order("proximo_mantenimiento", { ascending: true })
-    .limit(300);
-  const mantenimientos = mant ?? [];
-  const mantPendientes = mantenimientos.filter((m) => m.estado_mantenimiento !== "lejano").length;
-
-  const todas = (data ?? []).filter((g: Fila) => g.orden_id && g.semaforo);
-  const cuenta = (s: SemaforoGarantia) => todas.filter((g) => g.semaforo === s).length;
-  const conteos: Record<Filtro, number> = {
-    amarillo: cuenta("amarillo"),
-    verde: cuenta("verde"),
-    rojo: cuenta("rojo"),
-    todas: todas.length,
-    mantenimiento: mantPendientes,
-  };
-
-  let visibles = filtro === "todas" ? todas : todas.filter((g) => g.semaforo === filtro);
-  // Vencidas: las más recientes primero; el resto, las que vencen antes primero.
-  if (filtro === "rojo") visibles = [...visibles].reverse();
+  const { garantias: todas, mantenimientos, error } = await cargarGarantias(await createClient());
+  const conteos = contarGarantias(todas, mantenimientos);
+  const visibles = garantiasVisibles(todas, filtro);
 
   return (
     <section className="space-y-4">
@@ -116,7 +87,7 @@ export default async function GarantiasPage({
         <>
       {error && (
         <p role="alert" className="rounded-lg bg-brick-50 px-3 py-2 text-sm text-brick-700">
-          No se pudieron cargar las garantías: {error.message}
+          No se pudieron cargar las garantías: {error}
         </p>
       )}
 
@@ -128,7 +99,7 @@ export default async function GarantiasPage({
 
       <ul className="space-y-3">
         {visibles.map((g) => {
-          const s = ESTILO[g.semaforo as SemaforoGarantia];
+          const s = ESTILO[g.semaforo];
           const restantes = g.dias_restantes ?? 0;
           const fin = g.fecha_fin_garantia ? formatearFechaDate(g.fecha_fin_garantia) : "";
           const recordatorio =
@@ -195,8 +166,8 @@ export default async function GarantiasPage({
         })}
       </ul>
 
-      {todas.length === 500 && (
-        <p className="text-center text-xs text-stone-500">Mostrando las primeras 500 garantías.</p>
+      {todas.length === LIMITE_GARANTIAS && (
+        <p className="text-center text-xs text-stone-500">Mostrando las primeras {LIMITE_GARANTIAS} garantías.</p>
       )}
         </>
       )}

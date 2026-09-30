@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { cargarCotizacion } from "@/lib/datos/cotizaciones";
 import { AccionesCotizacion } from "@/components/cotizaciones/acciones-cotizacion";
 import { Dinero } from "@/components/ui/dinero";
 import { hoyBogota } from "@/lib/caja";
@@ -23,23 +24,13 @@ export default async function CotizacionPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   if (!esUuid(id)) notFound();
 
-  const supabase = await createClient();
-  const { data: cot } = await supabase
-    .from("cotizaciones")
-    .select("*, vehiculos(placa, marca, modelo, anio, clientes(nombre, telefono))")
-    .eq("id", id)
-    .maybeSingle();
-  if (!cot) notFound();
-
-  const { data: items } = await supabase
-    .from("cotizacion_items")
-    .select("*")
-    .eq("cotizacion_id", id)
-    .order("created_at");
+  const datos = await cargarCotizacion(await createClient(), id);
+  if (!datos) notFound();
+  const { cotizacion: cot, items } = datos;
 
   const v = cot.vehiculos;
   const cliente = v?.clientes;
-  const lista = items ?? [];
+  const lista = items;
   const totales = totalesCotizacion(cot.mano_obra, lista);
   const hasta = vigenteHasta(cot.fecha, cot.vigencia_dias);
   const vencida = (cot.estado === "borrador" || cot.estado === "enviada") && estaVencida(cot.fecha, cot.vigencia_dias, hoyBogota());

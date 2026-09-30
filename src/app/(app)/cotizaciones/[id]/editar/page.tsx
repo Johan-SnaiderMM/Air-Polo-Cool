@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { cargarCotizacion } from "@/lib/datos/cotizaciones";
 import { CotizacionForm } from "@/components/cotizaciones/cotizacion-form";
 import { esUuid } from "@/lib/ordenes";
 
@@ -13,16 +14,11 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
   const { id } = await params;
   if (!esUuid(id)) notFound();
 
-  const supabase = await createClient();
-  const { data: cot } = await supabase
-    .from("cotizaciones")
-    .select("*, vehiculos(placa, marca, modelo, anio, clientes(nombre))")
-    .eq("id", id)
-    .maybeSingle();
-  if (!cot) notFound();
+  const datos = await cargarCotizacion(await createClient(), id);
+  if (!datos) notFound();
+  const { cotizacion: cot, items } = datos;
   if (cot.estado === "convertida") redirect(`/cotizaciones/${id}`);
 
-  const { data: items } = await supabase.from("cotizacion_items").select("*").eq("cotizacion_id", id).order("created_at");
   const v = cot.vehiculos;
 
   return (
@@ -46,7 +42,7 @@ export default async function EditarCotizacionPage({ params }: { params: Promise
           mano_obra: cot.mano_obra,
           vigencia_dias: cot.vigencia_dias,
           notas: cot.notas ?? "",
-          items: (items ?? []).map((i) => ({
+          items: items.map((i) => ({
             inventario_id: i.inventario_id,
             descripcion: i.descripcion,
             cantidad: i.cantidad,

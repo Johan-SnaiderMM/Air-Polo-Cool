@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight, ShieldAlert, User } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import { filtroVehiculos } from "@/lib/consultas";
+import { listarVehiculos } from "@/lib/datos/vehiculos";
 import { SearchBar } from "@/components/ordenes/search-bar";
 
 export const metadata: Metadata = { title: "Vehículos" };
@@ -19,30 +19,7 @@ export default async function VehiculosPage({
 
   const supabase = await createClient();
 
-  let filtro: string | null = null;
-  if (q) filtro = await filtroVehiculos(supabase, q);
-
-  let vehiculos: {
-    id: string;
-    placa: string;
-    marca: string;
-    modelo: string;
-    anio: number | null;
-    clientes: { nombre: string; telefono: string } | null;
-  }[] = [];
-  let errorConsulta: string | null = null;
-
-  if (!q || filtro) {
-    let consulta = supabase
-      .from("vehiculos")
-      .select("id, placa, marca, modelo, anio, clientes(nombre, telefono)")
-      .order(q ? "placa" : "created_at", { ascending: !!q })
-      .limit(LIMITE);
-    if (filtro) consulta = consulta.or(filtro);
-    const { data, error } = await consulta;
-    if (error) errorConsulta = error.message;
-    vehiculos = data ?? [];
-  }
+  const { vehiculos, error: errorConsulta } = await listarVehiculos(supabase, { q, limite: LIMITE });
 
   return (
     <section className="space-y-4">

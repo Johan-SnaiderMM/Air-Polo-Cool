@@ -21,7 +21,7 @@ export type Llamada = {
   seleccion: string;
 };
 
-export type Respuesta = { data?: unknown; error?: ErrorFalso | null };
+export type Respuesta = { data?: unknown; error?: ErrorFalso | null; count?: number };
 
 export type OpcionesFalso = {
   /** Decide qué responde la «base» a cada consulta. Sin respuesta: `{ data: null }`. */
@@ -81,7 +81,7 @@ export function crearSupabaseFalso(opciones: OpcionesFalso = {}) {
       Promise.resolve()
         .then(() => {
           const r = responder(l);
-          return { data: r.data ?? null, error: r.error ?? null, count: null };
+          return { data: r.data ?? null, error: r.error ?? null, count: r.count ?? null };
         })
         .then(ok, fallo);
     return b;

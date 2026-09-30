@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { cargarComprobanteOrden } from "@/lib/datos/ordenes";
 import { LineaFirma, Membrete, SeccionImpresa } from "@/components/print/membrete";
 import { BarraImpresion } from "@/components/print/boton-imprimir";
 import { Dinero } from "@/components/ui/dinero";
 import { origenPublico } from "@/lib/notificaciones";
-import { formatearCantidad, redondearDinero } from "@/lib/inventario";
+import { formatearCantidad } from "@/lib/inventario";
 import { pertenenciasONull } from "@/lib/offline/operaciones";
 import { ESTADO_LABEL, esUuid, formatearFecha, formatearFechaDate } from "@/lib/ordenes";
 import { urlPublicaOrden } from "@/lib/whatsapp";
@@ -20,44 +21,11 @@ export default async function ComprobanteOrdenPage({ params }: { params: Promise
   const { id } = await params;
   if (!esUuid(id)) notFound();
 
-  const supabase = await createClient();
-  const { data: orden } = await supabase
-    .from("ordenes_servicio")
-    .select(
-      "*, vehiculos(placa, marca, modelo, anio, tipo_gas_sugerido, carga_estandar_gramos, clientes(nombre, telefono, documento))"
-    )
-    .eq("id", id)
-    .maybeSingle();
-  if (!orden) notFound();
-
-  const [{ data: repuestos }, { data: pagos }] = await Promise.all([
-    supabase
-      .from("orden_repuestos")
-      .select("cantidad_usada, precio_unitario, inventario(nombre, tipo_unidad)")
-      .eq("orden_id", id)
-      .order("created_at"),
-    supabase.from("pagos_orden").select("monto, es_devolucion").eq("orden_id", id).eq("anulado", false),
-  ]);
-
+  const datos = await cargarComprobanteOrden(await createClient(), id);
+  if (!datos) notFound();
+  const { orden, lineas, totalRepuestos, ajuste, pagado, saldo } = datos;
   const v = orden.vehiculos;
   const cliente = v?.clientes;
-  const lineas = (repuestos ?? []).flatMap((r) =>
-    r.inventario
-      ? [
-          {
-            nombre: r.inventario.nombre,
-            cantidad: r.cantidad_usada,
-            unidad: r.inventario.tipo_unidad,
-            precio: r.precio_unitario,
-            subtotal: redondearDinero(r.cantidad_usada * r.precio_unitario),
-          },
-        ]
-      : []
-  );
-  const totalRepuestos = redondearDinero(lineas.reduce((s, l) => s + l.subtotal, 0));
-  const ajuste = redondearDinero(orden.total_cobrado - orden.mano_obra - totalRepuestos);
-  const pagado = redondearDinero((pagos ?? []).reduce((s, p) => s + (p.es_devolucion ? -p.monto : p.monto), 0));
-  const saldo = redondearDinero(orden.total_cobrado - pagado);
   const pert = pertenenciasONull(orden.pertenencias);
   const url = urlPublicaOrden(await origenPublico(), orden.token_publico);
 

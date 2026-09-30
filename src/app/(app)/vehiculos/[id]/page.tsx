@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight, Gauge, Plus, ShieldCheck } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { cargarHistorialVehiculo } from "@/lib/datos/vehiculos";
 import { enlaceWhatsApp } from "@/lib/whatsapp";
 import { formatearCantidad } from "@/lib/inventario";
 import {
@@ -28,36 +29,9 @@ export default async function VehiculoPage({
 
   const supabase = await createClient();
 
-  const { data: vehiculo } = await supabase
-    .from("vehiculos")
-    .select("*, clientes(*)")
-    .eq("id", id)
-    .maybeSingle();
-  if (!vehiculo || !vehiculo.clientes) notFound();
-  const cliente = vehiculo.clientes;
-
-  const [{ data: ordenes }, { data: otros }] = await Promise.all([
-    supabase
-      .from("ordenes_servicio")
-      .select(
-        "id, estado, fecha_ingreso, kilometraje, total_cobrado, dias_garantia, fecha_fin_garantia, trabajos_a_realizar, orden_repuestos(cantidad_usada, inventario(nombre, tipo_unidad))"
-      )
-      .eq("vehiculo_id", id)
-      .order("fecha_ingreso", { ascending: false }),
-    supabase
-      .from("vehiculos")
-      .select("id, placa, marca, modelo")
-      .eq("cliente_id", cliente.id)
-      .neq("id", id)
-      .order("placa"),
-  ]);
-
-  const historial = ordenes ?? [];
-  const conKm = historial.filter((o) => o.kilometraje !== null);
-  const ultimoKm = conKm[0]?.kilometraje ?? null;
-  const totalGastado = historial
-    .filter((o) => o.estado !== "cancelado")
-    .reduce((s, o) => s + o.total_cobrado, 0);
+  const datos = await cargarHistorialVehiculo(supabase, id);
+  if (!datos) notFound();
+  const { vehiculo, cliente, servicios: historial, otrosDelCliente: otros, ultimoKm, totalFacturado: totalGastado } = datos;
 
   return (
     <section className="space-y-5">

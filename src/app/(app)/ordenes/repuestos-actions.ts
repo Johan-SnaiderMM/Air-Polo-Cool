@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { filtroCatalogo, limpiarTextoBusqueda } from "@/lib/consultas";
 import { mensajeDeError } from "@/lib/errores";
 import { admiteDecimales, redondearDinero } from "@/lib/inventario";
 import { esUuid } from "@/lib/ordenes";
@@ -30,8 +31,7 @@ function refrescar(ordenId: string) {
 // ---------------------------------------------------------------------
 
 export async function buscarInventario(consulta: string): Promise<ItemBuscado[]> {
-  const q = consulta.replace(/[%_,()*\\]/g, " ").trim();
-  if (q.length < 2) return [];
+  if (limpiarTextoBusqueda(consulta).length < 2) return [];
 
   const { supabase, user } = await obtenerSesion();
   if (!user) return [];
@@ -39,7 +39,7 @@ export async function buscarInventario(consulta: string): Promise<ItemBuscado[]>
   const { data } = await supabase
     .from("inventario")
     .select("id, codigo, nombre, tipo_unidad, stock_actual, precio_venta, costo_compra")
-    .or(`codigo.ilike.%${q}%,nombre.ilike.%${q}%`)
+    .or(filtroCatalogo(consulta) ?? "")
     .order("nombre")
     .limit(8);
 

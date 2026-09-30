@@ -9,10 +9,11 @@ import { totalesVacios, type TotalesCategoria } from "@/components/caja/grafico-
 import type { GastoVista } from "@/components/caja/lista-gastos";
 import type { FilaRentabilidad } from "@/components/caja/rentabilidad-ordenes";
 import { BUCKET_FACTURAS, VIGENCIA_URL_INTERNA_SEGUNDOS } from "@/lib/almacenamiento";
-import { mesAnterior, rangoMes, totalesPorMedio, type TotalesMedio } from "@/lib/caja";
+import { CATEGORIAS, mesAnterior, rangoMes, totalesPorMedio, type TotalesMedio } from "@/lib/caja";
 import { edicionesHistorial } from "@/lib/datos/mapeo";
 import { firmarRutas } from "@/lib/datos/firmar";
 import { esErrorDeMigracion } from "@/lib/errores";
+import type { CategoriaGasto } from "@/types/database";
 import type { ClienteServidor } from "@/utils/supabase/sesion";
 
 // ---------------------------------------------------------------------
@@ -217,5 +218,48 @@ export async function cargarBalanceMes(supabase: ClienteServidor, mes: string): 
         : []
     ),
     errorMigracion: [filaMes.error, cartera.error, rentabilidad.error].some((e) => esErrorDeMigracion(e)),
+  };
+}
+
+// ---------------------------------------------------------------------
+// Reporte imprimible del mes (balance para el contador)
+// ---------------------------------------------------------------------
+
+/** Gastos vigentes agrupados por categoría (solo las que tienen gasto), en el orden del catálogo. */
+export function gastosPorCategoria(gastos: { categoria: CategoriaGasto; monto: number }[]) {
+  return CATEGORIAS.map((categoria) => ({
+    categoria,
+    total: gastos.filter((g) => g.categoria === categoria).reduce((s, g) => s + g.monto, 0),
+  })).filter((c) => c.total > 0);
+}
+
+export async function cargarReporteMes(supabase: ClienteServidor, mes: string) {
+  const { desde, hasta } = rangoMes(mes);
+
+  const [balance, gastos, rentabilidad, cartera, pagos] = await Promise.all([
+    supabase.from("v_balance_real").select("*").eq("mes", `${mes}-01`).maybeSingle(),
+    supabase.from("gastos_caja_menor").select("categoria, monto").eq("anulado", false).gte("fecha", desde).lt("fecha", hasta),
+    supabase
+      .from("v_rentabilidad_orden")
+      .select("placa, cliente, pagado, costo_repuestos, gastos_directos, utilidad_real")
+      .eq("estado", "entregado")
+      .gte("fecha_entrega", `${desde}T00:00:00-05:00`)
+      .lt("fecha_entrega", `${hasta}T00:00:00-05:00`)
+      .order("utilidad_real", { ascending: false })
+      .limit(40),
+    supabase.from("v_cartera").select("saldo").limit(1000),
+    supabase.from("pagos_orden").select("medio, monto, es_devolucion").eq("anulado", false).gte("fecha", desde).lt("fecha", hasta),
+  ]);
+
+  const porCategoria = gastosPorCategoria(gastos.data ?? []);
+  return {
+    balance: balance.data
+      ? aFilaBalance(balance.data)
+      : { mes, facturado: 0, cobrado: 0, costoRepuestos: 0, gastos: 0, utilidadReal: 0 },
+    porCategoria,
+    totalGastos: porCategoria.reduce((s, c) => s + c.total, 0),
+    porMedio: totalesPorMedio(pagos.data ?? []),
+    rentabilidad: rentabilidad.data ?? [],
+    totalCartera: (cartera.data ?? []).reduce((s, c) => s + (c.saldo ?? 0), 0),
   };
 }

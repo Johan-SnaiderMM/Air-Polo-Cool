@@ -146,3 +146,49 @@ export function edicionesHistorial(valor: Json): EdicionHistorial[] {
     ];
   });
 }
+
+// ---------------------------------------------------------------------
+// Comprobante (orden y garantía impresa)
+// ---------------------------------------------------------------------
+
+export type LineaComprobante = {
+  nombre: string;
+  cantidad: number;
+  unidad: TipoUnidad;
+  precio: number;
+  subtotal: number;
+};
+
+/**
+ * Cifras del comprobante de una orden: líneas de repuestos con su subtotal, total de repuestos,
+ * «ajuste» (lo que falta o sobra entre el total cobrado y mano de obra + repuestos: otros cargos
+ * o descuento), lo pagado (abonos menos devoluciones) y el saldo.
+ */
+export function armarComprobante(
+  orden: { total_cobrado: number; mano_obra: number },
+  repuestos: { cantidad_usada: number; precio_unitario: number; inventario: { nombre: string; tipo_unidad: TipoUnidad } | null }[],
+  pagos: { monto: number; es_devolucion: boolean }[]
+) {
+  const lineas: LineaComprobante[] = repuestos.flatMap((r) =>
+    r.inventario
+      ? [
+          {
+            nombre: r.inventario.nombre,
+            cantidad: r.cantidad_usada,
+            unidad: r.inventario.tipo_unidad,
+            precio: r.precio_unitario,
+            subtotal: redondearDinero(r.cantidad_usada * r.precio_unitario),
+          },
+        ]
+      : []
+  );
+  const totalRepuestos = redondearDinero(lineas.reduce((s, l) => s + l.subtotal, 0));
+  const pagado = redondearDinero(pagos.reduce((s, p) => s + (p.es_devolucion ? -p.monto : p.monto), 0));
+  return {
+    lineas,
+    totalRepuestos,
+    ajuste: redondearDinero(orden.total_cobrado - orden.mano_obra - totalRepuestos),
+    pagado,
+    saldo: redondearDinero(orden.total_cobrado - pagado),
+  };
+}

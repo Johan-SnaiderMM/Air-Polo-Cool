@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
+import { cargarReporteMes } from "@/lib/datos/caja";
 import { LineaFirma, Membrete, SeccionImpresa } from "@/components/print/membrete";
 import { BarraImpresion } from "@/components/print/boton-imprimir";
 import { Dinero } from "@/components/ui/dinero";
-import { CATEGORIAS, CATEGORIA_LABEL, MEDIO_PAGO_LABEL, etiquetaMes, normalizarMes, rangoMes, totalesPorMedio } from "@/lib/caja";
+import { CATEGORIA_LABEL, MEDIO_PAGO_LABEL, etiquetaMes, normalizarMes } from "@/lib/caja";
 import { formatearFecha } from "@/lib/ordenes";
 
 export const metadata: Metadata = { title: "Reporte de balance" };
@@ -15,42 +16,10 @@ export default async function ReporteBalancePage({
   searchParams: Promise<{ mes?: string }>;
 }) {
   const mes = normalizarMes((await searchParams).mes);
-  const { desde, hasta } = rangoMes(mes);
-  const supabase = await createClient();
-
-  const [balance, gastos, rentab, cartera, pagos] = await Promise.all([
-    supabase.from("v_balance_real").select("*").eq("mes", `${mes}-01`).maybeSingle(),
-    supabase
-      .from("gastos_caja_menor")
-      .select("categoria, monto")
-      .eq("anulado", false)
-      .gte("fecha", desde)
-      .lt("fecha", hasta),
-    supabase
-      .from("v_rentabilidad_orden")
-      .select("placa, cliente, pagado, costo_repuestos, gastos_directos, utilidad_real")
-      .eq("estado", "entregado")
-      .gte("fecha_entrega", `${desde}T00:00:00-05:00`)
-      .lt("fecha_entrega", `${hasta}T00:00:00-05:00`)
-      .order("utilidad_real", { ascending: false })
-      .limit(40),
-    supabase.from("v_cartera").select("saldo").limit(1000),
-    supabase
-      .from("pagos_orden")
-      .select("medio, monto, es_devolucion")
-      .eq("anulado", false)
-      .gte("fecha", desde)
-      .lt("fecha", hasta),
-  ]);
-
-  const b = balance.data;
-  const porCategoria = CATEGORIAS.map((c) => ({
-    categoria: c,
-    total: (gastos.data ?? []).filter((g) => g.categoria === c).reduce((s, g) => s + g.monto, 0),
-  })).filter((c) => c.total > 0);
-  const porMedio = totalesPorMedio(pagos.data ?? []);
-  const totalGastos = porCategoria.reduce((s, c) => s + c.total, 0);
-  const totalCartera = (cartera.data ?? []).reduce((s, c) => s + (c.saldo ?? 0), 0);
+  const { balance: b, porCategoria, totalGastos, porMedio, rentabilidad, totalCartera } = await cargarReporteMes(
+    await createClient(),
+    mes
+  );
 
   return (
     <div>
@@ -68,30 +37,30 @@ export default async function ReporteBalancePage({
             <div className="flex justify-between">
               <dt className="text-stone-500">Cobrado (neto de devoluciones)</dt>
               <dd>
-                <Dinero valor={b?.cobrado ?? 0} />
+                <Dinero valor={b.cobrado} />
               </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-stone-500">− Costo de repuestos</dt>
               <dd>
-                <Dinero valor={b?.costo_repuestos ?? 0} />
+                <Dinero valor={b.costoRepuestos} />
               </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-stone-500">− Gastos de caja menor</dt>
               <dd>
-                <Dinero valor={b?.gastos ?? 0} />
+                <Dinero valor={b.gastos} />
               </dd>
             </div>
             <div className="flex justify-between border-t border-stone-300 pt-1 text-[15px] font-medium">
               <dt>Utilidad neta real</dt>
               <dd>
-                <Dinero valor={b?.utilidad_real ?? 0} />
+                <Dinero valor={b.utilidadReal} />
               </dd>
             </div>
           </dl>
           <p className="text-stone-500">
-            Facturado en el mes (órdenes entregadas): <Dinero valor={b?.facturado ?? 0} /> · Por cobrar (total
+            Facturado en el mes (órdenes entregadas): <Dinero valor={b.facturado} /> · Por cobrar (total
             acumulado): <Dinero valor={totalCartera} />
           </p>
         </SeccionImpresa>
@@ -147,7 +116,7 @@ export default async function ReporteBalancePage({
         </SeccionImpresa>
 
         <SeccionImpresa titulo="Rentabilidad por orden entregada">
-          {(rentab.data ?? []).length === 0 ? (
+          {rentabilidad.length === 0 ? (
             <p className="text-stone-500">Sin órdenes entregadas en el mes.</p>
           ) : (
             <table className="w-full text-left">
@@ -160,7 +129,7 @@ export default async function ReporteBalancePage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {(rentab.data ?? []).map((r, i) => (
+                {rentabilidad.map((r, i) => (
                   <tr key={i}>
                     <td className="py-1 font-mono tracking-wider">
                       {r.placa} <span className="font-sans tracking-normal text-stone-500">{r.cliente}</span>

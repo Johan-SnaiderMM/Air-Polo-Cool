@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { listarCotizaciones } from "@/lib/datos/cotizaciones";
 import { Dinero } from "@/components/ui/dinero";
 import { hoyBogota } from "@/lib/caja";
 import {
@@ -25,24 +26,11 @@ export default async function CotizacionesPage({
 }) {
   const { estado: estadoCrudo } = await searchParams;
   const estado = esEstadoCot(estadoCrudo) ? estadoCrudo : undefined;
-  const supabase = await createClient();
-
-  let consulta = supabase
-    .from("cotizaciones")
-    .select("id, estado, fecha, vigencia_dias, vehiculos(placa, marca, modelo, anio, clientes(nombre))")
-    .order("created_at", { ascending: false })
-    .limit(80);
-  if (estado) consulta = consulta.eq("estado", estado);
-
-  const [{ data, error }, { data: totales }] = await Promise.all([
-    consulta,
-    supabase.from("v_cotizacion_totales").select("cotizacion_id, total").limit(500),
-  ]);
-  const totalDe = new Map(
-    (totales ?? []).flatMap((t) => (t.cotizacion_id ? [[t.cotizacion_id, t.total ?? 0] as const] : []))
+  const { cotizaciones: data, totalDe, error, migracionPendiente } = await listarCotizaciones(
+    await createClient(),
+    { estado, limite: 80 }
   );
   const hoy = hoyBogota();
-  const migracionPendiente = error?.code === "PGRST205" || error?.code === "42P01";
 
   const chips: { valor?: EstadoCotizacion; label: string }[] = [
     { label: "Todas" },
@@ -92,7 +80,7 @@ export default async function CotizacionesPage({
       )}
       {error && !migracionPendiente && (
         <p role="alert" className="rounded-lg bg-brick-50 px-3 py-2 text-sm text-brick-700">
-          No se pudieron cargar las cotizaciones: {error.message}
+          No se pudieron cargar las cotizaciones: {error}
         </p>
       )}
 

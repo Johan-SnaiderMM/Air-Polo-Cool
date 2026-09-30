@@ -6,11 +6,9 @@ import { Dinero } from "@/components/ui/dinero";
 import { EstadoBadge } from "@/components/ordenes/estado-badge";
 import { enlaceWhatsApp, mensajeCobro } from "@/lib/whatsapp";
 import { formatearFechaCorta } from "@/lib/ordenes";
-import type { Views } from "@/types/database";
+import { cargarCartera } from "@/lib/datos/cartera";
 
 export const metadata: Metadata = { title: "Por cobrar" };
-
-type Fila = Views<"v_cartera">;
 
 /** Días desde la entrega -> tono: pasado de 30 días, ocre; de 60, ladrillo. */
 function tonoAntiguedad(dias: number | null): string {
@@ -21,28 +19,7 @@ function tonoAntiguedad(dias: number | null): string {
 }
 
 export default async function CarteraPage() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("v_cartera")
-    .select("*")
-    .order("fecha_entrega", { ascending: true, nullsFirst: false })
-    .limit(500);
-
-  const filas = (data ?? []).filter((f): f is Fila & { orden_id: string } => !!f.orden_id);
-
-  // Agrupa por cliente (mismo teléfono = mismo cliente).
-  const clientes = new Map<string, { nombre: string; telefono: string; total: number; ordenes: Fila[] }>();
-  for (const f of filas) {
-    const clave = f.telefono ?? f.cliente ?? f.orden_id;
-    const c = clientes.get(clave) ?? { nombre: f.cliente ?? "Cliente", telefono: f.telefono ?? "", total: 0, ordenes: [] };
-    c.total += f.saldo ?? 0;
-    c.ordenes.push(f);
-    clientes.set(clave, c);
-  }
-  const lista = [...clientes.values()].sort((a, b) => b.total - a.total);
-  const total = lista.reduce((s, c) => s + c.total, 0);
-
-  const migracionPendiente = error?.code === "PGRST205" || error?.code === "42P01";
+  const { clientes: lista, totalOrdenes, total, error, migracionPendiente } = await cargarCartera(await createClient());
 
   return (
     <section className="space-y-5">
@@ -64,7 +41,7 @@ export default async function CarteraPage() {
       )}
       {error && !migracionPendiente && (
         <p role="alert" className="rounded-lg bg-brick-50 px-3 py-2 text-sm text-brick-700">
-          No se pudo cargar la cartera: {error.message}
+          No se pudo cargar la cartera: {error}
         </p>
       )}
 
@@ -74,8 +51,8 @@ export default async function CarteraPage() {
           <Dinero valor={total} />
         </p>
         <p className="mt-3 text-[13px] text-stone-400">
-          {lista.length} {lista.length === 1 ? "cliente" : "clientes"} · {filas.length}{" "}
-          {filas.length === 1 ? "orden" : "órdenes"}
+          {lista.length} {lista.length === 1 ? "cliente" : "clientes"} · {totalOrdenes}{" "}
+          {totalOrdenes === 1 ? "orden" : "órdenes"}
         </p>
       </div>
 

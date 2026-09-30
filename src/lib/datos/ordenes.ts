@@ -10,6 +10,7 @@ import type { LineaRepuesto } from "@/components/ordenes/repuestos-orden";
 import { BUCKET_EVIDENCIAS, BUCKET_FACTURAS, VIGENCIA_URL_INTERNA_SEGUNDOS } from "@/lib/almacenamiento";
 import { filtroVehiculos } from "@/lib/consultas";
 import {
+  armarComprobante,
   armarEvidencias,
   armarLineas,
   armarPagos,
@@ -202,4 +203,36 @@ export async function cargarDetalleOrden(
     bloqueada: orden.estado === "entregado" || orden.estado === "cancelado",
     contexto,
   };
+}
+
+// ---------------------------------------------------------------------
+// Comprobante imprimible (orden y garantía)
+// ---------------------------------------------------------------------
+
+async function consultarOrdenComprobante(supabase: ClienteServidor, id: string) {
+  const { data } = await supabase
+    .from("ordenes_servicio")
+    .select(
+      "*, vehiculos(placa, marca, modelo, anio, tipo_gas_sugerido, carga_estandar_gramos, clientes(nombre, telefono, documento))"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  return data;
+}
+
+export type OrdenComprobante = NonNullable<Awaited<ReturnType<typeof consultarOrdenComprobante>>>;
+
+/** La orden con sus cifras para imprimir; null si no existe. Las tres consultas van a la vez. */
+export async function cargarComprobanteOrden(supabase: ClienteServidor, id: string) {
+  const [orden, repuestos, pagos] = await Promise.all([
+    consultarOrdenComprobante(supabase, id),
+    supabase
+      .from("orden_repuestos")
+      .select("cantidad_usada, precio_unitario, inventario(nombre, tipo_unidad)")
+      .eq("orden_id", id)
+      .order("created_at"),
+    supabase.from("pagos_orden").select("monto, es_devolucion").eq("orden_id", id).eq("anulado", false),
+  ]);
+  if (!orden) return null;
+  return { orden, ...armarComprobante(orden, repuestos.data ?? [], pagos.data ?? []) };
 }

@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { esUuid } from "@/lib/ordenes";
 import { OrdenFormCrear } from "@/components/ordenes/orden-form-crear";
-import type { VehiculoResultado } from "@/app/(app)/ordenes/actions";
+import { buscarVehiculoParaOrden } from "@/lib/datos/vehiculos";
 
 export const metadata: Metadata = { title: "Nueva orden" };
 
@@ -16,25 +16,8 @@ export default async function NuevaOrdenPage({
   const { vehiculo: vehiculoId } = await searchParams;
 
   // ?vehiculo=<id> preselecciona el vehículo (desde su historial).
-  let vehiculoInicial: VehiculoResultado | null = null;
-  if (vehiculoId && esUuid(vehiculoId)) {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("vehiculos")
-      .select("id, placa, marca, modelo, anio, clientes(nombre)")
-      .eq("id", vehiculoId)
-      .maybeSingle();
-    if (data) {
-      vehiculoInicial = {
-        id: data.id,
-        placa: data.placa,
-        marca: data.marca,
-        modelo: data.modelo,
-        anio: data.anio,
-        cliente: data.clientes?.nombre ?? "",
-      };
-    }
-  }
+  const vehiculoInicial =
+    vehiculoId && esUuid(vehiculoId) ? await buscarVehiculoParaOrden(await createClient(), vehiculoId) : null;
 
   return (
     <section className="space-y-4">
