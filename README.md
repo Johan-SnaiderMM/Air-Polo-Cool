@@ -144,6 +144,19 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
 estrategia del service worker (con un entorno simulado). Las migraciones SQL se validaron con un Postgres local
 (PGlite): 50 comprobaciones de seguridad, saldos, anulaciones, cotizaciones y mantenimiento.
 
+## Tipos de la base de datos
+
+`src/types/database.ts` se mantiene a mano (con tipos de dominio como `Autor` o `Pertenencias`), pero **no puede
+desfasarse en silencio**: `src/types/database.contract.test.ts` levanta un Postgres en memoria (PGlite), ejecuta
+`polo_air_cool_fase1.sql` … `fase5.sql` (las últimas tres dos veces, para comprobar que se pueden re-ejecutar) y compara
+con los tipos: tablas, vistas, columnas, nulabilidad, columnas opcionales al insertar, enums y funciones RPC. Corre con
+`npm test` y en CI, sin secretos. Si añades una migración, actualiza `database.ts` hasta que esa prueba pase.
+
+- Las tablas de caja física de la fase 4 siguen en la base pero ya no se tipan (lista `SIN_TIPAR` en la prueba).
+- Para contrastar además con el proyecto **real** de Supabase (por si alguien cambió algo a mano en el panel):
+  `npx supabase login` y `npx supabase gen types typescript --project-id <ref>`, y comparar el resultado con
+  `database.ts`. Requiere tu sesión de Supabase, por eso no está automatizado.
+
 ## Pendiente conocido
 
 - El service worker no se pudo probar en un navegador real durante el desarrollo (el navegador embebido no admite
