@@ -22,6 +22,13 @@ const COAUTOR = "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>";
 
 const args = new Set(process.argv.slice(2));
 
+// Pausa manual: si existe el archivo .deploy-hold NO se publica nada (útil cuando el código
+// nuevo depende de una migración SQL que aún no se ha ejecutado en Supabase).
+if (existsSync(join(raiz, ".deploy-hold")) && !args.has("--force")) {
+  log("PAUSADO por .deploy-hold");
+  process.exit(0);
+}
+
 function log(msg) {
   mkdirSync(dirVercel, { recursive: true });
   appendFileSync(archivoLog, `[${new Date().toISOString()}] ${msg}\n`);

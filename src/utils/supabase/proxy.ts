@@ -7,6 +7,8 @@ const RUTAS_PROTEGIDAS = [
   "/ordenes",
   "/vehiculos",
   "/garantias",
+  "/cartera",
+  "/cotizaciones",
   "/inventario",
   "/caja-menor",
 ];

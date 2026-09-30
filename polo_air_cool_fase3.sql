@@ -287,7 +287,6 @@ revoke all on function public.obtener_orden_publica(text) from public, anon, aut
 grant execute on function public.obtener_orden_publica(text) to anon, authenticated, service_role;
 
 
--- =====================================================================
 -- 7. OPCIONAL · Migración de órdenes ya entregadas (EJECUTAR A CONSCIENCIA)
 --
 --    Las órdenes entregadas ANTES de existir esta tabla no tienen pagos, así que
@@ -296,17 +295,17 @@ grant execute on function public.obtener_orden_publica(text) to anon, authentica
 --    total de cada orden entregada sin pagos (medio 'otro', con nota de migración).
 --    Es idempotente. NO lo ejecutes si alguna de esas órdenes quedó debiendo dinero.
 -- =====================================================================
--- insert into public.pagos_orden (orden_id, fecha, monto, medio, notas, registrado_por)
--- select o.id,
---        (coalesce(o.fecha_entrega, o.created_at) at time zone 'America/Bogota')::date,
---        o.total_cobrado,
---        'otro',
---        'Migración: cobrada al entregar (anterior al módulo de pagos)',
---        null
--- from public.ordenes_servicio o
--- where o.estado = 'entregado'
---   and o.total_cobrado > 0
---   and not exists (select 1 from public.pagos_orden p where p.orden_id = o.id);
+    insert into public.pagos_orden (orden_id, fecha, monto, medio, notas, registrado_por)
+      select o.id,
+        (coalesce(o.fecha_entrega, o.created_at) at time zone 'America/Bogota')::date,
+        o.total_cobrado,
+        'otro',
+        'Migración: cobrada al entregar (anterior al módulo de pagos)',
+        null
+    from public.ordenes_servicio o
+    where o.estado = 'entregado'
+    and o.total_cobrado > 0
+    and not exists (select 1 from public.pagos_orden p where p.orden_id = o.id);
 
 -- =====================================================================
 -- FIN · Fase 3

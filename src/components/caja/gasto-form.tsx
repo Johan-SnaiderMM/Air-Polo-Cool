@@ -1,40 +1,61 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, CheckCircle2, Loader2, X } from "lucide-react";
-import { registrarGasto } from "@/app/(app)/caja-menor/actions";
-import { CATEGORIA_ICONO } from "@/components/caja/categoria-icono";
-import { CATEGORIAS, CATEGORIA_LABEL } from "@/lib/caja";
+import { Camera, CheckCircle2, CloudUpload, Loader2, Undo2, X } from "lucide-react";
+import { anularGasto } from "@/app/(app)/caja-menor/actions";
+import { PlantillasRapidas } from "@/components/caja/plantillas-rapidas";
+import { SelectorCategoria } from "@/components/caja/selector-categoria";
+import { SelectorOrden } from "@/components/caja/selector-orden";
+import { useAutor } from "@/components/sync/autor-provider";
+import { useSync, type ResultadoRegistro } from "@/components/sync/sync-provider";
+import { PosMonto } from "@/components/ui/pos-monto";
+import { SelectorFecha } from "@/components/ui/selector-fecha";
+import { CATEGORIA_LABEL, hoyBogota } from "@/lib/caja";
 import { comprimirImagen } from "@/lib/imagen";
+import { nuevoId, type Operacion } from "@/lib/offline/operaciones";
+import type { OrdenLocal } from "@/lib/offline/snapshot";
+import type { PlantillaGasto } from "@/lib/plantillas-gasto";
 import { formatearMoneda } from "@/lib/ordenes";
-import type { CategoriaGasto } from "@/types/database";
+import type { Autor, CategoriaGasto } from "@/types/database";
 
-type Mensaje = { ok: boolean; texto: string };
+type Mensaje =
+  | { tipo: "ok"; texto: string; deshacer?: { id: string; autor: Autor } }
+  | { tipo: "cola"; texto: string }
+  | { tipo: "error"; texto: string };
 
-const MAX_DIGITOS = 10; // numeric(12,2) admite hasta 9 999 999 999
-const miles = new Intl.NumberFormat("es-CO");
+function textoResultado(r: ResultadoRegistro, monto: number): Mensaje | null {
+  if (r.estado === "sincronizado") return { tipo: "ok", texto: `Gasto de ${formatearMoneda(monto)} registrado.` };
+  if (r.estado === "en_cola") {
+    return {
+      tipo: "cola",
+      texto: `Gasto de ${formatearMoneda(monto)} guardado en el teléfono. Se subirá solo al volver la conexión.`,
+    };
+  }
+  return { tipo: "error", texto: r.error };
+}
 
 /**
- * Registro express de gasto, pensado para caber en una sola pantalla móvil:
- * monto (display tipo POS) → categoría (cuadrícula compacta) → nota + recibo → registrar.
+ * Registro express de gasto (funciona sin conexión):
+ * monto POS → categoría → (fecha / orden / nota / recibo opcionales) → registrar.
+ * Los "Rápidos" registran un gasto rutinario con UN toque, con opción de deshacer.
  */
 export function GastoForm() {
+  const { registrar } = useSync();
+  const { autor } = useAutor();
   const inputFoto = useRef<HTMLInputElement>(null);
-  const [digitos, setDigitos] = useState(""); // solo dígitos: el formato se aplica al mostrar
+
+  const [digitos, setDigitos] = useState("");
   const [categoria, setCategoria] = useState<CategoriaGasto | null>(null);
   const [descripcion, setDescripcion] = useState("");
+  const [fecha, setFecha] = useState(hoyBogota);
+  const [orden, setOrden] = useState<OrdenLocal | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
   const [previa, setPrevia] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<Mensaje | null>(null);
   const [pendiente, iniciar] = useTransition();
 
-  const valor = Number(digitos || "0");
-  const listo = valor > 0 && categoria !== null;
-
-  function alCambiarMonto(e: React.ChangeEvent<HTMLInputElement>) {
-    const limpio = e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, MAX_DIGITOS);
-    setDigitos(limpio);
-  }
+  const monto = Number(digitos || "0");
+  const listo = monto > 0 && categoria !== null;
 
   function quitarFoto() {
     if (previa) URL.revokeObjectURL(previa);
@@ -51,6 +72,15 @@ export function GastoForm() {
     setPrevia(URL.createObjectURL(archivo));
   }
 
+  function limpiar() {
+    setDigitos("");
+    setCategoria(null);
+    setDescripcion("");
+    setOrden(null);
+    setFecha(hoyBogota());
+    quitarFoto();
+  }
+
   function enviar(e: React.FormEvent) {
     e.preventDefault();
     if (!listo || categoria === null) return;
@@ -58,36 +88,72 @@ export function GastoForm() {
 
     iniciar(async () => {
       try {
-        const datos = new FormData();
-        datos.set("monto", digitos);
-        datos.set("categoria", categoria);
-        datos.set("descripcion", descripcion);
-
+        let blob: Blob | null = null;
+        let extension: "webp" | "jpg" | undefined;
         if (foto) {
-          // Compresión en el navegador antes de subir (máx. 1280 px, ~300 KB).
-          const { blob, extension } = await comprimirImagen(foto);
-          datos.set(
-            "comprobante",
-            new File([blob], `recibo.${extension}`, { type: blob.type })
-          );
+          // Compresión en el navegador antes de guardar/subir (máx. 1280 px, ~300 KB).
+          const c = await comprimirImagen(foto);
+          blob = c.blob;
+          extension = c.extension;
         }
-
-        const r = await registrarGasto(datos);
-        if (r.ok) {
-          setMensaje({ ok: true, texto: `Gasto de ${formatearMoneda(valor)} registrado.` });
-          setDigitos("");
-          setCategoria(null);
-          setDescripcion("");
-          quitarFoto();
-        } else {
-          setMensaje({ ok: false, texto: r.error });
-        }
+        const id = nuevoId();
+        const op: Operacion = {
+          tipo: "gasto.crear",
+          conArchivo: blob !== null,
+          extension,
+          datos: {
+            id,
+            fecha,
+            monto,
+            categoria,
+            descripcion: descripcion.trim() || null,
+            orden_id: orden?.id ?? null,
+            autor,
+          },
+        };
+        const r = await registrar(op, blob);
+        const m = textoResultado(r, monto);
+        if (r.estado !== "error") limpiar();
+        setMensaje(m);
       } catch (err) {
         setMensaje({
-          ok: false,
+          tipo: "error",
           texto: err instanceof Error ? err.message : "No se pudo registrar el gasto.",
         });
       }
+    });
+  }
+
+  /** Plantilla: un toque = gasto registrado (fecha de hoy, autor actual). */
+  function usarPlantilla(p: PlantillaGasto) {
+    setMensaje(null);
+    iniciar(async () => {
+      const id = nuevoId();
+      const r = await registrar({
+        tipo: "gasto.crear",
+        datos: {
+          id,
+          fecha: hoyBogota(),
+          monto: p.monto,
+          categoria: p.categoria,
+          descripcion: p.descripcion,
+          orden_id: null,
+          autor,
+        },
+      });
+      const m = textoResultado(r, p.monto);
+      setMensaje(m && m.tipo === "ok" ? { ...m, deshacer: { id, autor } } : m);
+    });
+  }
+
+  function deshacer(id: string, autorUndo: Autor) {
+    iniciar(async () => {
+      const r = await anularGasto({ id, motivo: "Deshecho: toque accidental de plantilla", autor: autorUndo });
+      setMensaje(
+        r.ok
+          ? { tipo: "ok", texto: "Gasto deshecho (queda anulado en el historial)." }
+          : { tipo: "error", texto: r.error }
+      );
     });
   }
 
@@ -96,61 +162,16 @@ export function GastoForm() {
       onSubmit={enviar}
       className="space-y-3.5 rounded-2xl border border-stone-200/70 bg-white p-4 shadow-soft"
     >
-      {/* 1) Monto: display financiero (símbolo integrado, cifras tabulares) */}
-      <div>
-        <label
-          htmlFor="monto"
-          className="mb-1.5 block text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase"
-        >
-          Monto
-        </label>
-        <div className="flex items-baseline gap-3 rounded-xl border border-stone-200/80 bg-stone-50/70 px-4 py-3 transition-colors focus-within:border-stone-400 focus-within:bg-white">
-          <span className="font-mono text-2xl text-stone-400" aria-hidden>
-            $
-          </span>
-          <input
-            id="monto"
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="0"
-            value={digitos ? miles.format(Number(digitos)) : ""}
-            onChange={alCambiarMonto}
-            className="w-full min-w-0 bg-transparent text-right font-mono text-4xl leading-none tracking-tight tabular-nums outline-none placeholder:text-stone-300"
-          />
-        </div>
-      </div>
+      <PlantillasRapidas
+        onUsar={usarPlantilla}
+        deshabilitado={pendiente}
+        actual={listo && categoria ? { monto, categoria, descripcion } : null}
+      />
 
-      {/* 2) Categoría: 3 columnas compactas (icono + nombre) */}
-      <fieldset>
-        <legend className="sr-only">Categoría</legend>
-        <div className="grid grid-cols-6 gap-2">
-          {CATEGORIAS.map((c, i) => {
-            const Icono = CATEGORIA_ICONO[c];
-            const activa = categoria === c;
-            return (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategoria(c)}
-                aria-pressed={activa}
-                className={`flex h-[60px] flex-col items-center justify-center gap-1 rounded-xl border-[1.5px] text-[12px] transition-colors ${
-                  i < 3 ? "col-span-2" : "col-span-3"
-                } ${
-                  activa
-                    ? "border-ink bg-stone-100 font-medium text-ink"
-                    : "border-stone-200/80 bg-white text-stone-500 active:bg-stone-50"
-                }`}
-              >
-                <Icono className="size-[18px]" strokeWidth={1.5} aria-hidden />
-                {CATEGORIA_LABEL[c]}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      <PosMonto id="monto" etiqueta="Monto" digitos={digitos} onChange={setDigitos} />
 
-      {/* Nota (baja fricción) + recibo, en una sola fila */}
+      <SelectorCategoria value={categoria} onChange={setCategoria} />
+
       <div className="flex items-stretch gap-2">
         <input
           id="descripcion"
@@ -175,11 +196,7 @@ export function GastoForm() {
           <div className="relative size-12 shrink-0">
             {/* Vista previa local (blob:): next/image no aplica. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previa}
-              alt="Recibo adjunto"
-              className="size-12 rounded-xl border border-stone-200/80 object-cover"
-            />
+            <img src={previa} alt="Recibo adjunto" className="size-12 rounded-xl border border-stone-200/80 object-cover" />
             <button
               type="button"
               onClick={quitarFoto}
@@ -201,26 +218,44 @@ export function GastoForm() {
         )}
       </div>
 
-      {/* 3) Registrar: azul de marca; deshabilitado = gris plano (no "pastel") */}
+      <div className="space-y-2.5">
+        <SelectorFecha value={fecha} onChange={setFecha} />
+        <SelectorOrden value={orden} onChange={setOrden} />
+      </div>
+
       <button
         type="submit"
         disabled={!listo || pendiente}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent-600 text-base font-medium text-white transition-colors hover:bg-accent-700 active:bg-accent-700 disabled:bg-stone-200 disabled:text-stone-400"
       >
         {pendiente && <Loader2 className="size-5 animate-spin" aria-hidden />}
-        {pendiente ? "Guardando…" : "Registrar gasto"}
+        {pendiente ? "Guardando…" : categoria ? `Registrar · ${CATEGORIA_LABEL[categoria]}` : "Registrar gasto"}
       </button>
 
       {mensaje && (
-        <p
-          role={mensaje.ok ? "status" : "alert"}
+        <div
+          role={mensaje.tipo === "error" ? "alert" : "status"}
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-            mensaje.ok ? "bg-sage-50 text-sage-800" : "bg-brick-50 text-brick-700"
+            mensaje.tipo === "error"
+              ? "bg-brick-50 text-brick-700"
+              : mensaje.tipo === "cola"
+                ? "bg-ochre-50 text-ochre-800"
+                : "bg-sage-50 text-sage-800"
           }`}
         >
-          {mensaje.ok && <CheckCircle2 className="size-4 shrink-0" aria-hidden />}
-          {mensaje.texto}
-        </p>
+          {mensaje.tipo === "ok" && <CheckCircle2 className="size-4 shrink-0" aria-hidden />}
+          {mensaje.tipo === "cola" && <CloudUpload className="size-4 shrink-0" aria-hidden />}
+          <span className="flex-1">{mensaje.texto}</span>
+          {mensaje.tipo === "ok" && mensaje.deshacer && (
+            <button
+              type="button"
+              onClick={() => mensaje.deshacer && deshacer(mensaje.deshacer.id, mensaje.deshacer.autor)}
+              className="flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[13px] font-medium underline underline-offset-2"
+            >
+              <Undo2 className="size-3.5" aria-hidden /> Deshacer
+            </button>
+          )}
+        </div>
       )}
     </form>
   );

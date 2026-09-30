@@ -2,19 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, CalendarClock, ChevronRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { ListaMantenimientos } from "@/components/garantias/lista-mantenimientos";
 import { enlaceWhatsApp, mensajeGarantia } from "@/lib/whatsapp";
 import { formatearFechaDate } from "@/lib/ordenes";
 import type { SemaforoGarantia, Views } from "@/types/database";
 
 export const metadata: Metadata = { title: "Garantías" };
 
-type Filtro = SemaforoGarantia | "todas";
+type Filtro = SemaforoGarantia | "todas" | "mantenimiento";
 
 const FILTROS: { id: Filtro; label: string }[] = [
   { id: "amarillo", label: "Por vencer" },
   { id: "verde", label: "Vigentes" },
   { id: "rojo", label: "Vencidas" },
   { id: "todas", label: "Todas" },
+  { id: "mantenimiento", label: "Mantenimiento" },
 ];
 
 const ESTILO: Record<SemaforoGarantia, { punto: string; texto: string; etiqueta: string }> = {
@@ -34,7 +36,8 @@ export default async function GarantiasPage({
   searchParams: Promise<{ semaforo?: string }>;
 }) {
   const { semaforo } = await searchParams;
-  const filtro: Filtro = semaforo === "todas" ? "todas" : esSemaforo(semaforo) ? semaforo : "amarillo";
+  const filtro: Filtro =
+    semaforo === "todas" || semaforo === "mantenimiento" ? semaforo : esSemaforo(semaforo) ? semaforo : "amarillo";
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -43,6 +46,15 @@ export default async function GarantiasPage({
     .order("fecha_fin_garantia", { ascending: true })
     .limit(500);
 
+  // Mantenimientos preventivos (Fase 4). Si el SQL aún no está, la lista queda vacía sin romper la página.
+  const { data: mant } = await supabase
+    .from("v_mantenimientos")
+    .select("*")
+    .order("proximo_mantenimiento", { ascending: true })
+    .limit(300);
+  const mantenimientos = mant ?? [];
+  const mantPendientes = mantenimientos.filter((m) => m.estado_mantenimiento !== "lejano").length;
+
   const todas = (data ?? []).filter((g: Fila) => g.orden_id && g.semaforo);
   const cuenta = (s: SemaforoGarantia) => todas.filter((g) => g.semaforo === s).length;
   const conteos: Record<Filtro, number> = {
@@ -50,6 +62,7 @@ export default async function GarantiasPage({
     verde: cuenta("verde"),
     rojo: cuenta("rojo"),
     todas: todas.length,
+    mantenimiento: mantPendientes,
   };
 
   let visibles = filtro === "todas" ? todas : todas.filter((g) => g.semaforo === filtro);
@@ -66,7 +79,7 @@ export default async function GarantiasPage({
         >
           <ArrowLeft className="size-6" aria-hidden />
         </Link>
-        <h2 className="font-serif text-[26px] leading-tight font-medium tracking-tight">Garantías</h2>
+        <h2 className="font-serif text-[26px] leading-tight font-medium tracking-tight">Garantías y mantenimiento</h2>
       </div>
 
       <nav
@@ -97,6 +110,10 @@ export default async function GarantiasPage({
         ))}
       </nav>
 
+      {filtro === "mantenimiento" ? (
+        <ListaMantenimientos filas={mantenimientos} />
+      ) : (
+        <>
       {error && (
         <p role="alert" className="rounded-lg bg-brick-50 px-3 py-2 text-sm text-brick-700">
           No se pudieron cargar las garantías: {error.message}
@@ -180,6 +197,8 @@ export default async function GarantiasPage({
 
       {todas.length === 500 && (
         <p className="text-center text-xs text-stone-500">Mostrando las primeras 500 garantías.</p>
+      )}
+        </>
       )}
     </section>
   );

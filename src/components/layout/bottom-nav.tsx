@@ -43,7 +43,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200/70 bg-stone-50/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200/70 bg-stone-50/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-md print:hidden"
     >
       <ul className="mx-auto grid h-16 w-full max-w-2xl grid-cols-5">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {

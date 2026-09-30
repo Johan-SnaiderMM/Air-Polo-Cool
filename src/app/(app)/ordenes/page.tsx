@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { filtroVehiculos } from "@/lib/consultas";
 import { ESTADOS_FILTRO, ESTADO_LABEL, esEstado } from "@/lib/ordenes";
 import { OrdenCard, type OrdenResumen } from "@/components/ordenes/orden-card";
+import { OrdenesPendientes } from "@/components/sync/ordenes-pendientes";
 import { SearchBar } from "@/components/ordenes/search-bar";
 
 export const metadata: Metadata = { title: "Órdenes" };
@@ -65,6 +66,16 @@ export default async function OrdenesPage({
     ordenes = (data ?? []) as OrdenResumen[];
   }
 
+  // Saldos por cobrar de las órdenes listadas (una sola consulta acotada, sin ids en la URL).
+  const { data: saldos } = await supabase
+    .from("v_saldo_ordenes")
+    .select("orden_id, saldo")
+    .gt("saldo", 0)
+    .limit(1000);
+  const saldoDe = new Map(
+    (saldos ?? []).flatMap((x) => (x.orden_id && x.saldo !== null ? [[x.orden_id, x.saldo] as const] : []))
+  );
+
   const chips: { valor?: string; label: string }[] = [
     { label: "Todos" },
     ...ESTADOS_FILTRO.map((e) => ({ valor: e, label: ESTADO_LABEL[e] })),
@@ -72,6 +83,23 @@ export default async function OrdenesPage({
 
   return (
     <section className="space-y-4">
+      <div className="grid grid-cols-2 gap-2">
+        <span
+          aria-current="page"
+          className="flex h-11 items-center justify-center rounded-xl bg-ink text-sm font-medium text-white"
+        >
+          Órdenes
+        </span>
+        <Link
+          href="/cotizaciones"
+          className="flex h-11 items-center justify-center rounded-xl border border-stone-300/70 bg-white text-sm font-medium text-stone-700 active:bg-stone-100"
+        >
+          Cotizaciones
+        </Link>
+      </div>
+
+      <OrdenesPendientes />
+
       <SearchBar inicial={q} ruta="/ordenes" extra={{ estado }} />
 
       <nav
@@ -115,7 +143,7 @@ export default async function OrdenesPage({
       <ul className="space-y-3">
         {ordenes.map((orden) => (
           <li key={orden.id}>
-            <OrdenCard orden={orden} />
+            <OrdenCard orden={orden} saldo={saldoDe.get(orden.id) ?? 0} />
           </li>
         ))}
       </ul>

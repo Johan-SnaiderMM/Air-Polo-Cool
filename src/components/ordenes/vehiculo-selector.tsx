@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Car, Loader2, Plus, Search, X } from "lucide-react";
-import {
-  buscarVehiculos,
-  type VehiculoResultado,
-} from "@/app/(app)/ordenes/actions";
+import { Car, CloudOff, Loader2, Plus, Search, X } from "lucide-react";
+import { buscarVehiculos, type VehiculoResultado } from "@/app/(app)/ordenes/actions";
+import { useSync } from "@/components/sync/sync-provider";
+import { buscarVehiculosLocal } from "@/lib/offline/snapshot";
 import { normalizarPlaca } from "@/lib/ordenes";
 
 const INPUT =
@@ -14,14 +13,20 @@ const LABEL = "mb-1 block text-sm font-medium";
 
 type Modo = "buscar" | "nuevo";
 
-type NuevoVehiculo = {
+export type NuevoVehiculo = {
   cliente_nombre: string;
   cliente_telefono: string;
   placa: string;
   marca: string;
+  /** En el taller: la LÍNEA del vehículo (Spark GT, Duster…). */
   modelo: string;
+  /** En el taller: el MODELO (año de fabricación). */
   anio: string;
 };
+
+export type SeleccionVehiculo =
+  | { modo: "existente"; vehiculo: VehiculoResultado }
+  | { modo: "nuevo"; datos: NuevoVehiculo };
 
 const NUEVO_VACIO: NuevoVehiculo = {
   cliente_nombre: "",
@@ -34,23 +39,41 @@ const NUEVO_VACIO: NuevoVehiculo = {
 
 /**
  * Selector de vehículo por placa/cliente, con alta rápida de cliente + vehículo.
- * Emite sus valores como inputs ocultos/controlados dentro del <form> padre.
+ * Es un componente CONTROLADO: informa la selección al padre con `onChange`
+ * (sin inputs ocultos), de modo que sirva tanto para órdenes offline como para cotizaciones.
+ * Sin conexión busca en el snapshot local del teléfono.
  */
-export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResultado | null }) {
+export function VehiculoSelector({
+  inicial = null,
+  onChange,
+}: {
+  inicial?: VehiculoResultado | null;
+  onChange: (seleccion: SeleccionVehiculo | null) => void;
+}) {
+  const { online, snapshot } = useSync();
   const [modo, setModo] = useState<Modo>("buscar");
   const [consulta, setConsulta] = useState("");
   const [resultados, setResultados] = useState<VehiculoResultado[]>([]);
   const [buscando, setBuscando] = useState(false);
+  const [usandoLocal, setUsandoLocal] = useState(false);
   const [seleccionado, setSeleccionado] = useState<VehiculoResultado | null>(inicial);
   const [nuevo, setNuevo] = useState<NuevoVehiculo>(NUEVO_VACIO);
   const secuencia = useRef(0);
+  const inicialEmitido = useRef(false);
+
+  // Informa el vehículo preseleccionado (p. ej. desde el historial) una sola vez.
+  useEffect(() => {
+    if (inicial && !inicialEmitido.current) {
+      inicialEmitido.current = true;
+      onChange({ modo: "existente", vehiculo: inicial });
+    }
+  }, [inicial, onChange]);
 
   useEffect(() => {
     const q = consulta.trim();
     const id = ++secuencia.current;
 
     if (q.length < 2) {
-      // Se difiere para no actualizar estado de forma síncrona dentro del efecto.
       const t = setTimeout(() => {
         if (id === secuencia.current) {
           setResultados([]);
@@ -60,38 +83,76 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
       return () => clearTimeout(t);
     }
 
+    const local = () =>
+      buscarVehiculosLocal(snapshot, q).map<VehiculoResultado>((v) => ({
+        id: v.id,
+        placa: v.placa,
+        marca: v.marca,
+        modelo: v.modelo,
+        anio: v.anio,
+        cliente: v.cliente,
+      }));
+
     const timer = setTimeout(async () => {
       setBuscando(true);
       try {
-        const data = await buscarVehiculos(q);
-        if (id === secuencia.current) setResultados(data);
+        if (!online) {
+          if (id === secuencia.current) {
+            setResultados(local());
+            setUsandoLocal(true);
+          }
+          return;
+        }
+        try {
+          const data = await buscarVehiculos(q);
+          if (id === secuencia.current) {
+            setResultados(data);
+            setUsandoLocal(false);
+          }
+        } catch {
+          if (id === secuencia.current) {
+            setResultados(local());
+            setUsandoLocal(true);
+          }
+        }
       } finally {
         if (id === secuencia.current) setBuscando(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [consulta]);
+  }, [consulta, online, snapshot]);
 
-  function campo<K extends keyof NuevoVehiculo>(k: K, valor: string) {
-    setNuevo((prev) => ({ ...prev, [k]: valor }));
+  function elegir(v: VehiculoResultado | null) {
+    setSeleccionado(v);
+    onChange(v ? { modo: "existente", vehiculo: v } : null);
+  }
+
+  function actualizarNuevo(cambio: Partial<NuevoVehiculo>) {
+    const siguiente = { ...nuevo, ...cambio };
+    setNuevo(siguiente);
+    onChange({ modo: "nuevo", datos: siguiente });
   }
 
   function registrarNuevo() {
-    setNuevo({ ...NUEVO_VACIO, placa: normalizarPlaca(consulta).slice(0, 8) });
+    const datos = { ...NUEVO_VACIO, placa: normalizarPlaca(consulta).slice(0, 8) };
+    setNuevo(datos);
     setModo("nuevo");
+    onChange({ modo: "nuevo", datos });
+  }
+
+  function volverABuscar() {
+    setModo("buscar");
+    onChange(null);
   }
 
   // ---------- Vehículo ya seleccionado ----------
   if (seleccionado) {
     return (
       <div className="rounded-2xl border border-stone-300 bg-stone-100 p-4">
-        <input type="hidden" name="vehiculo_id" value={seleccionado.id} />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-mono text-xl font-semibold tracking-wider">
-              {seleccionado.placa}
-            </p>
+            <p className="font-mono text-xl font-semibold tracking-wider">{seleccionado.placa}</p>
             <p className="truncate text-base">
               {seleccionado.marca} {seleccionado.modelo}
               {seleccionado.anio ? ` ${seleccionado.anio}` : ""}
@@ -100,8 +161,8 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
           </div>
           <button
             type="button"
-            onClick={() => setSeleccionado(null)}
-            className="flex h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-ink active:bg-stone-100"
+            onClick={() => elegir(null)}
+            className="flex h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-ink active:bg-stone-200/70"
           >
             <X className="size-4" aria-hidden /> Cambiar
           </button>
@@ -114,14 +175,13 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
   if (modo === "nuevo") {
     return (
       <div className="space-y-4 rounded-2xl border border-stone-200/70 bg-white p-4">
-        <input type="hidden" name="modo_vehiculo" value="nuevo" />
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-2 font-semibold">
             <Car className="size-5" aria-hidden /> Vehículo y cliente nuevos
           </p>
           <button
             type="button"
-            onClick={() => setModo("buscar")}
+            onClick={volverABuscar}
             className="h-11 rounded-lg px-3 text-sm font-semibold text-ink active:bg-stone-100"
           >
             Volver a buscar
@@ -134,11 +194,9 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
           </label>
           <input
             id="cliente_nombre"
-            name="cliente_nombre"
             value={nuevo.cliente_nombre}
-            onChange={(e) => campo("cliente_nombre", e.target.value)}
+            onChange={(e) => actualizarNuevo({ cliente_nombre: e.target.value })}
             autoComplete="off"
-            required
             className={INPUT}
           />
         </div>
@@ -149,19 +207,15 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
           </label>
           <input
             id="cliente_telefono"
-            name="cliente_telefono"
             type="tel"
             inputMode="tel"
             placeholder="300 123 4567 o +57…"
             value={nuevo.cliente_telefono}
-            onChange={(e) => campo("cliente_telefono", e.target.value)}
+            onChange={(e) => actualizarNuevo({ cliente_telefono: e.target.value })}
             autoComplete="off"
-            required
             className={INPUT}
           />
-          <p className="mt-1 text-xs text-stone-500">
-            Sin indicativo se asume Colombia (+57).
-          </p>
+          <p className="mt-1 text-xs text-stone-500">Sin indicativo se asume Colombia (+57).</p>
         </div>
 
         <div>
@@ -170,13 +224,11 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
           </label>
           <input
             id="placa"
-            name="placa"
             value={nuevo.placa}
-            onChange={(e) => campo("placa", normalizarPlaca(e.target.value).slice(0, 8))}
+            onChange={(e) => actualizarNuevo({ placa: normalizarPlaca(e.target.value).slice(0, 8) })}
             autoCapitalize="characters"
             autoComplete="off"
             maxLength={8}
-            required
             className={`${INPUT} font-mono text-lg tracking-widest uppercase`}
           />
         </div>
@@ -188,11 +240,9 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
             </label>
             <input
               id="marca"
-              name="marca"
               value={nuevo.marca}
-              onChange={(e) => campo("marca", e.target.value)}
+              onChange={(e) => actualizarNuevo({ marca: e.target.value })}
               autoComplete="off"
-              required
               className={INPUT}
             />
           </div>
@@ -202,12 +252,10 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
             </label>
             <input
               id="modelo"
-              name="modelo"
               placeholder="Ej: Spark GT"
               value={nuevo.modelo}
-              onChange={(e) => campo("modelo", e.target.value)}
+              onChange={(e) => actualizarNuevo({ modelo: e.target.value })}
               autoComplete="off"
-              required
               className={INPUT}
             />
           </div>
@@ -219,14 +267,13 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
           </label>
           <input
             id="anio"
-            name="anio"
             placeholder="Ej: 2018"
             type="number"
             inputMode="numeric"
             min={1950}
             max={2100}
             value={nuevo.anio}
-            onChange={(e) => campo("anio", e.target.value)}
+            onChange={(e) => actualizarNuevo({ anio: e.target.value })}
             className={INPUT}
           />
         </div>
@@ -239,10 +286,7 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search
-          className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-stone-400"
-          aria-hidden
-        />
+        <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-stone-400" aria-hidden />
         <input
           type="search"
           value={consulta}
@@ -253,12 +297,16 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
           className={`${INPUT} pl-12 [&::-webkit-search-cancel-button]:hidden`}
         />
         {buscando && (
-          <Loader2
-            className="absolute top-1/2 right-4 size-5 -translate-y-1/2 animate-spin text-stone-400"
-            aria-hidden
-          />
+          <Loader2 className="absolute top-1/2 right-4 size-5 -translate-y-1/2 animate-spin text-stone-400" aria-hidden />
         )}
       </div>
+
+      {usandoLocal && q.length >= 2 && (
+        <p className="flex items-center gap-1.5 text-[12px] text-ochre-700">
+          <CloudOff className="size-3.5" aria-hidden /> Buscando en los datos guardados en el teléfono
+          {snapshot ? "" : " (aún no hay datos descargados)"}.
+        </p>
+      )}
 
       {resultados.length > 0 && (
         <ul className="divide-y divide-stone-200/70 overflow-hidden rounded-xl border border-stone-200/70 bg-white">
@@ -266,10 +314,10 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
             <li key={v.id}>
               <button
                 type="button"
-                onClick={() => setSeleccionado(v)}
+                onClick={() => elegir(v)}
                 className="flex min-h-16 w-full items-center gap-3 px-4 py-2 text-left active:bg-stone-100"
               >
-                <span className="rounded-md border border-stone-300/70 bg-stone-100 px-2 py-1 font-mono text-sm font-semibold tracking-wider text-ink">
+                <span className="rounded-md border border-stone-300/70 bg-stone-100 px-2 py-1 font-mono text-sm font-semibold tracking-wider">
                   {v.placa}
                 </span>
                 <span className="min-w-0">
@@ -277,9 +325,7 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
                     {v.marca} {v.modelo}
                     {v.anio ? ` ${v.anio}` : ""}
                   </span>
-                  <span className="block truncate text-sm text-stone-600">
-                    {v.cliente}
-                  </span>
+                  <span className="block truncate text-sm text-stone-600">{v.cliente}</span>
                 </span>
               </button>
             </li>
@@ -288,9 +334,7 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
       )}
 
       {q.length >= 2 && !buscando && resultados.length === 0 && (
-        <p className="text-sm text-stone-600">
-          No se encontró ningún vehículo con “{q}”.
-        </p>
+        <p className="text-sm text-stone-600">No se encontró ningún vehículo con “{q}”.</p>
       )}
 
       <button

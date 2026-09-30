@@ -16,6 +16,7 @@ export type ItemBuscado = {
   tipo_unidad: TipoUnidad;
   stock_actual: number;
   precio_venta: number;
+  costo_compra: number;
 };
 
 const SESION_EXPIRADA: AccionResultado = {
@@ -43,7 +44,7 @@ export async function buscarInventario(consulta: string): Promise<ItemBuscado[]>
 
   const { data } = await supabase
     .from("inventario")
-    .select("id, codigo, nombre, tipo_unidad, stock_actual, precio_venta")
+    .select("id, codigo, nombre, tipo_unidad, stock_actual, precio_venta, costo_compra")
     .or(`codigo.ilike.%${q}%,nombre.ilike.%${q}%`)
     .order("nombre")
     .limit(8);

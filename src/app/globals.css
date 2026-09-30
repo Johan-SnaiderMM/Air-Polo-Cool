@@ -102,3 +102,25 @@ body {
 ::selection {
   background: var(--color-accent-100);
 }
+
+/* Vistas imprimibles (comprobantes / PDF vía "Guardar como PDF" del navegador). */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .no-imprimir {
+    display: none !important;
+  }
+  .evitar-corte {
+    break-inside: avoid;
+  }
+}

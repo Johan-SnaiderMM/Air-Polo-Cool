@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Camera,
   FileText,
@@ -11,7 +10,8 @@ import {
   Thermometer,
   type LucideIcon,
 } from "lucide-react";
-import { subirEvidencia } from "@/app/(app)/ordenes/actions";
+import { useSync } from "@/components/sync/sync-provider";
+import { nuevoId } from "@/lib/offline/operaciones";
 import { comprimirImagen } from "@/lib/imagen";
 import { TIPO_EVIDENCIA_LABEL } from "@/lib/ordenes";
 import type { TipoEvidencia } from "@/types/database";
@@ -28,7 +28,7 @@ const BOTONES: { tipo: TipoEvidencia; icono: LucideIcon }[] = [
 type Mensaje = { tipo: "ok" | "error"; texto: string };
 
 export function CapturaFotos({ ordenId }: { ordenId: string }) {
-  const router = useRouter();
+  const { registrar } = useSync();
   const inputRef = useRef<HTMLInputElement>(null);
   const tipoActivo = useRef<TipoEvidencia>("ingreso");
   const [subiendo, setSubiendo] = useState<TipoEvidencia | null>(null);
@@ -51,23 +51,25 @@ export function CapturaFotos({ ordenId }: { ordenId: string }) {
 
     try {
       const { blob, extension } = await comprimirImagen(archivo);
-      const datos = new FormData();
-      datos.set("orden_id", ordenId);
-      datos.set("tipo", tipo);
-      datos.set(
-        "archivo",
-        new File([blob], `foto.${extension}`, { type: blob.type })
+      // Va por la cola de sincronización: sin red se guarda en el teléfono y sube después.
+      const r = await registrar(
+        {
+          tipo: "evidencia.subir",
+          conArchivo: true,
+          datos: { id: nuevoId(), orden_id: ordenId, tipo, extension, notas: null },
+        },
+        blob
       );
-
-      const resultado = await subirEvidencia(datos);
-      if (resultado.ok) {
+      if (r.estado === "error") {
+        setMensaje({ tipo: "error", texto: r.error });
+      } else {
         setMensaje({
           tipo: "ok",
-          texto: `${TIPO_EVIDENCIA_LABEL[tipo]} guardada (${Math.round(blob.size / 1024)} KB).`,
+          texto:
+            r.estado === "sincronizado"
+              ? `${TIPO_EVIDENCIA_LABEL[tipo]} guardada (${Math.round(blob.size / 1024)} KB).`
+              : `${TIPO_EVIDENCIA_LABEL[tipo]} guardada en el teléfono; se subirá al volver la conexión.`,
         });
-        router.refresh();
-      } else {
-        setMensaje({ tipo: "error", texto: resultado.error });
       }
     } catch (err) {
       setMensaje({

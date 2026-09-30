@@ -11,6 +11,6 @@ export const config = {
   matcher: [
     // Todo excepto estáticos, íconos PWA, manifest y el portal público /orden/[token]
     // (no pasa por Supabase Auth; "orden/" con barra no captura "/ordenes").
-    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|orden/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw.js|offline.html|icons/|logo.png|orden/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

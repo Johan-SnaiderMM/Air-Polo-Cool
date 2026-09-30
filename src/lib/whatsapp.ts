@@ -99,3 +99,48 @@ export function mensajeGarantia(d: {
       : `vence en ${d.diasRestantes} ${d.diasRestantes === 1 ? "día" : "días"} (${d.fechaFin})`;
   return `Hola ${nombre}, te recordamos que la garantía del servicio de tu vehículo (placa ${d.placa}) en Polo Air Cool ${cuando}. Si notas algo con el aire acondicionado, escríbenos para revisarlo mientras la garantía siga vigente. ❄️`;
 }
+
+/** Recordatorio de mantenimiento preventivo (formal, sin enlace). */
+export function mensajeMantenimiento(d: {
+  cliente: string;
+  placa: string;
+  /** "Chevrolet Spark GT 2018" */
+  vehiculo: string;
+}): string {
+  const nombre = primerNombre(d.cliente);
+  return `Hola ${nombre}, desde Polo Air Cool te recordamos que tu vehículo ${d.vehiculo} (placa ${d.placa}) está listo para su revisión preventiva del aire acondicionado. Escríbenos y agendamos tu cita. ❄️`;
+}
+
+/** Recordatorio amable de saldo pendiente. */
+export function mensajeCobro(d: {
+  cliente: string;
+  placa: string;
+  saldo: number;
+}): string {
+  const nombre = primerNombre(d.cliente);
+  return `Hola ${nombre}, desde Polo Air Cool te recordamos que el servicio de tu vehículo (placa ${d.placa}) tiene un saldo pendiente de ${moneda.format(d.saldo)}. Puedes pagarlo en efectivo o por transferencia; cualquier duda, escríbenos. Gracias.`;
+}
+
+/** Resumen de una cotización para compartir por WhatsApp. */
+export function mensajeCotizacion(d: {
+  cliente: string;
+  vehiculo: string;
+  placa: string;
+  manoObra: number;
+  items: { descripcion: string; cantidad: number; precio_unitario: number }[];
+  total: number;
+  /** Fecha ya formateada, ej. "12 oct 2026". */
+  vigenteHasta: string;
+}): string {
+  const nombre = primerNombre(d.cliente);
+  const lineas = [
+    `Hola ${nombre}, esta es tu cotización de Polo Air Cool para ${d.vehiculo} (placa ${d.placa}):`,
+    "",
+    ...d.items.map(
+      (i) => `• ${i.cantidad} × ${i.descripcion}: ${moneda.format(Math.round(i.cantidad * i.precio_unitario))}`
+    ),
+  ];
+  if (d.manoObra > 0) lineas.push(`• Mano de obra: ${moneda.format(d.manoObra)}`);
+  lineas.push("", `Total: ${moneda.format(d.total)}`, `Válida hasta el ${d.vigenteHasta}.`, "", "Si estás de acuerdo, respóndenos y agendamos el trabajo. ❄️");
+  return lineas.join("\n");
+}

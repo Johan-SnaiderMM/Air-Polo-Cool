@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, Package, Plus, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, BellRing, ChevronRight, MessageCircle, Package, Plus, ShieldCheck } from "lucide-react";
 import { OrdenCard, type OrdenResumen } from "@/components/ordenes/orden-card";
 import { Dinero } from "@/components/ui/dinero";
 import { formatearCantidad } from "@/lib/inventario";
@@ -22,6 +22,23 @@ export type InicioDatos = {
     stock_actual: number | null;
   }[];
   utilidadMes: number;
+  /** Efectivo disponible en la caja física (null si la Fase 4 aún no está en la base). */
+  saldoCaja: number | null;
+  /** Cuentas por cobrar (null si la Fase 3 aún no está en la base). */
+  porCobrar: { total: number; ordenes: number } | null;
+  mantenimientos: {
+    vencidos: number;
+    proximos: number;
+    lista: {
+      ordenId: string;
+      placa: string;
+      cliente: string;
+      vehiculo: string;
+      dias: number;
+      /** Enlace wa.me con el recordatorio formal ya redactado. */
+      whatsappHref: string | null;
+    }[];
+  };
 };
 
 /** Etiqueta pequeña sobre cada bloque: jerarquía editorial sin usar color. */
@@ -113,6 +130,40 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
         </div>
       </div>
 
+      {/* ---------- Caja y cartera ---------- */}
+      {(datos.saldoCaja !== null || datos.porCobrar !== null) && (
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href="/caja-menor?vista=caja"
+            className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-soft transition-colors active:bg-stone-50"
+          >
+            <p className="flex items-center justify-between text-[12px] text-stone-500">
+              En caja
+              <ArrowUpRight className="size-3.5" aria-hidden />
+            </p>
+            <p className={`mt-1 text-[18px] ${(datos.saldoCaja ?? 0) < 0 ? "text-brick-600" : ""}`}>
+              <Dinero valor={datos.saldoCaja ?? 0} />
+            </p>
+            <p className="mt-1 text-[12px] text-stone-500">Efectivo disponible</p>
+          </Link>
+          <Link
+            href="/cartera"
+            className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-soft transition-colors active:bg-stone-50"
+          >
+            <p className="flex items-center justify-between text-[12px] text-stone-500">
+              Por cobrar
+              <ArrowUpRight className="size-3.5" aria-hidden />
+            </p>
+            <p className={`mt-1 text-[18px] ${(datos.porCobrar?.total ?? 0) > 0 ? "text-ochre-700" : ""}`}>
+              <Dinero valor={datos.porCobrar?.total ?? 0} />
+            </p>
+            <p className="mt-1 text-[12px] text-stone-500">
+              {datos.porCobrar?.ordenes ?? 0} {(datos.porCobrar?.ordenes ?? 0) === 1 ? "orden" : "órdenes"}
+            </p>
+          </Link>
+        </div>
+      )}
+
       {/* ---------- Listos para entregar ---------- */}
       {datos.listas.length > 0 && (
         <div>
@@ -160,6 +211,57 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
             </span>
             <ChevronRight className="size-4 shrink-0 text-stone-300" aria-hidden />
           </Link>
+
+          <div>
+            <Link
+              href="/garantias?semaforo=mantenimiento"
+              className="flex items-center gap-4 px-5 py-4 transition-colors active:bg-stone-50"
+            >
+              <BellRing className="size-5 shrink-0 text-stone-400" strokeWidth={1.5} aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-medium">Mantenimientos preventivos</p>
+                <p className="text-[13px] text-stone-500">
+                  {datos.mantenimientos.vencidos} vencidos · próximos 15 días
+                </p>
+              </div>
+              <span
+                className={`font-mono text-xl tabular-nums ${
+                  datos.mantenimientos.vencidos + datos.mantenimientos.proximos > 0
+                    ? "text-ochre-700"
+                    : "text-stone-400"
+                }`}
+              >
+                {datos.mantenimientos.vencidos + datos.mantenimientos.proximos}
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-stone-300" aria-hidden />
+            </Link>
+            {datos.mantenimientos.lista.length > 0 && (
+              <ul className="space-y-2 px-5 pb-4 pl-[3.25rem]">
+                {datos.mantenimientos.lista.map((m) => (
+                  <li key={m.ordenId} className="flex items-center justify-between gap-3 text-[13px]">
+                    <span className="min-w-0 truncate text-stone-600">
+                      <span className="font-mono font-semibold tracking-wider text-ink">{m.placa}</span> ·{" "}
+                      {m.cliente} ·{" "}
+                      <span className={m.dias < 0 ? "text-brick-600" : ""}>
+                        {m.dias < 0 ? `venció hace ${Math.abs(m.dias)} d` : m.dias === 0 ? "hoy" : `en ${m.dias} d`}
+                      </span>
+                    </span>
+                    {m.whatsappHref && (
+                      <a
+                        href={m.whatsappHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Recordar mantenimiento a ${m.cliente} por WhatsApp`}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sage-700 text-white active:bg-sage-800"
+                      >
+                        <MessageCircle className="size-4" aria-hidden />
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <div>
             <Link

@@ -22,7 +22,7 @@ export type OrdenResumen = {
  * Tarjeta de orden: la placa (identificador) y el estado arriba, el vehículo como título,
  * y una línea inferior en gris con cliente · fecha, con el importe en mono a la derecha.
  */
-export function OrdenCard({ orden }: { orden: OrdenResumen }) {
+export function OrdenCard({ orden, saldo = 0 }: { orden: OrdenResumen; saldo?: number }) {
   const v = orden.vehiculos;
 
   return (
@@ -47,6 +47,13 @@ export function OrdenCard({ orden }: { orden: OrdenResumen }) {
         </p>
         <Dinero valor={orden.total_cobrado} className="shrink-0 text-[15px] font-medium" />
       </div>
+
+      {saldo > 0 && orden.estado !== "cancelado" && (
+        <p className="mt-2 flex items-center justify-between rounded-lg bg-ochre-50 px-3 py-1.5 text-[12px] text-ochre-800">
+          <span>Saldo por cobrar</span>
+          <Dinero valor={saldo} className="font-medium" />
+        </p>
+      )}
     </Link>
   );
 }

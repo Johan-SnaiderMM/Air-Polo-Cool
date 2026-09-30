@@ -37,9 +37,25 @@ describe("mensajeDeError", () => {
     expect(m).toContain("Registra primero");
   });
   it("traduce códigos comunes", () => {
-    expect(mensajeDeError({ code: "42501", message: "x" })).toContain("permisos");
-    expect(mensajeDeError({ code: "23505", message: "x" })).toContain("Ya existe");
-    expect(mensajeDeError({ code: "PGRST204", message: "x" })).toContain("fase2.sql");
+    expect(mensajeDeError({ code: "42501", message: "permission denied for table x" })).toContain("permisos");
+    expect(
+      mensajeDeError({ code: "23505", message: 'duplicate key value violates unique constraint "k"' })
+    ).toContain("Ya existe");
+    expect(
+      mensajeDeError({ code: "PGRST204", message: "Could not find the 'diagnostico_inicial' column" })
+    ).toContain("fase2.sql");
+    expect(mensajeDeError({ code: "PGRST202", message: "Could not find the function" })).toContain("fase4.sql");
+  });
+  it("respeta los mensajes en español de nuestras funciones SQL", () => {
+    expect(
+      mensajeDeError({ code: "23514", message: "El motivo de la anulación es obligatorio" })
+    ).toBe("El motivo de la anulación es obligatorio");
+    expect(
+      mensajeDeError({ code: "23505", message: "Ya existe un cierre vigente para 2026-09-29." })
+    ).toContain("cierre vigente");
+    expect(
+      mensajeDeError({ code: "23514", message: 'new row for relation "x" violates check constraint "c"' })
+    ).toContain("reglas");
   });
   it("orden cerrada", () => {
     expect(

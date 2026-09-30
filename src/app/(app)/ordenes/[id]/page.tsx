@@ -19,11 +19,15 @@ import {
 } from "@/components/ordenes/notificaciones-whatsapp";
 import { cargarContextoOrden, envioAutomaticoConfigurado } from "@/lib/notificaciones";
 import { enlaceWhatsApp, PLANTILLA_LABEL, type PlantillaWhatsApp } from "@/lib/whatsapp";
+import { PagosOrden, type PagoVista } from "@/components/ordenes/pagos-orden";
+import { pertenenciasONull } from "@/lib/offline/operaciones";
+import { Printer } from "lucide-react";
 import { EstadoBadge } from "@/components/ordenes/estado-badge";
 
 export const metadata: Metadata = { title: "Orden" };
 
 const BUCKET_EVIDENCIAS = "evidencias-ordenes";
+const BUCKET_FACTURAS = "facturas-gastos";
 const VIGENCIA_URL_SEGUNDOS = 60 * 60;
 
 export default async function OrdenPage({
@@ -52,7 +56,7 @@ export default async function OrdenPage({
     .eq("orden_id", id)
     .order("created_at", { ascending: true });
 
-  const [{ data: filasRepuestos }, { data: sesion }] = await Promise.all([
+  const [{ data: filasRepuestos }, { data: sesion }, { data: filasPagos }] = await Promise.all([
     supabase
       .from("orden_repuestos")
       .select(
@@ -61,7 +65,33 @@ export default async function OrdenPage({
       .eq("orden_id", id)
       .order("created_at", { ascending: true }),
     supabase.auth.getUser(),
+    supabase
+      .from("pagos_orden")
+      .select("id, fecha, monto, medio, es_devolucion, referencia, notas, autor, anulado, anulado_motivo, comprobante_url")
+      .eq("orden_id", id)
+      .order("fecha", { ascending: false })
+      .order("created_at", { ascending: false }),
   ]);
+
+  // Comprobantes de pagos (bucket privado): URLs firmadas temporales.
+  const rutasPagos = (filasPagos ?? []).flatMap((p) => (p.comprobante_url ? [p.comprobante_url] : []));
+  const firmadasPagos = rutasPagos.length
+    ? await supabase.storage.from(BUCKET_FACTURAS).createSignedUrls(rutasPagos, VIGENCIA_URL_SEGUNDOS)
+    : { data: [] };
+  const urlPago = new Map((firmadasPagos.data ?? []).map((x) => [x.path, x.signedUrl]));
+  const pagos: PagoVista[] = (filasPagos ?? []).map((p) => ({
+    id: p.id,
+    fecha: p.fecha,
+    monto: p.monto,
+    medio: p.medio,
+    esDevolucion: p.es_devolucion,
+    referencia: p.referencia,
+    notas: p.notas,
+    autor: p.autor,
+    anulado: p.anulado,
+    anuladoMotivo: p.anulado_motivo,
+    comprobanteUrl: p.comprobante_url ? (urlPago.get(p.comprobante_url) ?? null) : null,
+  }));
 
   const lineas: LineaRepuesto[] = (filasRepuestos ?? []).flatMap((r) =>
     r.inventario
@@ -165,6 +195,12 @@ export default async function OrdenPage({
         >
           Ver historial del vehículo
         </Link>
+        <Link
+          href={`/ordenes/${orden.id}/comprobante`}
+          className="mt-2 flex h-11 items-center justify-center gap-2 rounded-xl border border-stone-300/70 text-sm font-semibold text-ink active:bg-stone-100"
+        >
+          <Printer className="size-4" aria-hidden /> Orden y garantía en PDF
+        </Link>
       </div>
 
       {contexto && (
@@ -207,6 +243,16 @@ export default async function OrdenPage({
       </div>
 
       <div className="space-y-3">
+        <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Pagos y saldo</h3>
+        <PagosOrden
+          ordenId={orden.id}
+          estadoOrden={orden.estado}
+          totalCobrado={orden.total_cobrado}
+          pagos={pagos}
+        />
+      </div>
+
+      <div className="space-y-3">
         <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Datos de la orden</h3>
         <OrdenForm
           // Remonta el formulario cuando cambian los montos desde el resumen.
@@ -222,6 +268,8 @@ export default async function OrdenPage({
             total_cobrado: orden.total_cobrado ? String(orden.total_cobrado) : "",
             dias_garantia: orden.dias_garantia,
             estado: orden.estado,
+            pertenencias: pertenenciasONull(orden.pertenencias),
+            mantenimiento_meses: (orden.mantenimiento_meses as 3 | 6 | 12 | null) ?? null,
           }}
         />
       </div>

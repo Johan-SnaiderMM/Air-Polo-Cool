@@ -1,14 +1,19 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Download, Printer } from "lucide-react";
 import { hrefCaja } from "@/components/caja/selector-mes";
 import { Dinero } from "@/components/ui/dinero";
 import { etiquetaMes } from "@/lib/caja";
 
+/**
+ * Balance REAL (base cobrado): no asume que lo facturado está pagado.
+ *   utilidad_real = cobrado − costo de repuestos − gastos de caja menor
+ */
 export type FilaBalance = {
   mes: string; // YYYY-MM
-  ingresos: number;
+  facturado: number;
+  cobrado: number;
   costoRepuestos: number;
-  gastosCajaMenor: number;
+  gastos: number;
   utilidadReal: number;
 };
 
@@ -26,10 +31,7 @@ function Linea({
 }) {
   return (
     <div className="flex items-start gap-4 px-5 py-4">
-      <span
-        className="mt-0.5 w-3 shrink-0 text-center font-mono text-[15px] text-stone-400"
-        aria-hidden
-      >
+      <span className="mt-0.5 w-3 shrink-0 text-center font-mono text-[15px] text-stone-400" aria-hidden>
         {signo}
       </span>
       <div className="min-w-0 flex-1">
@@ -42,47 +44,30 @@ function Linea({
 }
 
 /**
- * Balance mensual: tres conceptos en una única tarjeta con hairlines (se lee como un
- * extracto) y el resultado en una tarjeta carbón. Sin iconos de colores ni semáforos
- * chillones: un resultado negativo solo tiñe la cifra de ladrillo.
+ * Balance mensual: tres conceptos en una tarjeta con hairlines (se lee como un extracto),
+ * el resultado en una tarjeta carbón, y debajo lo facturado y lo que aún se debe.
  */
 export function BalanceMensual({
   actual,
-  historial,
+  anteriores,
   mes,
+  porCobrar,
 }: {
   actual: FilaBalance;
-  historial: FilaBalance[];
+  anteriores: FilaBalance[];
   mes: string;
+  porCobrar: { total: number; ordenes: number };
 }) {
   const negativa = actual.utilidadReal < 0;
-  // Margen operativo sobre ingresos (solo si hubo ingresos ese mes).
-  const margen =
-    actual.ingresos > 0 ? Math.round((actual.utilidadReal / actual.ingresos) * 100) : null;
-  // Solo meses realmente anteriores al seleccionado (YYYY-MM se ordena como texto).
-  const anteriores = historial.filter((f) => f.mes < mes);
+  // Margen sobre lo cobrado (solo si se cobró algo ese mes).
+  const margen = actual.cobrado > 0 ? Math.round((actual.utilidadReal / actual.cobrado) * 100) : null;
 
   return (
     <div className="space-y-6">
       <div className="divide-y divide-stone-200/70 overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-soft">
-        <Linea
-          signo="+"
-          titulo="Ingresos"
-          detalle="Órdenes entregadas en el mes"
-          valor={actual.ingresos}
-        />
-        <Linea
-          signo="−"
-          titulo="Costo de repuestos"
-          detalle="Piezas de esas órdenes, a costo de compra"
-          valor={actual.costoRepuestos}
-        />
-        <Linea
-          signo="−"
-          titulo="Caja menor"
-          detalle="Gastos operativos del mes"
-          valor={actual.gastosCajaMenor}
-        />
+        <Linea signo="+" titulo="Cobrado" detalle="Pagos recibidos en el mes, netos de devoluciones" valor={actual.cobrado} />
+        <Linea signo="−" titulo="Costo de repuestos" detalle="Piezas de las órdenes entregadas en el mes" valor={actual.costoRepuestos} />
+        <Linea signo="−" titulo="Gastos de caja menor" detalle="Gastos vigentes del mes (sin anulados)" valor={actual.gastos} />
       </div>
 
       <div className="rounded-2xl bg-ink p-6 text-paper">
@@ -94,13 +79,49 @@ export function BalanceMensual({
             </span>
           )}
         </div>
-        <p
-          className={`mt-2 text-[34px] leading-none font-medium tracking-tight ${
-            negativa ? "text-brick-300" : ""
-          }`}
-        >
+        <p className={`mt-2 text-[34px] leading-none font-medium tracking-tight ${negativa ? "text-brick-300" : ""}`}>
           <Dinero valor={actual.utilidadReal} />
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-stone-200/70 bg-white p-4">
+          <p className="text-[12px] text-stone-500">Facturado en el mes</p>
+          <p className="mt-1 text-[17px]">
+            <Dinero valor={actual.facturado} />
+          </p>
+          <p className="mt-1 text-[12px] text-stone-500">Órdenes entregadas</p>
+        </div>
+        <Link
+          href="/cartera"
+          className="rounded-2xl border border-stone-200/70 bg-white p-4 transition-colors active:bg-stone-50"
+        >
+          <p className="flex items-center justify-between text-[12px] text-stone-500">
+            Por cobrar (total)
+            <ArrowUpRight className="size-3.5" aria-hidden />
+          </p>
+          <p className={`mt-1 text-[17px] ${porCobrar.total > 0 ? "text-ochre-700" : ""}`}>
+            <Dinero valor={porCobrar.total} />
+          </p>
+          <p className="mt-1 text-[12px] text-stone-500">
+            {porCobrar.ordenes} {porCobrar.ordenes === 1 ? "orden" : "órdenes"}
+          </p>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <a
+          href={`/caja-menor/exportar?mes=${mes}`}
+          className="flex h-12 items-center justify-center gap-2 rounded-xl border border-stone-300/70 bg-white text-[14px] font-medium active:bg-stone-100"
+        >
+          <Download className="size-4" aria-hidden /> CSV para Excel
+        </a>
+        <Link
+          href={`/caja-menor/reporte?mes=${mes}`}
+          className="flex h-12 items-center justify-center gap-2 rounded-xl border border-stone-300/70 bg-white text-[14px] font-medium active:bg-stone-100"
+        >
+          <Printer className="size-4" aria-hidden /> PDF del balance
+        </Link>
       </div>
 
       {anteriores.length > 0 && (
@@ -114,16 +135,9 @@ export function BalanceMensual({
                 <Link
                   href={hrefCaja("balance", f.mes)}
                   replace
-                  aria-current={f.mes === mes ? "true" : undefined}
-                  className={`flex min-h-14 items-center justify-between gap-3 px-5 py-3 transition-colors active:bg-stone-50 ${
-                    f.mes === mes ? "bg-stone-50" : ""
-                  }`}
+                  className="flex min-h-14 items-center justify-between gap-3 px-5 py-3 transition-colors active:bg-stone-50"
                 >
-                  <span
-                    className={`text-[15px] ${f.mes === mes ? "font-semibold" : "font-medium"}`}
-                  >
-                    {etiquetaMes(f.mes)}
-                  </span>
+                  <span className="text-[15px] font-medium">{etiquetaMes(f.mes)}</span>
                   <span className="flex items-center gap-2">
                     <Dinero
                       valor={f.utilidadReal}

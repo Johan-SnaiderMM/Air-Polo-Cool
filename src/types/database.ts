@@ -37,6 +37,36 @@ export type MedioPago = "efectivo" | "transferencia" | "tarjeta" | "otro";
 /** Estado de pago de una orden (v_saldo_ordenes.estado_pago). */
 export type EstadoPago = "sin_total" | "sin_pago" | "parcial" | "pagado" | "sobrepago";
 
+/** Autoría simple: solo dos operadores, sin roles nuevos. */
+export type Autor = "Polo" | "Soporte técnico";
+
+export type TipoMovCaja =
+  | "fondo_inicial"
+  | "reposicion"
+  | "retiro"
+  | "ajuste_sobrante"
+  | "ajuste_faltante";
+
+export type EstadoCotizacion =
+  | "borrador"
+  | "enviada"
+  | "aprobada"
+  | "rechazada"
+  | "convertida";
+
+export type ResultadoCierre = "cuadrado" | "faltante" | "sobrante";
+export type EstadoMantenimiento = "vencido" | "proximo" | "lejano";
+
+/** Checklist de pertenencias al ingreso (ordenes_servicio.pertenencias). */
+export type Pertenencias = {
+  carroceria: "sin_danos" | "rayones" | "golpes";
+  llanta_repuesto: boolean;
+  herramientas: boolean;
+  documentos: boolean;
+  objetos_valor: string;
+  notas: string;
+};
+
 export type TipoGasSugerido = "R134a" | "R1234yf" | "otro";
 
 export type SemaforoGarantia = "verde" | "amarillo" | "rojo";
@@ -173,6 +203,12 @@ export type Database = {
           /** Fase 2 (polo_air_cool_fase2.sql) */
           diagnostico_inicial: string | null;
           trabajos_a_realizar: string | null;
+          /** Fase 4 */
+          pertenencias: Json | null;
+          mantenimiento_meses: number | null;
+          /** date (YYYY-MM-DD); lo calcula el trigger. */
+          proximo_mantenimiento: string | null;
+          autor: Autor | null;
           created_at: string;
           updated_at: string;
         };
@@ -191,6 +227,10 @@ export type Database = {
           notas?: string | null;
           diagnostico_inicial?: string | null;
           trabajos_a_realizar?: string | null;
+          pertenencias?: Json | null;
+          mantenimiento_meses?: number | null;
+          proximo_mantenimiento?: string | null;
+          autor?: Autor | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -209,6 +249,10 @@ export type Database = {
           notas?: string | null;
           diagnostico_inicial?: string | null;
           trabajos_a_realizar?: string | null;
+          pertenencias?: Json | null;
+          mantenimiento_meses?: number | null;
+          proximo_mantenimiento?: string | null;
+          autor?: Autor | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -362,6 +406,7 @@ export type Database = {
           /** Ruta dentro del bucket 'facturas-gastos' (prefijo pagos/). */
           comprobante_url: string | null;
           registrado_por: string | null;
+          autor: Autor | null;
           created_at: string;
           anulado: boolean;
           anulado_motivo: string | null;
@@ -381,6 +426,7 @@ export type Database = {
           comprobante_url?: string | null;
           /** Se llena con auth.uid(); si se envía debe coincidir con el usuario. */
           registrado_por?: string | null;
+          autor?: Autor | null;
           created_at?: string;
         };
         Update: Record<string, never>;
@@ -405,6 +451,18 @@ export type Database = {
           /** Ruta dentro del bucket 'facturas-gastos'. */
           comprobante_url: string | null;
           created_at: string;
+          /** Fase 4 */
+          orden_id: string | null;
+          autor: Autor | null;
+          registrado_por: string | null;
+          updated_at: string | null;
+          /** [{ at, por, autor, antes: {...} }] */
+          historial: Json;
+          anulado: boolean;
+          anulado_motivo: string | null;
+          anulado_por: string | null;
+          anulado_autor: Autor | null;
+          anulado_at: string | null;
         };
         Insert: {
           id?: string;
@@ -414,17 +472,151 @@ export type Database = {
           monto: number;
           comprobante_url?: string | null;
           created_at?: string;
+          orden_id?: string | null;
+          autor?: Autor | null;
         };
-        Update: {
+        /** Se edita con editar_gasto() y se anula con anular_gasto(). */
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "gastos_caja_menor_orden_id_fkey";
+            columns: ["orden_id"];
+            isOneToOne: false;
+            referencedRelation: "ordenes_servicio";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      cierres_caja: {
+        Row: {
+          id: string;
+          fecha: string;
+          saldo_sistema: number;
+          conteo_fisico: number;
+          diferencia: number;
+          resultado: ResultadoCierre;
+          /** { "50000": 3, "20000": 2, ... } */
+          desglose: Json;
+          notas: string | null;
+          autor: Autor | null;
+          registrado_por: string | null;
+          created_at: string;
+          anulado: boolean;
+          anulado_motivo: string | null;
+          anulado_por: string | null;
+          anulado_at: string | null;
+        };
+        /** Solo se crea con cerrar_caja(). */
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      caja_movimientos: {
+        Row: {
+          id: string;
+          fecha: string;
+          tipo: TipoMovCaja;
+          monto: number;
+          notas: string | null;
+          autor: Autor | null;
+          registrado_por: string | null;
+          cierre_id: string | null;
+          created_at: string;
+          anulado: boolean;
+          anulado_motivo: string | null;
+          anulado_por: string | null;
+          anulado_at: string | null;
+        };
+        /** Directo solo fondo_inicial / reposicion / retiro. */
+        Insert: {
           id?: string;
           fecha?: string;
-          categoria?: CategoriaGasto;
-          descripcion?: string | null;
-          monto?: number;
-          comprobante_url?: string | null;
-          created_at?: string;
+          tipo: Extract<TipoMovCaja, "fondo_inicial" | "reposicion" | "retiro">;
+          monto: number;
+          notas?: string | null;
+          autor?: Autor | null;
         };
+        Update: Record<string, never>;
         Relationships: [];
+      };
+      cotizaciones: {
+        Row: {
+          id: string;
+          vehiculo_id: string;
+          estado: EstadoCotizacion;
+          fecha: string;
+          vigencia_dias: number;
+          mano_obra: number;
+          notas: string | null;
+          orden_id: string | null;
+          autor: Autor | null;
+          registrado_por: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vehiculo_id: string;
+          estado?: EstadoCotizacion;
+          fecha?: string;
+          vigencia_dias?: number;
+          mano_obra?: number;
+          notas?: string | null;
+          autor?: Autor | null;
+        };
+        Update: {
+          estado?: EstadoCotizacion;
+          fecha?: string;
+          vigencia_dias?: number;
+          mano_obra?: number;
+          notas?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cotizaciones_vehiculo_id_fkey";
+            columns: ["vehiculo_id"];
+            isOneToOne: false;
+            referencedRelation: "vehiculos";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      cotizacion_items: {
+        Row: {
+          id: string;
+          cotizacion_id: string;
+          inventario_id: string | null;
+          descripcion: string;
+          cantidad: number;
+          precio_unitario: number;
+          costo_unitario: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          cotizacion_id: string;
+          inventario_id?: string | null;
+          descripcion: string;
+          cantidad: number;
+          precio_unitario: number;
+          costo_unitario?: number;
+        };
+        Update: {
+          inventario_id?: string | null;
+          descripcion?: string;
+          cantidad?: number;
+          precio_unitario?: number;
+          costo_unitario?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cotizacion_items_cotizacion_id_fkey";
+            columns: ["cotizacion_id"];
+            isOneToOne: false;
+            referencedRelation: "cotizaciones";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {
@@ -516,6 +708,74 @@ export type Database = {
         };
         Relationships: [];
       };
+      v_balance_real: {
+        Row: {
+          mes: string | null;
+          facturado: number | null;
+          cobrado: number | null;
+          costo_repuestos: number | null;
+          gastos: number | null;
+          utilidad_real: number | null;
+        };
+        Relationships: [];
+      };
+      v_caja_diaria: {
+        Row: {
+          fecha: string | null;
+          entradas: number | null;
+          salidas: number | null;
+          cobros_efectivo: number | null;
+          gastos: number | null;
+          neto_dia: number | null;
+        };
+        Relationships: [];
+      };
+      v_rentabilidad_orden: {
+        Row: {
+          orden_id: string | null;
+          vehiculo_id: string | null;
+          placa: string | null;
+          cliente: string | null;
+          estado: EstadoOrden | null;
+          fecha_entrega: string | null;
+          total_cobrado: number | null;
+          pagado: number | null;
+          costo_repuestos: number | null;
+          gastos_directos: number | null;
+          utilidad_real: number | null;
+          utilidad_facturada: number | null;
+        };
+        Relationships: [];
+      };
+      v_mantenimientos: {
+        Row: {
+          orden_id: string | null;
+          vehiculo_id: string | null;
+          placa: string | null;
+          marca: string | null;
+          modelo: string | null;
+          anio: number | null;
+          cliente: string | null;
+          telefono: string | null;
+          mantenimiento_meses: number | null;
+          proximo_mantenimiento: string | null;
+          dias_restantes: number | null;
+          estado_mantenimiento: EstadoMantenimiento | null;
+        };
+        Relationships: [];
+      };
+      v_cotizacion_totales: {
+        Row: {
+          cotizacion_id: string | null;
+          total_repuestos: number | null;
+          mano_obra: number | null;
+          total: number | null;
+          costo_estimado: number | null;
+          margen_estimado: number | null;
+          items: number | null;
+        };
+        Relationships: [];
+      };
       v_inventario_reposicion: {
         Row: {
           id: string | null;
@@ -533,6 +793,48 @@ export type Database = {
       obtener_orden_publica: {
         Args: { p_token: string };
         Returns: OrdenPublica | null;
+      };
+      editar_gasto: {
+        Args: {
+          p_id: string;
+          p_fecha: string;
+          p_categoria: CategoriaGasto;
+          p_monto: number;
+          p_descripcion: string | null;
+          p_orden_id: string | null;
+          p_autor: Autor | null;
+        };
+        Returns: Database["public"]["Tables"]["gastos_caja_menor"]["Row"];
+      };
+      anular_gasto: {
+        Args: { p_id: string; p_motivo: string; p_autor: Autor | null };
+        Returns: Database["public"]["Tables"]["gastos_caja_menor"]["Row"];
+      };
+      cerrar_caja: {
+        Args: {
+          p_fecha: string;
+          p_conteo: number;
+          p_desglose: Json;
+          p_notas: string | null;
+          p_autor: Autor | null;
+        };
+        Returns: Database["public"]["Tables"]["cierres_caja"]["Row"];
+      };
+      anular_cierre: {
+        Args: { p_id: string; p_motivo: string };
+        Returns: Database["public"]["Tables"]["cierres_caja"]["Row"];
+      };
+      anular_movimiento_caja: {
+        Args: { p_id: string; p_motivo: string };
+        Returns: Database["public"]["Tables"]["caja_movimientos"]["Row"];
+      };
+      fn_saldo_caja: {
+        Args: { p_hasta?: string };
+        Returns: number;
+      };
+      convertir_cotizacion: {
+        Args: { p_id: string; p_autor: Autor | null };
+        Returns: string;
       };
       anular_pago: {
         Args: { p_pago_id: string; p_motivo: string };
@@ -557,6 +859,8 @@ export type Database = {
       tipo_unidad: TipoUnidad;
       categoria_gasto: CategoriaGasto;
       medio_pago: MedioPago;
+      tipo_mov_caja: TipoMovCaja;
+      estado_cotizacion: EstadoCotizacion;
     };
     CompositeTypes: Record<string, never>;
   };

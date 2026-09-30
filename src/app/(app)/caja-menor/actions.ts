@@ -1,122 +1,160 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { mensajeDeError } from "@/lib/errores";
+import { desgloseLimpio, totalDesglose } from "@/lib/arqueo";
+import { autorONull } from "@/lib/autor";
 import { esCategoria, hoyBogota } from "@/lib/caja";
+import { mensajeDeError } from "@/lib/errores";
 import { esUuid } from "@/lib/ordenes";
+import type { Json } from "@/types/database";
 
-export type GastoResultado = { ok: true } | { ok: false; error: string };
+/**
+ * Acciones de caja que requieren conexión (auditoría y cálculo en el servidor).
+ * Registrar gastos, abonos y movimientos NO está aquí: eso pasa por la cola offline
+ * (src/app/(app)/sync/actions.ts).
+ */
+export type AccionCaja = { ok: true; mensaje?: string; id?: string } | { ok: false; error: string };
 
-const BUCKET_FACTURAS = "facturas-gastos";
-const MAX_BYTES_COMPROBANTE = 3 * 1024 * 1024; // igual que file_size_limit del bucket
-const MIMES: Record<string, "webp" | "jpg"> = {
-  "image/webp": "webp",
-  "image/jpeg": "jpg",
-};
-const MAX_MONTO = 9_999_999_999; // numeric(12,2) admite hasta 9 999 999 999,99
+const SESION = { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." } as const;
+const MAX_MONTO = 9_999_999_999;
 
-function texto(formData: FormData, campo: string): string {
-  const valor = formData.get(campo);
-  return typeof valor === "string" ? valor.trim() : "";
+async function contexto() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  return { supabase, user: data.user };
+}
+
+const esFecha = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(`${f}T00:00:00Z`));
+
+function refrescar() {
+  revalidatePath("/caja-menor");
+  revalidatePath("/");
 }
 
 // ---------------------------------------------------------------------
-// Registro express de gasto
+// Gastos: editar (con historial) y anular (con motivo)
 // ---------------------------------------------------------------------
 
-export async function registrarGasto(formData: FormData): Promise<GastoResultado> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+export async function editarGasto(datos: {
+  id: string;
+  fecha: string;
+  categoria: string;
+  monto: number;
+  descripcion: string;
+  ordenId: string | null;
+  autor: string;
+}): Promise<AccionCaja> {
+  const { supabase, user } = await contexto();
+  if (!user) return SESION;
 
-  const monto = Number(texto(formData, "monto").replace(",", "."));
-  const categoria = texto(formData, "categoria");
-
-  if (!Number.isFinite(monto) || monto <= 0) {
+  if (!esUuid(datos.id)) return { ok: false, error: "Gasto inválido." };
+  if (!esFecha(datos.fecha) || datos.fecha > hoyBogota()) {
+    return { ok: false, error: "La fecha no puede ser futura." };
+  }
+  if (!esCategoria(datos.categoria)) return { ok: false, error: "Categoría inválida." };
+  if (!Number.isFinite(datos.monto) || datos.monto <= 0 || datos.monto > MAX_MONTO) {
     return { ok: false, error: "Ingresa un monto mayor a 0." };
   }
-  if (monto > MAX_MONTO) return { ok: false, error: "El monto es demasiado grande." };
-  if (!esCategoria(categoria)) return { ok: false, error: "Selecciona una categoría." };
+  if (datos.ordenId !== null && !esUuid(datos.ordenId)) return { ok: false, error: "Orden inválida." };
 
-  const descripcion = texto(formData, "descripcion").slice(0, 300) || null;
-  const fecha = hoyBogota();
-
-  // ---- Comprobante opcional ----
-  let ruta: string | null = null;
-  const archivo = formData.get("comprobante");
-  if (archivo instanceof File && archivo.size > 0) {
-    const extension = MIMES[archivo.type];
-    if (!extension) return { ok: false, error: "Formato de imagen no permitido." };
-    if (archivo.size > MAX_BYTES_COMPROBANTE) {
-      return { ok: false, error: "La imagen supera los 3 MB." };
-    }
-
-    // Convención de rutas del bucket: <yyyy-mm>/<uuid>.<ext>
-    ruta = `${fecha.slice(0, 7)}/${randomUUID()}.${extension}`;
-    const { error: errSubida } = await supabase.storage
-      .from(BUCKET_FACTURAS)
-      .upload(ruta, Buffer.from(await archivo.arrayBuffer()), {
-        contentType: archivo.type,
-        upsert: false,
-      });
-    if (errSubida) {
-      return { ok: false, error: `No se pudo subir el comprobante: ${errSubida.message}` };
-    }
-  }
-
-  const { error } = await supabase.from("gastos_caja_menor").insert({
-    fecha,
-    categoria,
-    monto: Math.round(monto * 100) / 100,
-    descripcion,
-    comprobante_url: ruta,
+  const { error } = await supabase.rpc("editar_gasto", {
+    p_id: datos.id,
+    p_fecha: datos.fecha,
+    p_categoria: datos.categoria,
+    p_monto: Math.round(datos.monto * 100) / 100,
+    p_descripcion: datos.descripcion.trim().slice(0, 300) || null,
+    p_orden_id: datos.ordenId,
+    p_autor: autorONull(datos.autor),
   });
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  refrescar();
+  return { ok: true, mensaje: "Gasto actualizado." };
+}
 
-  if (error) {
-    // Sin registro no hay forma de encontrar el archivo: se retira para no dejar huérfanos.
-    if (ruta) await supabase.storage.from(BUCKET_FACTURAS).remove([ruta]);
-    return { ok: false, error: mensajeDeError(error) };
-  }
+export async function anularGasto(datos: { id: string; motivo: string; autor: string }): Promise<AccionCaja> {
+  const { supabase, user } = await contexto();
+  if (!user) return SESION;
+  if (!esUuid(datos.id)) return { ok: false, error: "Gasto inválido." };
+  if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
 
-  revalidatePath("/caja-menor");
-  return { ok: true };
+  const { error } = await supabase.rpc("anular_gasto", {
+    p_id: datos.id,
+    p_motivo: datos.motivo.trim().slice(0, 300),
+    p_autor: autorONull(datos.autor),
+  });
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  refrescar();
+  return { ok: true, mensaje: "Gasto anulado." };
 }
 
 // ---------------------------------------------------------------------
-// Eliminar gasto (solo admin por RLS)
+// Caja: saldo, arqueo y cierre
 // ---------------------------------------------------------------------
 
-export async function eliminarGasto(id: string): Promise<GastoResultado> {
-  if (!esUuid(id)) return { ok: false, error: "Gasto inválido." };
-
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
-
-  const { data: gasto } = await supabase
-    .from("gastos_caja_menor")
-    .select("comprobante_url")
-    .eq("id", id)
-    .maybeSingle();
-
-  const { data, error } = await supabase
-    .from("gastos_caja_menor")
-    .delete()
-    .eq("id", id)
-    .select("id");
-
+/** Saldo de caja al cierre de una fecha (lo usa el arqueo para fechas pasadas). */
+export async function saldoCajaAl(fecha: string): Promise<{ ok: true; saldo: number } | { ok: false; error: string }> {
+  const { supabase, user } = await contexto();
+  if (!user) return SESION;
+  if (!esFecha(fecha) || fecha > hoyBogota()) return { ok: false, error: "Fecha inválida." };
+  const { data, error } = await supabase.rpc("fn_saldo_caja", { p_hasta: fecha });
   if (error) return { ok: false, error: mensajeDeError(error) };
-  if (!data || data.length === 0) {
-    // RLS: solo el admin puede borrar; sin permiso, Postgres devuelve 0 filas.
-    return { ok: false, error: "No se pudo eliminar. Solo el administrador puede borrar gastos." };
+  return { ok: true, saldo: Number(data ?? 0) };
+}
+
+/**
+ * Cierra la caja del día: el SERVIDOR calcula el saldo del sistema y compara con el
+ * conteo físico. Si hay diferencia se registra un ajuste, de modo que el saldo
+ * queda igual al efectivo realmente contado.
+ */
+export async function cerrarCaja(datos: {
+  fecha: string;
+  desglose: Record<string, number>;
+  notas: string;
+  autor: string;
+}): Promise<AccionCaja> {
+  const { supabase, user } = await contexto();
+  if (!user) return SESION;
+  if (!esFecha(datos.fecha) || datos.fecha > hoyBogota()) {
+    return { ok: false, error: "No se puede cerrar la caja de una fecha futura." };
   }
 
-  if (gasto?.comprobante_url) {
-    await supabase.storage.from(BUCKET_FACTURAS).remove([gasto.comprobante_url]);
-  }
+  const desglose = desgloseLimpio(datos.desglose);
+  const conteo = totalDesglose(desglose);
 
-  revalidatePath("/caja-menor");
-  return { ok: true };
+  const { data, error } = await supabase.rpc("cerrar_caja", {
+    p_fecha: datos.fecha,
+    p_conteo: conteo,
+    p_desglose: desglose as Json,
+    p_notas: datos.notas.trim().slice(0, 500) || null,
+    p_autor: autorONull(datos.autor),
+  });
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  refrescar();
+  return { ok: true, id: data?.id, mensaje: `Caja cerrada: ${data?.resultado ?? ""}` };
+}
+
+export async function anularCierre(datos: { id: string; motivo: string }): Promise<AccionCaja> {
+  const { supabase, user } = await contexto();
+  if (!user) return SESION;
+  if (!esUuid(datos.id)) return { ok: false, error: "Cierre inválido." };
+  if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
+  const { error } = await supabase.rpc("anular_cierre", { p_id: datos.id, p_motivo: datos.motivo.trim().slice(0, 300) });
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  refrescar();
+  return { ok: true, mensaje: "Cierre anulado." };
+}
+
+export async function anularMovimientoCaja(datos: { id: string; motivo: string }): Promise<AccionCaja> {
+  const { supabase, user } = await contexto();
+  if (!user) return SESION;
+  if (!esUuid(datos.id)) return { ok: false, error: "Movimiento inválido." };
+  if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
+  const { error } = await supabase.rpc("anular_movimiento_caja", {
+    p_id: datos.id,
+    p_motivo: datos.motivo.trim().slice(0, 300),
+  });
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  refrescar();
+  return { ok: true, mensaje: "Movimiento anulado." };
 }

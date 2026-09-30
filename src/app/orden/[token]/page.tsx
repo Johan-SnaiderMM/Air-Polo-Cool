@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Wrench,
 } from "lucide-react";
+import { ImprimirPortal } from "@/components/print/imprimir-portal";
 import { createPublicClient } from "@/utils/supabase/public";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { hoyBogota } from "@/lib/caja";
@@ -185,7 +186,7 @@ export default async function PortalOrdenPage({
   const pasoActual = PASOS.indexOf(orden.estado);
 
   return (
-    <div className="min-h-dvh bg-paper">
+    <div className="min-h-dvh bg-paper print:bg-white">
       {/* ---------- Marca ---------- */}
       <header className="border-b border-stone-200/60 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-xl items-center justify-between gap-3 px-5 py-4">
@@ -399,11 +400,33 @@ export default async function PortalOrdenPage({
               </div>
             )}
             <div className="mt-2 flex items-center justify-between rounded-xl bg-ink px-4 py-3 text-white">
-              <dt className="font-semibold">{entregado ? "Total cancelado" : "Total a cancelar"}</dt>
+              <dt className="font-semibold">
+                {orden.pagado === undefined ? (entregado ? "Total cancelado" : "Total a cancelar") : "Total"}
+              </dt>
               <dd className="text-2xl font-semibold"><Dinero valor={orden.total_cobrado} /></dd>
             </div>
+            {orden.pagado !== undefined && orden.total_cobrado > 0 && (
+              <>
+                <div className="flex justify-between pt-1">
+                  <dt className="text-stone-600">Abonado</dt>
+                  <dd className="font-semibold"><Dinero valor={orden.pagado} /></dd>
+                </div>
+                <div
+                  className={`flex justify-between rounded-lg px-3 py-2 ${
+                    (orden.saldo ?? 0) > 0 ? "bg-ochre-50 text-ochre-800" : "bg-sage-50 text-sage-800"
+                  }`}
+                >
+                  <dt className="font-semibold">{(orden.saldo ?? 0) > 0 ? "Saldo pendiente" : "Pagado en su totalidad"}</dt>
+                  <dd className="font-semibold">
+                    {(orden.saldo ?? 0) > 0 ? <Dinero valor={orden.saldo ?? 0} /> : "✓"}
+                  </dd>
+                </div>
+              </>
+            )}
           </dl>
         </section>
+
+        <ImprimirPortal />
 
         <footer className="pt-2 text-center text-xs text-stone-500">
           <p className="font-semibold text-stone-600">Polo Air Cool</p>
