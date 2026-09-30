@@ -80,9 +80,10 @@ describe("armarOrdenNueva", () => {
     expect(armar({ kilometraje: "-1" })).toMatchObject(km);
     expect(armar({ kilometraje: "12.5" })).toMatchObject(km);
     expect(armar({ kilometraje: "abc" })).toMatchObject(km);
-    const cobro = { ok: false, error: expect.stringContaining("cobro") };
-    expect(armar({ mano_obra: "-5" })).toMatchObject(cobro);
-    expect(armar({ total_cobrado: "x" })).toMatchObject(cobro);
+    // Cada campo de cobro tiene su propio mensaje (los mismos que al editar una orden).
+    expect(armar({ mano_obra: "-5" })).toEqual({ ok: false, error: "La mano de obra debe ser un valor mayor o igual a 0." });
+    expect(armar({ total_cobrado: "x" })).toEqual({ ok: false, error: "El total cobrado debe ser un valor mayor o igual a 0." });
+    expect(armar({ dias_garantia: 45 })).toEqual({ ok: false, error: "Selecciona un plazo de garantía válido." });
     expect(armar({ kilometraje: "0", mano_obra: "0", total_cobrado: "150000" }).ok).toBe(true);
   });
 

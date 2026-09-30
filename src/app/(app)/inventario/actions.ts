@@ -1,14 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { validar } from "@/lib/esquemas/comunes";
+import { ajustarStockSchema, crearItemSchema, editarItemSchema } from "@/lib/esquemas/inventario";
 import { mensajeDeError } from "@/lib/errores";
-import { admiteDecimales, esTipoUnidad } from "@/lib/inventario";
-import { numeroOpcional, texto } from "@/lib/formularios";
+import { admiteDecimales } from "@/lib/inventario";
+import { texto } from "@/lib/formularios";
 import { exigirSesion } from "@/utils/supabase/sesion";
 
 export type InventarioFormState = { error?: string; ok?: string };
 
-const noNegativo = (n: number | null) => n !== null && !Number.isNaN(n) && n >= 0;
+/** Los campos de un formulario de inventario, como texto (las reglas están en esquemas/inventario.ts). */
+function campos(formData: FormData, nombres: string[]): Record<string, string> {
+  return Object.fromEntries(nombres.map((n) => [n, texto(formData, n)]));
+}
 
 // ---------------------------------------------------------------------
 // Nuevo repuesto / insumo
@@ -20,46 +25,17 @@ export async function crearItem(
 ): Promise<InventarioFormState> {
   const { supabase } = await exigirSesion();
 
-  const codigo = texto(formData, "codigo");
-  const nombre = texto(formData, "nombre");
-  const tipoUnidad = texto(formData, "tipo_unidad") || "unidad";
+  const item = validar(
+    crearItemSchema,
+    campos(formData, ["codigo", "nombre", "tipo_unidad", "stock_actual", "stock_minimo", "costo_compra", "precio_venta", "descripcion"])
+  );
+  if (!item.ok) return { error: item.error };
 
-  if (!codigo) return { error: "Ingresa el código del ítem." };
-  if (!nombre) return { error: "Ingresa el nombre del ítem." };
-  if (!esTipoUnidad(tipoUnidad)) return { error: "Unidad de medida inválida." };
-
-  const stockActual = numeroOpcional(texto(formData, "stock_actual")) ?? 0;
-  const stockMinimo = numeroOpcional(texto(formData, "stock_minimo")) ?? 0;
-  const costoCompra = numeroOpcional(texto(formData, "costo_compra")) ?? 0;
-  const precioVenta = numeroOpcional(texto(formData, "precio_venta")) ?? 0;
-
-  if (!noNegativo(stockActual) || !noNegativo(stockMinimo)) {
-    return { error: "El stock debe ser un número mayor o igual a 0." };
-  }
-  if (!noNegativo(costoCompra) || !noNegativo(precioVenta)) {
-    return { error: "Los precios deben ser valores mayores o iguales a 0." };
-  }
-  if (
-    !admiteDecimales(tipoUnidad) &&
-    (!Number.isInteger(stockActual) || !Number.isInteger(stockMinimo))
-  ) {
-    return { error: "Las unidades físicas deben ser cantidades enteras." };
-  }
-
-  const { error } = await supabase.from("inventario").insert({
-    codigo,
-    nombre,
-    descripcion: texto(formData, "descripcion") || null,
-    tipo_unidad: tipoUnidad,
-    stock_actual: stockActual,
-    stock_minimo: stockMinimo,
-    costo_compra: costoCompra,
-    precio_venta: precioVenta,
-  });
+  const { error } = await supabase.from("inventario").insert(item.valor);
 
   if (error) {
     if (error.code === "23505") {
-      return { error: `Ya existe un ítem con el código "${codigo}".` };
+      return { error: `Ya existe un ítem con el código "${item.valor.codigo}".` };
     }
     return { error: mensajeDeError(error) };
   }
@@ -80,17 +56,9 @@ export async function ajustarStock(
 ): Promise<InventarioFormState> {
   const { supabase } = await exigirSesion();
 
-  const id = texto(formData, "inventario_id");
-  const cantidad = numeroOpcional(texto(formData, "cantidad"));
-  const costoNuevo = numeroOpcional(texto(formData, "costo_compra"));
-
-  if (!id) return { error: "Ítem inválido." };
-  if (cantidad === null || Number.isNaN(cantidad) || cantidad <= 0) {
-    return { error: "Ingresa una cantidad mayor a 0." };
-  }
-  if (costoNuevo !== null && !noNegativo(costoNuevo)) {
-    return { error: "El costo de compra debe ser mayor o igual a 0." };
-  }
+  const ajuste = validar(ajustarStockSchema, campos(formData, ["inventario_id", "cantidad", "costo_compra"]));
+  if (!ajuste.ok) return { error: ajuste.error };
+  const { inventario_id: id, cantidad, costo_compra: costoNuevo } = ajuste.valor;
 
   // Lectura + escritura condicionada al stock leído (concurrencia optimista):
   // si otra orden descontó stock entre medias, se relee y se reintenta,
@@ -139,24 +107,12 @@ export async function editarItem(
 ): Promise<InventarioFormState> {
   const { supabase } = await exigirSesion();
 
-  const id = texto(formData, "inventario_id");
-  const codigo = texto(formData, "codigo");
-  const nombre = texto(formData, "nombre");
-
-  if (!id) return { error: "Ítem inválido." };
-  if (!codigo) return { error: "Ingresa el código del ítem." };
-  if (!nombre) return { error: "Ingresa el nombre del ítem." };
-
-  const stockMinimo = numeroOpcional(texto(formData, "stock_minimo")) ?? 0;
-  const costoCompra = numeroOpcional(texto(formData, "costo_compra")) ?? 0;
-  const precioVenta = numeroOpcional(texto(formData, "precio_venta")) ?? 0;
-
-  if (!noNegativo(stockMinimo)) {
-    return { error: "El stock mínimo debe ser un número mayor o igual a 0." };
-  }
-  if (!noNegativo(costoCompra) || !noNegativo(precioVenta)) {
-    return { error: "Los precios deben ser valores mayores o iguales a 0." };
-  }
+  const item = validar(
+    editarItemSchema,
+    campos(formData, ["inventario_id", "codigo", "nombre", "stock_minimo", "costo_compra", "precio_venta", "descripcion"])
+  );
+  if (!item.ok) return { error: item.error };
+  const { inventario_id: id, ...datos } = item.valor;
 
   const { data: actual } = await supabase
     .from("inventario")
@@ -164,26 +120,15 @@ export async function editarItem(
     .eq("id", id)
     .maybeSingle();
   if (!actual) return { error: "El ítem ya no existe." };
-  if (!admiteDecimales(actual.tipo_unidad) && !Number.isInteger(stockMinimo)) {
+  if (!admiteDecimales(actual.tipo_unidad) && !Number.isInteger(datos.stock_minimo)) {
     return { error: "Las unidades físicas deben ser cantidades enteras." };
   }
 
-  const { data, error } = await supabase
-    .from("inventario")
-    .update({
-      codigo,
-      nombre,
-      descripcion: texto(formData, "descripcion") || null,
-      stock_minimo: stockMinimo,
-      costo_compra: costoCompra,
-      precio_venta: precioVenta,
-    })
-    .eq("id", id)
-    .select("id");
+  const { data, error } = await supabase.from("inventario").update(datos).eq("id", id).select("id");
 
   if (error) {
     if (error.code === "23505") {
-      return { error: `Ya existe otro ítem con el código "${codigo}".` };
+      return { error: `Ya existe otro ítem con el código "${datos.codigo}".` };
     }
     return { error: mensajeDeError(error) };
   }

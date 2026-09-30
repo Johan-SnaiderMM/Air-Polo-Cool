@@ -1,22 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { autorONull } from "@/lib/autor";
-import { esCategoria, hoyBogota } from "@/lib/caja";
+import { validar } from "@/lib/esquemas/comunes";
+import { anularGastoSchema, editarGastoSchema } from "@/lib/esquemas/gasto";
 import { mensajeDeError } from "@/lib/errores";
-import { esUuid } from "@/lib/ordenes";
 import { obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 /**
  * Acciones de caja que requieren conexión (auditoría y cálculo en el servidor).
  * Registrar gastos, abonos y movimientos NO está aquí: eso pasa por la cola offline
- * (src/app/(app)/sync/actions.ts).
+ * (src/app/(app)/sync/actions.ts). Las reglas de cada dato están en src/lib/esquemas/gasto.ts.
  */
 export type AccionCaja = { ok: true; mensaje?: string; id?: string } | { ok: false; error: string };
-
-const MAX_MONTO = 9_999_999_999;
-
-const esFecha = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(`${f}T00:00:00Z`));
 
 function refrescar() {
   revalidatePath("/caja-menor");
@@ -39,24 +34,17 @@ export async function editarGasto(datos: {
   const { supabase, user } = await obtenerSesion();
   if (!user) return SESION_EXPIRADA;
 
-  if (!esUuid(datos.id)) return { ok: false, error: "Gasto inválido." };
-  if (!esFecha(datos.fecha) || datos.fecha > hoyBogota()) {
-    return { ok: false, error: "La fecha no puede ser futura." };
-  }
-  if (!esCategoria(datos.categoria)) return { ok: false, error: "Categoría inválida." };
-  if (!Number.isFinite(datos.monto) || datos.monto <= 0 || datos.monto > MAX_MONTO) {
-    return { ok: false, error: "Ingresa un monto mayor a 0." };
-  }
-  if (datos.ordenId !== null && !esUuid(datos.ordenId)) return { ok: false, error: "Orden inválida." };
+  const g = validar(editarGastoSchema, datos);
+  if (!g.ok) return { ok: false, error: g.error };
 
   const { error } = await supabase.rpc("editar_gasto", {
-    p_id: datos.id,
-    p_fecha: datos.fecha,
-    p_categoria: datos.categoria,
-    p_monto: Math.round(datos.monto * 100) / 100,
-    p_descripcion: datos.descripcion.trim().slice(0, 300) || null,
-    p_orden_id: datos.ordenId,
-    p_autor: autorONull(datos.autor),
+    p_id: g.valor.id,
+    p_fecha: g.valor.fecha,
+    p_categoria: g.valor.categoria,
+    p_monto: g.valor.monto,
+    p_descripcion: g.valor.descripcion,
+    p_orden_id: g.valor.ordenId,
+    p_autor: g.valor.autor,
   });
   if (error) return { ok: false, error: mensajeDeError(error) };
   refrescar();
@@ -66,13 +54,14 @@ export async function editarGasto(datos: {
 export async function anularGasto(datos: { id: string; motivo: string; autor: string }): Promise<AccionCaja> {
   const { supabase, user } = await obtenerSesion();
   if (!user) return SESION_EXPIRADA;
-  if (!esUuid(datos.id)) return { ok: false, error: "Gasto inválido." };
-  if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
+
+  const g = validar(anularGastoSchema, datos);
+  if (!g.ok) return { ok: false, error: g.error };
 
   const { error } = await supabase.rpc("anular_gasto", {
-    p_id: datos.id,
-    p_motivo: datos.motivo.trim().slice(0, 300),
-    p_autor: autorONull(datos.autor),
+    p_id: g.valor.id,
+    p_motivo: g.valor.motivo,
+    p_autor: g.valor.autor,
   });
   if (error) return { ok: false, error: mensajeDeError(error) };
   refrescar();

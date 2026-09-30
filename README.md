@@ -173,6 +173,22 @@ con los tipos: tablas, vistas, columnas, nulabilidad, columnas opcionales al ins
   `npx supabase login` y `npx supabase gen types typescript --project-id <ref>`, y comparar el resultado con
   `database.ts`. Requiere tu sesión de Supabase, por eso no está automatizado.
 
+## Validación (esquemas compartidos)
+
+Las reglas de cada dato viven en **un solo lugar**, `src/lib/esquemas/` (Zod), y las usan el cliente (antes de
+encolar o enviar) y el servidor (que nunca confía en lo que recibe):
+
+- `comunes.ts` — piezas reutilizables (id, fecha, monto, WhatsApp, placa, año…), cada una con su mensaje en español, y
+  `validar(esquema, datos)` que devuelve `{ ok, valor }` o el mensaje del primer problema.
+- `vehiculo.ts`, `orden.ts`, `gasto.ts`, `inventario.ts` — formularios y ediciones (los números llegan como texto).
+- `operaciones.ts` — las operaciones offline (gasto, pago, foto, orden nueva). **Los tipos** (`Operacion`, `DatosGasto`…)
+  **se derivan del esquema**: el validador y el tipo no pueden desincronizarse.
+
+Para añadir un campo: declara la regla en el esquema de su entidad y úsala donde corresponda; las claves se declaran en el
+orden en que deben validarse (el usuario ve el primer error). Las reglas que dependen de la base de datos (¿existe el
+ítem?, ¿qué unidad tiene?) siguen en la acción. Aún con validación propia, fuera de los esquemas: cotizaciones
+(`lib/cotizaciones.ts`) y las comprobaciones de los formularios de gasto y pago en el navegador.
+
 ## Pruebas de las acciones que mueven dinero o estado
 
 `src/test/supabase-falso.ts` es un Supabase simulado que registra cada consulta, RPC y subida a Storage. Con él se prueban (junto a cada archivo, `*.test.ts`) los pagos (`anularPago`), los gastos (`editarGasto` / `anularGasto`), el cambio de estado y la edición de la orden, los repuestos (stock y total), fotos, y el punto único de escritura offline (`procesarOperacion` / `ejecutarOperacion`): qué le piden a la base, cómo reaccionan a errores (duplicado, sin permiso, sin sesión, conexión) y que nunca quedan archivos huérfanos. Las reglas propias de Postgres (triggers, RLS) se verifican aparte con PGlite (`database.contract.test.ts`).

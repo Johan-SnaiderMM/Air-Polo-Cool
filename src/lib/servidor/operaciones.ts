@@ -7,7 +7,8 @@ import {
   type DatosVehiculoOrden,
   type Operacion,
 } from "@/lib/offline/operaciones";
-import { normalizarPlaca, normalizarTelefono } from "@/lib/ordenes";
+import { validar } from "@/lib/esquemas/comunes";
+import { camposVehiculoNuevoSchema } from "@/lib/esquemas/vehiculo";
 import { BUCKET_EVIDENCIAS, BUCKET_FACTURAS } from "@/lib/almacenamiento";
 
 type Supabase = SupabaseClient<Database>;
@@ -56,15 +57,10 @@ export async function asegurarVehiculo(
     return data ? { ok: true, id: v.id } : { ok: false, res: fallo("El vehículo ya no existe.") };
   }
 
-  const telefono = normalizarTelefono(v.cliente_telefono);
-  const placa = normalizarPlaca(v.placa);
-  if (!v.cliente_nombre) return { ok: false, res: fallo("Falta el nombre del cliente.") };
-  if (!telefono) return { ok: false, res: fallo("WhatsApp inválido. Usa 10 dígitos o formato +57…") };
-  if (!/^[A-Z0-9]{5,8}$/.test(placa)) return { ok: false, res: fallo("La placa debe tener entre 5 y 8 letras/números.") };
-  if (!v.marca || !v.modelo) return { ok: false, res: fallo("Faltan la marca y la línea del vehículo.") };
-  if (v.anio !== null && (v.anio < 1950 || v.anio > 2100)) {
-    return { ok: false, res: fallo("El modelo (año) debe estar entre 1950 y 2100.") };
-  }
+  // Reglas compartidas con el formulario del teléfono (el servidor nunca confía en la cola).
+  const datos = validar(camposVehiculoNuevoSchema, v);
+  if (!datos.ok) return { ok: false, res: fallo(datos.error) };
+  const { cliente_nombre, cliente_telefono: telefono, placa, marca, modelo, anio } = datos.valor;
 
   // ¿Ya se creó en un intento anterior? (idempotencia)
   const { data: mismo } = await supabase.from("vehiculos").select("id").eq("id", v.id).maybeSingle();
@@ -93,7 +89,7 @@ export async function asegurarVehiculo(
     } else {
       const { error } = await supabase
         .from("clientes")
-        .insert({ id: v.cliente_id, nombre: v.cliente_nombre, telefono });
+        .insert({ id: v.cliente_id, nombre: cliente_nombre, telefono });
       if (error) return { ok: false, res: falloDb(error) };
     }
   }
@@ -102,9 +98,9 @@ export async function asegurarVehiculo(
     id: v.id,
     cliente_id: clienteId,
     placa,
-    marca: v.marca,
-    modelo: v.modelo,
-    anio: v.anio,
+    marca,
+    modelo,
+    anio,
   });
   if (error) return { ok: false, res: falloDb(error) };
   return { ok: true, id: v.id };

@@ -12,10 +12,13 @@ import {
 } from "@/lib/notificaciones";
 import { agregarHistorial, armarLineaHistorial } from "@/lib/historial-estado";
 import { pertenenciasONull } from "@/lib/offline/operaciones";
-import { OPCIONES_GARANTIA, esEstado, esUuid } from "@/lib/ordenes";
+import { esEstado, esUuid } from "@/lib/ordenes";
 import type { EstadoOrden, Json } from "@/types/database";
 import { BUCKET_EVIDENCIAS } from "@/lib/almacenamiento";
-import { numeroOpcional, texto } from "@/lib/formularios";
+import { texto } from "@/lib/formularios";
+import { validar } from "@/lib/esquemas/comunes";
+import { camposOrdenSchema } from "@/lib/esquemas/orden";
+import { mesesMantenimiento } from "@/lib/datos/mapeo";
 import { exigirSesion, obtenerSesion, SESION_EXPIRADA } from "@/utils/supabase/sesion";
 
 // La CREACIÓN de órdenes y la subida de fotos pasan por la cola offline
@@ -93,31 +96,18 @@ export async function guardarOrden(_prev: OrdenFormState, formData: FormData): P
   const ordenId = texto(formData, "orden_id");
   if (!esUuid(ordenId)) return { error: "Orden inválida." };
 
-  // ---- Campos de la orden ----
-  const kilometraje = numeroOpcional(texto(formData, "kilometraje"));
-  if (
-    kilometraje !== null &&
-    (Number.isNaN(kilometraje) || kilometraje < 0 || !Number.isInteger(kilometraje))
-  ) {
-    return { error: "El kilometraje debe ser un número entero mayor o igual a 0." };
-  }
-
-  const manoObra = numeroOpcional(texto(formData, "mano_obra")) ?? 0;
-  const totalCobrado = numeroOpcional(texto(formData, "total_cobrado")) ?? 0;
-  if (Number.isNaN(manoObra) || manoObra < 0) {
-    return { error: "La mano de obra debe ser un valor mayor o igual a 0." };
-  }
-  if (Number.isNaN(totalCobrado) || totalCobrado < 0) {
-    return { error: "El total cobrado debe ser un valor mayor o igual a 0." };
-  }
-
-  const diasGarantia = Number(texto(formData, "dias_garantia") || "0");
-  if (!OPCIONES_GARANTIA.some((o) => o.dias === diasGarantia)) {
-    return { error: "Selecciona un plazo de garantía válido." };
-  }
-
-  const estado = texto(formData, "estado") || "recibido";
-  if (!esEstado(estado)) return { error: "Estado inválido." };
+  // ---- Campos de la orden (mismas reglas que «crear orden» en el teléfono) ----
+  const campos = validar(camposOrdenSchema, {
+    kilometraje: texto(formData, "kilometraje"),
+    mano_obra: texto(formData, "mano_obra"),
+    total_cobrado: texto(formData, "total_cobrado"),
+    dias_garantia: Number(texto(formData, "dias_garantia") || "0"),
+    estado: texto(formData, "estado") || "recibido",
+    diagnostico_inicial: texto(formData, "diagnostico_inicial"),
+    trabajos_a_realizar: texto(formData, "trabajos_a_realizar"),
+  });
+  if (!campos.ok) return { error: campos.error };
+  const { estado } = campos.valor;
 
   // Pertenencias (checklist) y próximo mantenimiento preventivo.
   let pertenencias: Json | null = null;
@@ -130,21 +120,14 @@ export async function guardarOrden(_prev: OrdenFormState, formData: FormData): P
       return { error: "Las pertenencias no tienen un formato válido." };
     }
   }
-  const meses = Number(texto(formData, "mantenimiento_meses") || "0");
-  const mantenimientoMeses = meses === 3 || meses === 6 || meses === 12 ? meses : null;
+  const mantenimientoMeses = mesesMantenimiento(Number(texto(formData, "mantenimiento_meses") || "0"));
 
   const { data: previa } = await supabase.from("ordenes_servicio").select("estado").eq("id", ordenId).maybeSingle();
 
   const { data, error } = await supabase
     .from("ordenes_servicio")
     .update({
-      kilometraje,
-      diagnostico_inicial: texto(formData, "diagnostico_inicial") || null,
-      trabajos_a_realizar: texto(formData, "trabajos_a_realizar") || null,
-      mano_obra: manoObra,
-      total_cobrado: totalCobrado,
-      dias_garantia: diasGarantia,
-      estado,
+      ...campos.valor,
       pertenencias,
       mantenimiento_meses: mantenimientoMeses,
       // La garantía corre desde la entrega: si se revierte el estado, se limpia.
