@@ -5,7 +5,10 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { esUuid } from "@/lib/ordenes";
+import { CambiarEstado } from "@/components/ordenes/cambiar-estado";
 import { OrdenForm } from "@/components/ordenes/orden-form";
+import { Colapsable } from "@/components/ui/colapsable";
+import { lineasHistorial } from "@/lib/historial-estado";
 import { CapturaFotos } from "@/components/ordenes/captura-fotos";
 import {
   GaleriaEvidencias,
@@ -23,7 +26,6 @@ import { enlaceWhatsApp, PLANTILLA_LABEL, type PlantillaWhatsApp } from "@/lib/w
 import { PagosOrden, type PagoVista } from "@/components/ordenes/pagos-orden";
 import { pertenenciasONull } from "@/lib/offline/operaciones";
 import { Printer } from "lucide-react";
-import { EstadoBadge } from "@/components/ordenes/estado-badge";
 
 export const metadata: Metadata = { title: "Orden" };
 
@@ -131,6 +133,12 @@ export default async function OrdenPage({
   const repuestosCosto = redondearDinero(
     (filasRepuestos ?? []).reduce((s, r) => s + r.cantidad_usada * r.costo_unitario, 0)
   );
+  const pagadoNeto = (filasPagos ?? []).reduce(
+    (s, p) => (p.anulado ? s : s + (p.es_devolucion ? -p.monto : p.monto)),
+    0
+  );
+  const saldoPendiente = Math.max(0, redondearDinero(orden.total_cobrado - pagadoNeto));
+  const historial = lineasHistorial(orden.notas);
   const esAdmin = sesion.user?.app_metadata?.rol === "admin";
   const bloqueada = orden.estado === "entregado" || orden.estado === "cancelado";
 
@@ -193,7 +201,18 @@ export default async function OrdenPage({
           <span className="rounded-md border border-stone-300/70 bg-stone-100 px-2.5 py-1 font-mono text-xl font-semibold tracking-wider text-ink">
             {v?.placa ?? "—"}
           </span>
-          <EstadoBadge estado={orden.estado} />
+          <CambiarEstado
+            ordenId={orden.id}
+            estado={orden.estado}
+            placa={v?.placa ?? "—"}
+            vehiculo={v ? `${v.marca} ${v.modelo}${v.anio ? ` ${v.anio}` : ""}` : "Vehículo"}
+            saldo={saldoPendiente}
+            mantenimientoMeses={
+              orden.mantenimiento_meses === 3 || orden.mantenimiento_meses === 6 || orden.mantenimiento_meses === 12
+                ? orden.mantenimiento_meses
+                : null
+            }
+          />
         </div>
         <p className="mt-2 text-base font-medium">
           {v ? `${v.marca} ${v.modelo}${v.anio ? ` ${v.anio}` : ""}` : ""}
@@ -231,6 +250,21 @@ export default async function OrdenPage({
             automaticoConfigurado={envioAutomaticoConfigurado()}
           />
         </div>
+      )}
+
+      {historial.length > 0 && (
+        <Colapsable
+          titulo="Historial de estados"
+          resumen={`${historial.length} ${historial.length === 1 ? "registro" : "registros"} · último: ${historial[0]}`}
+        >
+          <ol className="space-y-2.5">
+            {historial.map((linea, i) => (
+              <li key={i} className="border-l-2 border-stone-200 pl-3 text-[13px] leading-snug text-stone-700">
+                {linea}
+              </li>
+            ))}
+          </ol>
+        </Colapsable>
       )}
 
       <div className="space-y-3">
@@ -278,8 +312,8 @@ export default async function OrdenPage({
       <div className="space-y-3">
         <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Datos de la orden</h3>
         <OrdenForm
-          // Remonta el formulario cuando cambian los montos desde el resumen.
-          key={`${orden.mano_obra}-${orden.total_cobrado}`}
+          // Remonta el formulario cuando cambian los montos o el estado desde fuera de él.
+          key={`${orden.mano_obra}-${orden.total_cobrado}-${orden.estado}-${orden.mantenimiento_meses ?? 0}`}
           modo="editar"
           ordenId={orden.id}
           fechaEntrega={orden.fecha_entrega}

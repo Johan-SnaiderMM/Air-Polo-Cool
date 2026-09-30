@@ -53,7 +53,7 @@ export default async function OrdenesPage({
     let consulta = supabase
       .from("ordenes_servicio")
       .select(
-        "id, estado, fecha_ingreso, total_cobrado, vehiculos(placa, marca, modelo, anio, clientes(nombre))"
+        "id, estado, fecha_ingreso, total_cobrado, mantenimiento_meses, vehiculos(placa, marca, modelo, anio, clientes(nombre))"
       )
       .order("fecha_ingreso", { ascending: false })
       .limit(LIMITE);

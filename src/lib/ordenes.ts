@@ -19,6 +19,19 @@ export const ESTADO_BADGE: Record<EstadoOrden, string> = {
   cancelado: "bg-brick-50 text-brick-700",
 };
 
+/**
+ * Superficie de cada estado (badge, selector y modal): degradado muy tenue + micro-borde a tono.
+ * Usa los tonos desaturados del sistema (ochre = ámbar, dusk = pizarra, sage = salvia).
+ */
+export const ESTADO_SUPERFICIE: Record<EstadoOrden, string> = {
+  recibido: "bg-linear-to-br from-stone-100 to-stone-50 border-stone-300/70 text-stone-800",
+  diagnostico: "bg-linear-to-br from-ochre-100/70 to-stone-50 border-ochre-300/70 text-ochre-800",
+  en_proceso: "bg-linear-to-br from-dusk-100 to-stone-50 border-dusk-500/30 text-dusk-800",
+  listo: "bg-linear-to-br from-sage-100/70 to-stone-50 border-sage-300/80 text-sage-800",
+  entregado: "bg-linear-to-br from-stone-200/70 to-stone-50 border-stone-300/70 text-stone-600",
+  cancelado: "bg-linear-to-br from-brick-50 to-stone-50 border-brick-300/60 text-brick-700",
+};
+
 /** Punto de color de cada estado (también usado en la barra segmentada del inicio). */
 export const ESTADO_DOT: Record<EstadoOrden, string> = {
   recibido: "bg-stone-400",

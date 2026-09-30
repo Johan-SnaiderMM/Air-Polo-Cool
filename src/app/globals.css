@@ -245,3 +245,44 @@ body {
     background-image: none;
   }
 }
+
+/* Diálogo centrado (cambio rápido de estado) y menú desplegable: entrada suave. */
+@keyframes dialogo-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fondo-entra {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialogo-centrado[open] {
+  animation: dialogo-entra 0.2s ease-out;
+}
+
+.dialogo-centrado[open]::backdrop {
+  animation: fondo-entra 0.2s ease-out;
+}
+
+.menu-entra {
+  animation: dialogo-entra 0.15s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialogo-centrado[open],
+  .dialogo-centrado[open]::backdrop,
+  .menu-entra {
+    animation: none;
+  }
+}

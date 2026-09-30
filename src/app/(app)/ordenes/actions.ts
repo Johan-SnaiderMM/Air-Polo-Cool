@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { autorONull } from "@/lib/autor";
 import { filtroVehiculos } from "@/lib/consultas";
 import { mensajeDeError } from "@/lib/errores";
 import {
@@ -10,9 +11,10 @@ import {
   enviarWhatsApp,
   envioAutomaticoActivo,
 } from "@/lib/notificaciones";
+import { agregarHistorial, armarLineaHistorial } from "@/lib/historial-estado";
 import { pertenenciasONull } from "@/lib/offline/operaciones";
 import { OPCIONES_GARANTIA, esEstado, esUuid } from "@/lib/ordenes";
-import type { Json } from "@/types/database";
+import type { EstadoOrden, Json } from "@/types/database";
 
 // La CREACIÓN de órdenes y la subida de fotos pasan por la cola offline
 // (src/app/(app)/sync/actions.ts). Aquí quedan la búsqueda, la edición y el borrado
@@ -31,6 +33,24 @@ export type OrdenFormState = { error?: string; ok?: string };
 export type SubidaResultado = { ok: true } | { ok: false; error: string };
 
 const BUCKET_EVIDENCIAS = "evidencias-ordenes";
+
+/**
+ * Aviso automático al pasar a Listo / Entregado (opt-in: WHATSAPP_AUTO_ENVIO=true).
+ * Un fallo del servidor de WhatsApp nunca revierte el guardado. Devuelve null si no aplica.
+ */
+async function avisarPorWhatsApp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ordenId: string,
+  estadoAnterior: EstadoOrden | undefined,
+  estado: EstadoOrden
+): Promise<{ ok: true } | { ok: false; error: string } | null> {
+  if (estadoAnterior === estado) return null;
+  if ((estado !== "listo" && estado !== "entregado") || !envioAutomaticoActivo()) return null;
+  const contexto = await cargarContextoOrden(supabase, ordenId);
+  if (!contexto) return null;
+  const r = await enviarWhatsApp(contexto.telefono, contexto.mensajes[estado]);
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
 
 function texto(formData: FormData, campo: string): string {
   const valor = formData.get(campo);
@@ -158,19 +178,13 @@ export async function guardarOrden(_prev: OrdenFormState, formData: FormData): P
   revalidatePath("/garantias");
   revalidatePath("/");
 
-  // Aviso automático al pasar a Listo / Entregado (opt-in: WHATSAPP_AUTO_ENVIO=true).
-  // Un fallo del servidor de WhatsApp nunca revierte el guardado.
-  const cambioDeEstado = previa?.estado !== estado;
-  if (cambioDeEstado && (estado === "listo" || estado === "entregado") && envioAutomaticoActivo()) {
-    const contexto = await cargarContextoOrden(supabase, ordenId);
-    if (contexto) {
-      const r = await enviarWhatsApp(contexto.telefono, contexto.mensajes[estado]);
-      return {
-        ok: r.ok
-          ? "Cambios guardados. WhatsApp enviado al cliente."
-          : `Cambios guardados, pero no se pudo enviar el WhatsApp: ${r.error}`,
-      };
-    }
+  const aviso = await avisarPorWhatsApp(supabase, ordenId, previa?.estado, estado);
+  if (aviso) {
+    return {
+      ok: aviso.ok
+        ? "Cambios guardados. WhatsApp enviado al cliente."
+        : `Cambios guardados, pero no se pudo enviar el WhatsApp: ${aviso.error}`,
+    };
   }
 
   return { ok: "Cambios guardados." };
@@ -249,4 +263,86 @@ export async function asignarFotoARepuesto(datos: {
 
   revalidatePath(`/ordenes/${ordenId}`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Cambio rápido de estado (desde la tarjeta de la orden)
+// ---------------------------------------------------------------------
+
+export type CambioEstadoResultado =
+  | { ok: true; aviso?: string }
+  | { ok: false; error: string };
+
+/**
+ * Cambia SOLO el estado de una orden y deja constancia en su bitácora (líneas al final de `notas`:
+ * momento, autor, transición y observación). Al pasar a Listo / Entregado guarda el próximo
+ * mantenimiento elegido; si se sale de esos estados, lo limpia. Requiere conexión.
+ */
+export async function cambiarEstadoOrden(datos: {
+  ordenId: string;
+  estado: string;
+  nota: string;
+  mantenimientoMeses: number | null;
+  autor: string | null;
+}): Promise<CambioEstadoResultado> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, error: "Tu sesión expiró. Vuelve a ingresar." };
+
+  if (!esUuid(datos.ordenId)) return { ok: false, error: "Orden inválida." };
+  if (!esEstado(datos.estado)) return { ok: false, error: "Estado inválido." };
+  const estado = datos.estado;
+
+  const nota = datos.nota.replace(/s+/g, " ").trim().slice(0, 200);
+  if (estado === "cancelado" && nota.length < 3) {
+    return { ok: false, error: "Escribe el motivo de la cancelación." };
+  }
+
+  const { data: previa } = await supabase
+    .from("ordenes_servicio")
+    .select("estado, notas")
+    .eq("id", datos.ordenId)
+    .maybeSingle();
+  if (!previa) return { ok: false, error: "La orden no existe o no tienes permisos." };
+  if (previa.estado === estado) return { ok: false, error: "La orden ya está en ese estado." };
+
+  const listoOEntregado = estado === "listo" || estado === "entregado";
+  const meses = datos.mantenimientoMeses;
+  const mantenimientoMeses = listoOEntregado && (meses === 3 || meses === 6 || meses === 12) ? meses : null;
+
+  const linea = armarLineaHistorial({
+    momento: new Date(),
+    autor: autorONull(datos.autor),
+    de: previa.estado,
+    a: estado,
+    nota,
+  });
+
+  const { data, error } = await supabase
+    .from("ordenes_servicio")
+    .update({
+      estado,
+      mantenimiento_meses: mantenimientoMeses,
+      notas: agregarHistorial(previa.notas, linea),
+      // La garantía corre desde la entrega: si se revierte el estado, se limpia.
+      ...(estado === "entregado" ? {} : { fecha_entrega: null }),
+    })
+    .eq("id", datos.ordenId)
+    .select("id");
+
+  if (error) return { ok: false, error: mensajeDeError(error) };
+  if (!data || data.length === 0) return { ok: false, error: "No se pudo actualizar la orden." };
+
+  revalidatePath("/ordenes");
+  revalidatePath(`/ordenes/${datos.ordenId}`);
+  revalidatePath("/garantias");
+  revalidatePath("/cartera");
+  revalidatePath("/");
+
+  const aviso = await avisarPorWhatsApp(supabase, datos.ordenId, previa.estado, estado);
+  if (!aviso) return { ok: true };
+  return {
+    ok: true,
+    aviso: aviso.ok ? "WhatsApp enviado al cliente." : `No se pudo enviar el WhatsApp: ${aviso.error}`,
+  };
 }

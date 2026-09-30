@@ -9,14 +9,15 @@ import {
   PERTENENCIAS_VACIAS,
   PertenenciasChecklist,
 } from "@/components/ordenes/pertenencias-checklist";
+import { SelectorEstado } from "@/components/ordenes/selector-estado";
 import { SelectorMantenimiento, type MesesMantenimiento } from "@/components/ordenes/selector-mantenimiento";
 import { VehiculoSelector, type SeleccionVehiculo } from "@/components/ordenes/vehiculo-selector";
 import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
+import { Colapsable } from "@/components/ui/colapsable";
 import { nuevoId, type DatosOrden, type DatosVehiculoOrden } from "@/lib/offline/operaciones";
+import { resumenNotasTecnicas, resumenPertenencias } from "@/lib/pertenencias";
 import {
-  ESTADOS_FLUJO,
-  ESTADO_LABEL,
   OPCIONES_GARANTIA,
   calcularFinGarantia,
   formatearFechaDate,
@@ -244,19 +245,7 @@ export function OrdenForm(props: Props) {
           <label htmlFor="estado" className={LABEL}>
             Estado
           </label>
-          <select
-            id="estado"
-            name="estado"
-            value={v.estado}
-            onChange={(e) => set("estado", e.target.value as EstadoOrden)}
-            className={INPUT}
-          >
-            {ESTADOS_FLUJO.map((e) => (
-              <option key={e} value={e}>
-                {ESTADO_LABEL[e]}
-              </option>
-            ))}
-          </select>
+          <SelectorEstado id="estado" name="estado" value={v.estado} onChange={(e) => set("estado", e)} />
         </div>
 
         <div>
@@ -277,40 +266,43 @@ export function OrdenForm(props: Props) {
           />
         </div>
 
-        <div>
-          <label htmlFor="diagnostico_inicial" className={LABEL}>
-            Diagnóstico inicial
-          </label>
-          <textarea
-            id="diagnostico_inicial"
-            name="diagnostico_inicial"
-            rows={4}
-            placeholder="Fugas detectadas, presiones, escaneo…"
-            value={v.diagnostico_inicial}
-            onChange={(e) => set("diagnostico_inicial", e.target.value)}
-            className={TEXTAREA}
-          />
-        </div>
+        <Colapsable titulo="Notas técnicas" resumen={resumenNotasTecnicas(v.diagnostico_inicial, v.trabajos_a_realizar)}>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="diagnostico_inicial" className={LABEL}>
+                Diagnóstico inicial
+              </label>
+              <textarea
+                id="diagnostico_inicial"
+                name="diagnostico_inicial"
+                rows={4}
+                placeholder="Fugas detectadas, presiones, escaneo…"
+                value={v.diagnostico_inicial}
+                onChange={(e) => set("diagnostico_inicial", e.target.value)}
+                className={TEXTAREA}
+              />
+            </div>
 
-        <div>
-          <label htmlFor="trabajos_a_realizar" className={LABEL}>
-            Trabajos a realizar
-          </label>
-          <textarea
-            id="trabajos_a_realizar"
-            name="trabajos_a_realizar"
-            rows={4}
-            placeholder="Cambio de compresor, vacío y recarga R134a…"
-            value={v.trabajos_a_realizar}
-            onChange={(e) => set("trabajos_a_realizar", e.target.value)}
-            className={TEXTAREA}
-          />
-        </div>
+            <div>
+              <label htmlFor="trabajos_a_realizar" className={LABEL}>
+                Trabajos a realizar
+              </label>
+              <textarea
+                id="trabajos_a_realizar"
+                name="trabajos_a_realizar"
+                rows={4}
+                placeholder="Cambio de compresor, vacío y recarga R134a…"
+                value={v.trabajos_a_realizar}
+                onChange={(e) => set("trabajos_a_realizar", e.target.value)}
+                className={TEXTAREA}
+              />
+            </div>
+          </div>
+        </Colapsable>
       </fieldset>
 
-      <fieldset className="space-y-3">
-        <legend className={LEYENDA}>Pertenencias al ingreso</legend>
-        {v.pertenencias === null && (
+      <Colapsable titulo="Pertenencias al ingreso" resumen={resumenPertenencias(v.pertenencias)}>
+        {v.pertenencias === null ? (
           <button
             type="button"
             onClick={() => set("pertenencias", PERTENENCIAS_VACIAS)}
@@ -318,11 +310,10 @@ export function OrdenForm(props: Props) {
           >
             Registrar pertenencias del vehículo
           </button>
-        )}
-        {v.pertenencias !== null && (
+        ) : (
           <PertenenciasChecklist value={pertenencias} onChange={(p) => set("pertenencias", p)} />
         )}
-      </fieldset>
+      </Colapsable>
 
       <fieldset className="space-y-4">
         <legend className={LEYENDA}>Cobro y garantía</legend>

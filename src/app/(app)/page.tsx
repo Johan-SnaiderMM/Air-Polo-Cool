@@ -21,7 +21,7 @@ export default async function InicioPage() {
       supabase
         .from("ordenes_servicio")
         .select(
-          "id, estado, fecha_ingreso, total_cobrado, vehiculos(placa, marca, modelo, anio, clientes(nombre))"
+          "id, estado, fecha_ingreso, total_cobrado, mantenimiento_meses, vehiculos(placa, marca, modelo, anio, clientes(nombre))"
         )
         .in("estado", ESTADOS_ACTIVOS)
         .order("fecha_ingreso", { ascending: false })
