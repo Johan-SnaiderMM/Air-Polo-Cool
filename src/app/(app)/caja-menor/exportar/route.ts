@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   const error = gastos.error ?? pagos.error;
   if (error) {
     return new NextResponse(
-      `No se pudo generar el reporte: ${error.message}. ¿Ya ejecutaste polo_air_cool_fase3.sql y fase4.sql?`,
+      `No se pudo generar el reporte: ${error.message}. ¿Ya ejecutaste las migraciones de las fases 3 y 4 (carpeta supabase/migrations)?`,
       { status: 500 }
     );
   }

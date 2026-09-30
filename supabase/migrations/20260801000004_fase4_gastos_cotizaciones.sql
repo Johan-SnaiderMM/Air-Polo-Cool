@@ -624,7 +624,9 @@ revoke all on public.cotizaciones, public.cotizacion_items from anon;
 -- 6. VISTAS
 -- =====================================================================
 
--- El balance de la Fase 1 ahora ignora los gastos anulados (mismas columnas).
+-- Balance mensual: Utilidad Real = (Ingresos - Costo repuestos) - Caja menor.
+-- Ingresos = órdenes 'entregado', mes según fecha_entrega (hora Colombia).
+-- Ignora los gastos anulados. (Única definición de esta vista.)
 create or replace view public.v_balance_mensual
 with (security_invoker = true) as
 with ing as (
@@ -651,6 +653,9 @@ select
     - coalesce(gas.gastos_caja_menor, 0)              as utilidad_real
 from ing
 full join gas on gas.mes = ing.mes;
+
+-- Como en la fase 1, el rol anónimo no lee esta vista (la vista se creó después del revoke general).
+revoke all on public.v_balance_mensual from anon;
 
 -- Balance REAL (base cobrado): no asume que lo facturado está pagado.
 --   utilidad_real = cobrado neto del mes − costo de repuestos (órdenes entregadas del mes) − gastos del mes

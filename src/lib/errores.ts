@@ -29,10 +29,10 @@ export function mensajeDeError(error: ErrorSupabase): string {
   }
   // Columnas o funciones de una migración ausentes: falta ejecutar el SQL de la fase.
   if (/diagnostico_inicial|trabajos_a_realizar/.test(error.message)) {
-    return "Falta ejecutar polo_air_cool_fase2.sql en Supabase (columnas de diagnóstico y trabajos).";
+    return "Falta ejecutar la migración de la fase 2 (supabase/migrations) en Supabase: columnas de diagnóstico y trabajos.";
   }
   if (esErrorDeMigracion(error)) {
-    return "Falta ejecutar polo_air_cool_fase3.sql / polo_air_cool_fase4.sql en Supabase (tablas o funciones nuevas).";
+    return "Falta ejecutar las migraciones más recientes (supabase/migrations) en Supabase: tablas, columnas o funciones nuevas.";
   }
   // Errores lanzados por nuestras funciones SQL (RAISE EXCEPTION): ya vienen en español y son claros.
   const esDeFuncion = (m: string) => !/^(duplicate key|new row for relation|violates|permission denied|insert or update)/.test(m);

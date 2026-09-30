@@ -1,8 +1,8 @@
 /**
  * PRUEBA DE CONTRATO: `database.ts` (escrito a mano, con tipos de dominio) contra el esquema REAL
- * que producen las migraciones `polo_air_cool_fase*.sql`.
+ * que producen las migraciones de `supabase/migrations/`.
  *
- * Levanta un Postgres en memoria (PGlite), ejecuta las fases en orden (las últimas dos veces,
+ * Levanta un Postgres en memoria (PGlite), ejecuta las migraciones en orden (de la tercera en adelante dos veces,
  * para comprobar que son re-ejecutables) y compara con los tipos: tablas, vistas, columnas,
  * nulabilidad, columnas opcionales al insertar, enums y funciones expuestas a `authenticated`.
  * Si una migración cambia el esquema y `database.ts` no se actualiza (o al revés), falla aquí,
@@ -17,7 +17,10 @@ import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const RAIZ = process.cwd();
-const FASES = ["fase1", "fase2", "fase3", "fase4", "fase5", "fase3", "fase4", "fase5"];
+const DIR_MIGRACIONES = path.join(RAIZ, "supabase", "migrations");
+const MIGRACIONES = fs.readdirSync(DIR_MIGRACIONES).filter((f) => f.endsWith(".sql")).sort();
+/** Todas en orden y, después, de la tercera en adelante otra vez: deben poder re-ejecutarse. */
+const EJECUCIONES = [...MIGRACIONES, ...MIGRACIONES.slice(2)];
 
 /**
  * Objetos que siguen en la base (los crean las migraciones) pero que la app YA NO usa y por eso
@@ -128,8 +131,8 @@ beforeAll(async () => {
     alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
     alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
   `);
-  for (const fase of FASES) {
-    await db.exec(fs.readFileSync(path.join(RAIZ, `polo_air_cool_${fase}.sql`), "utf8"));
+  for (const archivo of EJECUCIONES) {
+    await db.exec(fs.readFileSync(path.join(DIR_MIGRACIONES, archivo), "utf8"));
   }
 }, 180_000);
 
@@ -246,6 +249,97 @@ describe("database.ts vs migraciones SQL", () => {
     const sobranEnTipos = [...ts_.funciones].filter((f) => !enDb.has(f) && !existeSinPermiso.has(f));
     const faltanEnTipos = [...enDb].filter((f) => !ts_.funciones.has(f));
     expect({ sobranEnTipos, faltanEnTipos }).toEqual({ sobranEnTipos: [], faltanEnTipos: [] });
+  });
+
+  /**
+   * HUELLA del esquema final: definición exacta de tablas, columnas, restricciones, índices,
+   * triggers, políticas RLS, funciones, vistas, enums, permisos y buckets. Se guarda en
+   * supabase/esquema-final.sql. Si se edita una migración (por ejemplo, para quitar una definición
+   * duplicada) y el esquema resultante cambia aunque sea un carácter, esta prueba falla y muestra
+   * la diferencia. Un cambio DELIBERADO del esquema se acepta actualizando esa huella
+   * (`npx vitest run -u`), lo que además deja el cambio a la vista en la revisión.
+   */
+  it("el esquema final no cambia sin querer (huella)", async () => {
+    const seccion = async (titulo: string, sql: string) => {
+      const filas = await consulta<{ l: string }>(sql);
+      return `-- ${titulo}\n${filas.map((f) => f.l).join("\n")}\n`;
+    };
+    const partes = [
+      await seccion(
+        "COLUMNAS",
+        `select format('%s.%s %s %s default %s', c.table_name, c.column_name, c.data_type,
+                       case c.is_nullable when 'YES' then 'null' else 'not null' end,
+                       coalesce(c.column_default, '-')) as l
+         from information_schema.columns c
+         join information_schema.tables t using (table_schema, table_name)
+         where c.table_schema = 'public' and t.table_type = 'BASE TABLE'
+         order by c.table_name, c.column_name`
+      ),
+      await seccion(
+        "RESTRICCIONES",
+        `select format('%s: %s %s', conrelid::regclass, conname, pg_get_constraintdef(oid)) as l
+         from pg_constraint where connamespace = 'public'::regnamespace order by 1`
+      ),
+      await seccion(
+        "INDICES",
+        `select indexdef as l from pg_indexes where schemaname = 'public' order by indexname`
+      ),
+      await seccion(
+        "TRIGGERS",
+        `select pg_get_triggerdef(t.oid) as l
+         from pg_trigger t join pg_class c on c.oid = t.tgrelid
+         where c.relnamespace = 'public'::regnamespace and not t.tgisinternal order by 1`
+      ),
+      await seccion(
+        "POLITICAS RLS",
+        `select format('%s.%s %s %s using(%s) check(%s)', schemaname, tablename, policyname, cmd, coalesce(qual, '-'), coalesce(with_check, '-')) || ' roles=' || roles::text as l
+         from pg_policies where schemaname in ('public', 'storage') order by schemaname, tablename, policyname`
+      ),
+      await seccion(
+        "RLS ACTIVADO",
+        `select format('%s %s', relname, relrowsecurity) as l
+         from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r' order by relname`
+      ),
+      await seccion(
+        "FUNCIONES",
+        `select pg_get_functiondef(p.oid) as l
+         from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+         order by p.proname, pg_get_function_identity_arguments(p.oid)`
+      ),
+      await seccion(
+        "PERMISOS DE EJECUCION",
+        `select format('%s(%s) anon=%s authenticated=%s service_role=%s', p.proname, pg_get_function_identity_arguments(p.oid),
+                       has_function_privilege('anon', p.oid, 'execute'),
+                       has_function_privilege('authenticated', p.oid, 'execute'),
+                       has_function_privilege('service_role', p.oid, 'execute')) as l
+         from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind = 'f'
+         order by p.proname, pg_get_function_identity_arguments(p.oid)`
+      ),
+      await seccion(
+        "VISTAS",
+        `select format('%s (%s)%s%s', c.relname, coalesce(array_to_string(c.reloptions, ','), '-'), E'\\n', pg_get_viewdef(c.oid, true)) as l
+         from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'v' order by c.relname`
+      ),
+      await seccion(
+        "ENUMS",
+        `select format('%s: %s', t.typname, string_agg(e.enumlabel, ',' order by e.enumsortorder)) as l
+         from pg_enum e join pg_type t on t.oid = e.enumtypid
+         where t.typnamespace = 'public'::regnamespace group by t.typname order by t.typname`
+      ),
+      await seccion(
+        "PERMISOS DE TABLA",
+        `select format('%s %s %s', table_name, grantee, string_agg(privilege_type, ',' order by privilege_type)) as l
+         from information_schema.role_table_grants
+         where table_schema = 'public' and grantee in ('anon', 'authenticated')
+         group by table_name, grantee order by table_name, grantee`
+      ),
+      await seccion(
+        "BUCKETS",
+        `select format('%s public=%s limite=%s tipos=%s', id, public, coalesce(file_size_limit::text, '-'), coalesce(allowed_mime_types::text, '-')) as l
+         from storage.buckets order by id`
+      ),
+    ];
+    await expect(partes.join("\n")).toMatchFileSnapshot("../../supabase/esquema-final.sql");
   });
 });
 

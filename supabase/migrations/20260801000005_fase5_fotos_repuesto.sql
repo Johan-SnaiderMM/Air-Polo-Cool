@@ -52,7 +52,17 @@ create trigger trg_evidencia_repuesto_coherente
 
 revoke all on function public.fn_evidencia_repuesto_coherente() from public, anon, authenticated;
 
--- Portal público: mismo contenido de fase 3 + id de repuesto y vínculo de cada foto.
+-- ---------------------------------------------------------------------
+-- RPC PÚBLICA: portal del cliente  ->  /orden/[token]
+-- Devuelve solo lo que el cliente puede ver. NO expone: costos de compra,
+-- notas internas, facturas de proveedores, teléfono ni documento.
+-- Las rutas de imágenes (url_imagen) se firman en el servidor (Next.js) con
+-- el service role: createSignedUrls() sobre el bucket 'evidencias-ordenes'.
+-- Retorna NULL si el token no existe o la orden está cancelada.
+-- ---------------------------------------------------------------------
+-- Incluye 'pagado' y 'saldo' (no expone medio, referencia ni quién registró el pago) y, desde la
+-- fase 5, el id de cada repuesto y a qué repuesto pertenece cada foto.
+-- ---------------------------------------------------------------------
 create or replace function public.obtener_orden_publica(p_token text)
 returns jsonb
 language sql

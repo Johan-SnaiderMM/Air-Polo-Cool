@@ -1,4 +1,5 @@
-// Refleja polo_air_cool_fase1.sql (schema public).
+// Refleja el esquema `public` que producen las migraciones de supabase/migrations (lo verifica
+// database.contract.test.ts).
 
 export type Json =
   | string
@@ -74,7 +75,7 @@ export type OrdenPublica = {
     garantia_semaforo: SemaforoGarantia | null;
     mano_obra: number;
     total_cobrado: number;
-    /** Fase 3 (polo_air_cool_fase3.sql): pagos netos recibidos. Ausente si aún no se ejecutó. */
+    /** Fase 3 (migración de pagos): pagos netos recibidos. Ausente si aún no se ejecutó. */
     pagado?: number;
     /** Fase 3: total_cobrado − pagado. */
     saldo?: number;
@@ -87,7 +88,7 @@ export type OrdenPublica = {
     anio: number | null;
   };
   repuestos: {
-    /** Fase 5 (polo_air_cool_fase5.sql): id de la línea; ausente si aún no se ejecutó. */
+    /** Fase 5 (migración de fotos por repuesto): id de la línea; ausente si aún no se ejecutó. */
     id?: string;
     nombre: string;
     cantidad: number;
@@ -196,7 +197,7 @@ export type Database = {
           total_cobrado: number;
           token_publico: string;
           notas: string | null;
-          /** Fase 2 (polo_air_cool_fase2.sql) */
+          /** Fase 2 (migración de diagnóstico) */
           diagnostico_inicial: string | null;
           trabajos_a_realizar: string | null;
           /** Fase 4 */

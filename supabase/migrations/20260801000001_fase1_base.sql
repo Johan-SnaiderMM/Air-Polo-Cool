@@ -428,33 +428,8 @@ left join (
   group by orden_id
 ) r on r.orden_id = o.id;
 
--- Balance mensual: Utilidad Real = (Ingresos - Costo repuestos) - Caja menor
--- Ingresos = órdenes 'entregado', mes según fecha_entrega (hora Colombia).
-create or replace view public.v_balance_mensual
-with (security_invoker = true) as
-with ing as (
-  select date_trunc('month', fecha_entrega at time zone 'America/Bogota')::date as mes,
-         sum(total_cobrado)   as ingresos,
-         sum(costo_repuestos) as costo_repuestos
-  from public.v_finanzas_orden
-  where estado = 'entregado' and fecha_entrega is not null
-  group by 1
-),
-gas as (
-  select date_trunc('month', fecha)::date as mes,
-         sum(monto) as gastos_caja_menor
-  from public.gastos_caja_menor
-  group by 1
-)
-select
-  coalesce(ing.mes, gas.mes)                          as mes,
-  coalesce(ing.ingresos, 0)                           as ingresos,
-  coalesce(ing.costo_repuestos, 0)                    as costo_repuestos,
-  coalesce(gas.gastos_caja_menor, 0)                  as gastos_caja_menor,
-  (coalesce(ing.ingresos, 0) - coalesce(ing.costo_repuestos, 0))
-    - coalesce(gas.gastos_caja_menor, 0)              as utilidad_real
-from ing
-full join gas on gas.mes = ing.mes;
+-- Balance mensual (v_balance_mensual): se define UNA sola vez, en la fase 4, porque debe ignorar
+-- los gastos anulados (columna que aparece en esa fase).
 
 -- Garantías con semáforo: verde (vigente) / amarillo (<= 7 días) / rojo (vencida)
 create or replace view public.v_garantias
@@ -542,72 +517,9 @@ create policy gastos_admin_delete on public.gastos_caja_menor
 revoke all on all tables in schema public from anon;
 
 -- ---------------------------------------------------------------------
--- RPC PÚBLICA: portal del cliente  ->  /orden/[token]
--- Devuelve solo lo que el cliente puede ver. NO expone: costos de compra,
--- notas internas, facturas de proveedores, teléfono ni documento.
--- Las rutas de imágenes (url_imagen) se firman en el servidor (Next.js) con
--- el service role: createSignedUrls() sobre el bucket 'evidencias-ordenes'.
--- Retorna NULL si el token no existe o la orden está cancelada.
+-- RPC PÚBLICA del portal del cliente (/orden/[token]): obtener_orden_publica(token).
+-- Se define UNA sola vez, en su versión final (fase 5). Ver ahí qué expone y qué no.
 -- ---------------------------------------------------------------------
-create or replace function public.obtener_orden_publica(p_token text)
-returns jsonb
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select jsonb_build_object(
-    'orden', jsonb_build_object(
-      'estado',             o.estado,
-      'fecha_ingreso',      o.fecha_ingreso,
-      'fecha_entrega',      o.fecha_entrega,
-      'dias_garantia',      o.dias_garantia,
-      'fecha_fin_garantia', o.fecha_fin_garantia,
-      'garantia_semaforo',  case
-                              when o.fecha_fin_garantia is null then null
-                              when o.fecha_fin_garantia < (now() at time zone 'America/Bogota')::date then 'rojo'
-                              when o.fecha_fin_garantia - (now() at time zone 'America/Bogota')::date <= 7 then 'amarillo'
-                              else 'verde'
-                            end,
-      'mano_obra',          o.mano_obra,
-      'total_cobrado',      o.total_cobrado
-    ),
-    'cliente',  jsonb_build_object('nombre', c.nombre),
-    'vehiculo', jsonb_build_object(
-      'placa', v.placa, 'marca', v.marca, 'modelo', v.modelo, 'anio', v.anio
-    ),
-    'repuestos', coalesce((
-      select jsonb_agg(jsonb_build_object(
-               'nombre',          i.nombre,
-               'cantidad',        r.cantidad_usada,
-               'unidad',          i.tipo_unidad,
-               'precio_unitario', r.precio_unitario
-             ) order by r.created_at)
-      from public.orden_repuestos r
-      join public.inventario i on i.id = r.inventario_id
-      where r.orden_id = o.id
-    ), '[]'::jsonb),
-    'evidencias', coalesce((
-      select jsonb_agg(jsonb_build_object(
-               'tipo',       e.tipo,
-               'url_imagen', e.url_imagen,
-               'notas',      e.notas
-             ) order by e.created_at)
-      from public.evidencias_fotograficas e
-      where e.orden_id = o.id
-        and e.tipo <> 'factura_compra'      -- las facturas de proveedor son internas
-    ), '[]'::jsonb)
-  )
-  from public.ordenes_servicio o
-  join public.vehiculos v on v.id = o.vehiculo_id
-  join public.clientes  c on c.id = v.cliente_id
-  where o.token_publico = p_token
-    and o.estado <> 'cancelado'
-  limit 1;
-$$;
-
-revoke all on function public.obtener_orden_publica(text) from public, anon, authenticated;
-grant execute on function public.obtener_orden_publica(text) to anon, authenticated, service_role;
 
 
 -- =====================================================================

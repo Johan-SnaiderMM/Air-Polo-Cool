@@ -59,7 +59,7 @@ export default async function CarteraPage() {
 
       {migracionPendiente && (
         <p role="alert" className="rounded-2xl border border-ochre-300 bg-ochre-50 p-4 text-sm text-ochre-800">
-          Falta ejecutar polo_air_cool_fase3.sql en Supabase para ver las cuentas por cobrar.
+          Falta ejecutar la migración de la fase 3 (supabase/migrations) en Supabase para ver las cuentas por cobrar.
         </p>
       )}
       {error && !migracionPendiente && (

@@ -8,14 +8,17 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
 
 ## Puesta en marcha
 
-1. **Base de datos** (Supabase > SQL Editor), en este orden:
-   1. `polo_air_cool_fase1.sql`
-   2. `polo_air_cool_fase2.sql`
-   3. `polo_air_cool_fase3.sql` (pagos y abonos de clientes; ver su bloque opcional de migración al final)
-   4. `polo_air_cool_fase4.sql` (gastos auditables, cobros por medio de pago, cotizaciones, pertenencias, mantenimiento)
-   5. `polo_air_cool_fase5.sql` (cada foto de repuesto retirado / instalado queda ligada a su repuesto; el portal la muestra pieza por pieza)
+1. **Base de datos** (Supabase > SQL Editor): ejecuta los archivos de `supabase/migrations/` **en orden alfabético**
+   (el nombre lleva la versión, así que el orden nunca es ambiguo):
+   1. `…01_fase1_base.sql`
+   2. `…02_fase2_diagnostico.sql`
+   3. `…03_fase3_pagos.sql` (pagos y abonos de clientes; ver su bloque opcional de migración al final)
+   4. `…04_fase4_gastos_cotizaciones.sql` (gastos auditables, cotizaciones, pertenencias, mantenimiento)
+   5. `…05_fase5_fotos_repuesto.sql` (cada foto de repuesto retirado / instalado queda ligada a su repuesto)
+   Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
+   volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
-   (`admin` u `operario`) con el SQL que aparece al inicio de `polo_air_cool_fase1.sql`.
+   (`admin` u `operario`) con el SQL que aparece al inicio de la migración `…01_fase1_base.sql`.
    Sin rol, el login se rechaza.
 3. **Variables de entorno.** Copia `.env.example` a `.env.local` y complétalo:
 
@@ -144,11 +147,23 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
 estrategia del service worker (con un entorno simulado). Las migraciones SQL se validaron con un Postgres local
 (PGlite): 50 comprobaciones de seguridad, saldos, anulaciones, cotizaciones y mantenimiento.
 
+## Migraciones
+
+- **Cambios de esquema = un archivo nuevo** `supabase/migrations/<AAAAMMDDHHMMSS>_<nombre>.sql`, idempotente (que se
+  pueda ejecutar dos veces). No edites una migración que ya ejecutaste en producción, salvo para retirar una definición
+  duplicada (ver abajo). Nombre y versión son compatibles con la CLI de Supabase (`supabase db push`) si algún día se adopta.
+- **Una sola definición** de cada función, vista y política (`src/types/migraciones.test.ts`). Las capas justificadas
+  (p. ej. `fn_orden_before_write`, que la fase 4 amplía) están listadas allí con su motivo.
+- **Huella del esquema final** (`supabase/esquema-final.sql`): la prueba de contrato compara el esquema que resulta de
+  ejecutar todas las migraciones (tablas, restricciones, índices, triggers, políticas RLS, funciones, vistas, permisos y
+  buckets) con esa huella. Si un cambio altera el esquema **sin que lo pretendas**, la prueba falla y muestra la diferencia;
+  si lo pretendes, actualízala con `npx vitest run -u` y la diferencia queda visible en la revisión.
+
 ## Tipos de la base de datos
 
 `src/types/database.ts` se mantiene a mano (con tipos de dominio como `Autor` o `Pertenencias`), pero **no puede
 desfasarse en silencio**: `src/types/database.contract.test.ts` levanta un Postgres en memoria (PGlite), ejecuta
-`polo_air_cool_fase1.sql` … `fase5.sql` (las últimas tres dos veces, para comprobar que se pueden re-ejecutar) y compara
+las migraciones de `supabase/migrations/` (de la tercera en adelante dos veces, para comprobar que se pueden re-ejecutar) y compara
 con los tipos: tablas, vistas, columnas, nulabilidad, columnas opcionales al insertar, enums y funciones RPC. Corre con
 `npm test` y en CI, sin secretos. Si añades una migración, actualiza `database.ts` hasta que esa prueba pase.
 

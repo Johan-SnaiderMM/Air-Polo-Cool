@@ -43,8 +43,8 @@ describe("mensajeDeError", () => {
     ).toContain("Ya existe");
     expect(
       mensajeDeError({ code: "PGRST204", message: "Could not find the 'diagnostico_inicial' column" })
-    ).toContain("fase2.sql");
-    expect(mensajeDeError({ code: "PGRST202", message: "Could not find the function" })).toContain("fase4.sql");
+    ).toContain("fase 2");
+    expect(mensajeDeError({ code: "PGRST202", message: "Could not find the function" })).toContain("supabase/migrations");
   });
   it("respeta los mensajes en español de nuestras funciones SQL", () => {
     expect(

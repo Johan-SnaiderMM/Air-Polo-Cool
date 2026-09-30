@@ -215,76 +215,10 @@ revoke update, delete on public.pagos_orden from authenticated;
 
 
 -- =====================================================================
--- 6. PORTAL PÚBLICO: agrega 'pagado' y 'saldo' al objeto 'orden'
---    (mismo contrato que la Fase 1 + 2 claves nuevas; no expone medio,
---     referencia ni quién registró el pago)
+-- 6. PORTAL PÚBLICO: 'pagado' y 'saldo' en el objeto 'orden' (no expone medio, referencia
+--    ni quién registró el pago). La función obtener_orden_publica() se define UNA sola vez,
+--    en su versión final (fase 5), que ya incluye estas dos claves.
 -- =====================================================================
-create or replace function public.obtener_orden_publica(p_token text)
-returns jsonb
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select jsonb_build_object(
-    'orden', jsonb_build_object(
-      'estado',             o.estado,
-      'fecha_ingreso',      o.fecha_ingreso,
-      'fecha_entrega',      o.fecha_entrega,
-      'dias_garantia',      o.dias_garantia,
-      'fecha_fin_garantia', o.fecha_fin_garantia,
-      'garantia_semaforo',  case
-                              when o.fecha_fin_garantia is null then null
-                              when o.fecha_fin_garantia < (now() at time zone 'America/Bogota')::date then 'rojo'
-                              when o.fecha_fin_garantia - (now() at time zone 'America/Bogota')::date <= 7 then 'amarillo'
-                              else 'verde'
-                            end,
-      'mano_obra',          o.mano_obra,
-      'total_cobrado',      o.total_cobrado,
-      'pagado',             pg.pagado,
-      'saldo',              o.total_cobrado - pg.pagado
-    ),
-    'cliente',  jsonb_build_object('nombre', c.nombre),
-    'vehiculo', jsonb_build_object(
-      'placa', v.placa, 'marca', v.marca, 'modelo', v.modelo, 'anio', v.anio
-    ),
-    'repuestos', coalesce((
-      select jsonb_agg(jsonb_build_object(
-               'nombre',          i.nombre,
-               'cantidad',        r.cantidad_usada,
-               'unidad',          i.tipo_unidad,
-               'precio_unitario', r.precio_unitario
-             ) order by r.created_at)
-      from public.orden_repuestos r
-      join public.inventario i on i.id = r.inventario_id
-      where r.orden_id = o.id
-    ), '[]'::jsonb),
-    'evidencias', coalesce((
-      select jsonb_agg(jsonb_build_object(
-               'tipo',       e.tipo,
-               'url_imagen', e.url_imagen,
-               'notas',      e.notas
-             ) order by e.created_at)
-      from public.evidencias_fotograficas e
-      where e.orden_id = o.id
-        and e.tipo <> 'factura_compra'      -- las facturas de proveedor son internas
-    ), '[]'::jsonb)
-  )
-  from public.ordenes_servicio o
-  join public.vehiculos v on v.id = o.vehiculo_id
-  join public.clientes  c on c.id = v.cliente_id
-  cross join lateral (
-    select coalesce(sum(case when p.es_devolucion then -p.monto else p.monto end), 0) as pagado
-    from public.pagos_orden p
-    where p.orden_id = o.id and not p.anulado
-  ) pg
-  where o.token_publico = p_token
-    and o.estado <> 'cancelado'
-  limit 1;
-$$;
-
-revoke all on function public.obtener_orden_publica(text) from public, anon, authenticated;
-grant execute on function public.obtener_orden_publica(text) to anon, authenticated, service_role;
 
 
 -- 7. OPCIONAL · Migración de órdenes ya entregadas (EJECUTAR A CONSCIENCIA)

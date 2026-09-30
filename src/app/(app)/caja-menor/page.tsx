@@ -39,7 +39,7 @@ function AvisoMigracion() {
     <p role="alert" className="flex items-start gap-3 rounded-2xl border border-ochre-300 bg-ochre-50 p-4 text-sm text-ochre-800">
       <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
       <span>
-        Falta ejecutar <strong>polo_air_cool_fase4.sql</strong> en Supabase (SQL Editor). Hasta entonces esta pantalla
+        Falta ejecutar la migración de la <strong>fase 4</strong> (supabase/migrations) en Supabase (SQL Editor). Hasta entonces esta pantalla
         no puede leer las tablas nuevas de caja.
       </span>
     </p>

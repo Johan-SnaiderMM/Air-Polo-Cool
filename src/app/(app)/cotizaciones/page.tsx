@@ -87,7 +87,7 @@ export default async function CotizacionesPage({
 
       {migracionPendiente && (
         <p role="alert" className="rounded-2xl border border-ochre-300 bg-ochre-50 p-4 text-sm text-ochre-800">
-          Falta ejecutar <strong>polo_air_cool_fase4.sql</strong> en Supabase para usar cotizaciones.
+          Falta ejecutar la migración de la <strong>fase 4</strong> (supabase/migrations) en Supabase para usar cotizaciones.
         </p>
       )}
       {error && !migracionPendiente && (

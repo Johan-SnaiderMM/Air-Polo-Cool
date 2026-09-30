@@ -1,6 +1,6 @@
   -- =====================================================================
   -- POLO AIR COOL · FASE 2 · Migración incremental
-  -- Ejecutar en: Supabase > SQL Editor (después de polo_air_cool_fase1.sql).
+  -- Ejecutar en: Supabase > SQL Editor (después de la migración 20260801000001_fase1_base.sql).
   -- Idempotente.
   --
   -- Agrega a ordenes_servicio los campos del formulario de recepción:
