@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import { filtroVehiculos } from "@/lib/consultas";
+import { listarOrdenes } from "@/lib/datos/ordenes";
 import { ESTADOS_FILTRO, ESTADO_LABEL, esEstado } from "@/lib/ordenes";
-import { OrdenCard, type OrdenResumen } from "@/components/ordenes/orden-card";
+import { OrdenCard } from "@/components/ordenes/orden-card";
 import { OrdenesPendientes } from "@/components/sync/ordenes-pendientes";
 import { SearchBar } from "@/components/ordenes/search-bar";
 
@@ -30,51 +30,7 @@ export default async function OrdenesPage({
   const estado = esEstado(estadoCrudo) ? estadoCrudo : undefined;
 
   const supabase = await createClient();
-
-  let ids: string[] | null = null; // null = sin filtro de texto
-  if (q) {
-    const filtro = await filtroVehiculos(supabase, q);
-    if (filtro) {
-      const { data } = await supabase
-        .from("vehiculos")
-        .select("id")
-        .or(filtro)
-        .limit(100); // tope: los ids viajan en la URL de la consulta siguiente
-      ids = (data ?? []).map((v) => v.id);
-    } else {
-      ids = [];
-    }
-  }
-
-  let ordenes: OrdenResumen[] = [];
-  let errorConsulta: string | null = null;
-
-  if (ids === null || ids.length > 0) {
-    let consulta = supabase
-      .from("ordenes_servicio")
-      .select(
-        "id, estado, fecha_ingreso, total_cobrado, mantenimiento_meses, vehiculos(placa, marca, modelo, anio, clientes(nombre))"
-      )
-      .order("fecha_ingreso", { ascending: false })
-      .limit(LIMITE);
-
-    if (estado) consulta = consulta.eq("estado", estado);
-    if (ids) consulta = consulta.in("vehiculo_id", ids);
-
-    const { data, error } = await consulta;
-    if (error) errorConsulta = error.message;
-    ordenes = (data ?? []) as OrdenResumen[];
-  }
-
-  // Saldos por cobrar de las órdenes listadas (una sola consulta acotada, sin ids en la URL).
-  const { data: saldos } = await supabase
-    .from("v_saldo_ordenes")
-    .select("orden_id, saldo")
-    .gt("saldo", 0)
-    .limit(1000);
-  const saldoDe = new Map(
-    (saldos ?? []).flatMap((x) => (x.orden_id && x.saldo !== null ? [[x.orden_id, x.saldo] as const] : []))
-  );
+  const { ordenes, saldoDe, error: errorConsulta } = await listarOrdenes(supabase, { q, estado, limite: LIMITE });
 
   const chips: { valor?: string; label: string }[] = [
     { label: "Todos" },

@@ -127,6 +127,7 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
 - `src/proxy.ts` — refresca la sesión de Supabase y redirige a `/login` (en Next 16 reemplaza a `middleware.ts`).
 - `src/utils/supabase/` — clientes: navegador, servidor, público (anónimo) y admin (service role, solo servidor).
 - `src/lib/` — reglas puras (garantías, teléfonos, meses, cobros por medio, CSV, cotizaciones, plantillas de WhatsApp) y sus pruebas.
+- `src/lib/datos/` — capa de acceso a datos: `cargarDetalleOrden`, `listarOrdenes`, `cargarDatosInicio`, `cargarGastosMes` / `cargarCobrosMes` / `cargarBalanceMes`. Las páginas no hacen consultas: piden un modelo ya armado (con tipos propios, sin `as`), y lo independiente se consulta en paralelo. `mapeo.ts` tiene las transformaciones puras; se prueban con un Supabase simulado.
 - `src/lib/offline/` — operaciones offline (validación), almacén IndexedDB, algoritmo de sincronización y búsqueda local.
 - `src/components/sync/` — proveedores de sincronización y autoría, estado de conexión y panel de pendientes.
 - `public/sw.js` — service worker (lectura offline de páginas ya visitadas); `public/offline.html` — pantalla sin conexión.

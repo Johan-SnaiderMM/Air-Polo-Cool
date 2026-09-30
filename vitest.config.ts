@@ -3,7 +3,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // "server-only" lanza fuera de un servidor de React: en las pruebas se sustituye por un módulo vacío.
+      "server-only": fileURLToPath(new URL("./src/lib/datos/vacio.ts", import.meta.url)),
+    },
   },
   test: {
     environment: "node",

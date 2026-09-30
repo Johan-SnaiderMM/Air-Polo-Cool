@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { agruparPorRepuesto } from "@/lib/fotos-repuesto";
 import { notFound } from "next/navigation";
 import {
   BadgeCheck,
@@ -15,6 +14,8 @@ import {
 import { ImprimirPortal } from "@/components/print/imprimir-portal";
 import { createPublicClient } from "@/utils/supabase/public";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { firmarRutas } from "@/lib/datos/firmar";
+import { armarSeccionesPortal } from "@/lib/portal";
 import { hoyBogota } from "@/lib/caja";
 import { redondearDinero, formatearCantidad } from "@/lib/inventario";
 import {
@@ -22,12 +23,8 @@ import {
   formatearFecha,
   formatearFechaDate,
 } from "@/lib/ordenes";
-import {
-  GaleriaPortal,
-  type FotoPortal,
-  type SeccionGaleria,
-} from "@/components/portal/galeria-portal";
-import type { EstadoOrden, OrdenPublica, SemaforoGarantia, TipoEvidencia } from "@/types/database";
+import { GaleriaPortal } from "@/components/portal/galeria-portal";
+import type { EstadoOrden, OrdenPublica, SemaforoGarantia } from "@/types/database";
 
 import { Dinero } from "@/components/ui/dinero";
 import { BUCKET_EVIDENCIAS, VIGENCIA_URL_PORTAL_SEGUNDOS } from "@/lib/almacenamiento";
@@ -53,13 +50,6 @@ const DESCRIPCION_ESTADO: Record<EstadoOrden, string> = {
   listo: "Tu vehículo está listo para entrega.",
   entregado: "Servicio entregado. ¡Gracias por confiar en nosotros!",
   cancelado: "Servicio cancelado.",
-};
-
-const ETIQUETA_TIPO: Record<Exclude<TipoEvidencia, "factura_compra">, string> = {
-  ingreso: "Estado al ingreso",
-  repuesto_viejo: "Repuesto retirado",
-  repuesto_nuevo: "Repuesto instalado",
-  prueba_tecnica: "Prueba técnica",
 };
 
 const SEMAFORO = {
@@ -90,6 +80,7 @@ function diasHasta(fecha: string): number {
   );
 }
 
+/** Firma las fotos visibles con la llave de servicio (el bucket es privado). Nunca las facturas de proveedor. */
 async function firmarFotos(evidencias: OrdenPublica["evidencias"]) {
   // Defensa en profundidad: la RPC ya excluye las facturas de proveedor; aquí también.
   const visibles = evidencias.filter((e) => (e.tipo as string) !== "factura_compra");
@@ -97,16 +88,12 @@ async function firmarFotos(evidencias: OrdenPublica["evidencias"]) {
   if (!admin || visibles.length === 0) {
     return { visibles, urls: new Map<string, string>(), sinClave: !admin && visibles.length > 0 };
   }
-
-  const { data } = await admin.storage
-    .from(BUCKET_EVIDENCIAS)
-    .createSignedUrls(
-      visibles.map((e) => e.url_imagen),
-      VIGENCIA_URL_PORTAL_SEGUNDOS
-    );
-
-  const urls = new Map<string, string>();
-  for (const s of data ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+  const urls = await firmarRutas(
+    admin,
+    BUCKET_EVIDENCIAS,
+    visibles.map((e) => e.url_imagen),
+    VIGENCIA_URL_PORTAL_SEGUNDOS
+  );
   return { visibles, urls, sinClave: false };
 }
 
@@ -132,64 +119,7 @@ export default async function PortalOrdenPage({
     console.warn("[portal] SUPABASE_SERVICE_ROLE_KEY no configurada: no se pueden firmar fotos.");
   }
 
-  const aFoto = (e: (typeof visibles)[number], etiqueta: string): FotoPortal[] => {
-    const url = urls.get(e.url_imagen);
-    return url ? [{ url, alt: `${etiqueta} · ${vehiculo.placa}`, notas: e.notas }] : [];
-  };
-  const fotosDe = (lista: typeof visibles, tipo: keyof typeof ETIQUETA_TIPO): FotoPortal[] =>
-    lista.filter((e) => e.tipo === tipo).flatMap((e) => aFoto(e, ETIQUETA_TIPO[tipo]));
-
-  // Fase 5: las fotos de repuesto ligadas a su repuesto se muestran pieza por pieza;
-  // el resto (sin asignar, ingreso, pruebas) se agrupa por tipo como antes.
-  const { grupos, sueltas } = agruparPorRepuesto(visibles, repuestos);
-  const ingreso = fotosDe(sueltas, "ingreso");
-  const viejo = fotosDe(sueltas, "repuesto_viejo");
-  const nuevo = fotosDe(sueltas, "repuesto_nuevo");
-  const pruebas = fotosDe(sueltas, "prueba_tecnica");
-
-  const secciones: SeccionGaleria[] = [];
-  if (ingreso.length > 0) {
-    secciones.push({
-      titulo: "Al ingreso",
-      descripcion: "Así recibimos tu vehículo.",
-      columnas: [{ titulo: "Ingreso", tono: "neutro", fotos: ingreso }],
-    });
-  }
-  grupos.forEach(({ repuesto, retirado, instalado }, i) => {
-    secciones.push({
-      titulo: repuesto.nombre,
-      descripcion: i === 0 ? "Cada repuesto: el que retiramos y el nuevo que instalamos." : undefined,
-      columnas: [
-        {
-          titulo: "Retirado",
-          tono: "rojo",
-          fotos: retirado.flatMap((e) => aFoto(e, `Retirado: ${repuesto.nombre}`)),
-        },
-        {
-          titulo: "Instalado",
-          tono: "verde",
-          fotos: instalado.flatMap((e) => aFoto(e, `Instalado: ${repuesto.nombre}`)),
-        },
-      ],
-    });
-  });
-  if (viejo.length > 0 || nuevo.length > 0) {
-    secciones.push({
-      titulo: grupos.length > 0 ? "Otros repuestos" : "Antes y después",
-      descripcion: "Comparativa del repuesto retirado y el nuevo instalado.",
-      columnas: [
-        { titulo: "Retirado", tono: "rojo", fotos: viejo },
-        { titulo: "Instalado", tono: "verde", fotos: nuevo },
-      ],
-    });
-  }
-  if (pruebas.length > 0) {
-    secciones.push({
-      titulo: "Pruebas técnicas",
-      descripcion: "Vacío, presiones y temperatura en el difusor.",
-      columnas: [{ titulo: "Pruebas", tono: "neutro", fotos: pruebas }],
-    });
-  }
+  const secciones = armarSeccionesPortal(visibles, repuestos, urls, vehiculo.placa);
 
   // ---------- Garantía ----------
   const fin = orden.fecha_fin_garantia;
