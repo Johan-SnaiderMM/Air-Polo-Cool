@@ -32,6 +32,11 @@ export type CategoriaGasto =
   | "herramienta_consumible"
   | "otros";
 
+export type MedioPago = "efectivo" | "transferencia" | "tarjeta" | "otro";
+
+/** Estado de pago de una orden (v_saldo_ordenes.estado_pago). */
+export type EstadoPago = "sin_total" | "sin_pago" | "parcial" | "pagado" | "sobrepago";
+
 export type TipoGasSugerido = "R134a" | "R1234yf" | "otro";
 
 export type SemaforoGarantia = "verde" | "amarillo" | "rojo";
@@ -47,6 +52,10 @@ export type OrdenPublica = {
     garantia_semaforo: SemaforoGarantia | null;
     mano_obra: number;
     total_cobrado: number;
+    /** Fase 3 (polo_air_cool_fase3.sql): pagos netos recibidos. Ausente si aún no se ejecutó. */
+    pagado?: number;
+    /** Fase 3: total_cobrado − pagado. */
+    saldo?: number;
   };
   cliente: { nombre: string };
   vehiculo: {
@@ -338,6 +347,53 @@ export type Database = {
           },
         ];
       };
+      pagos_orden: {
+        Row: {
+          id: string;
+          orden_id: string;
+          /** date (YYYY-MM-DD) */
+          fecha: string;
+          monto: number;
+          medio: MedioPago;
+          /** true = devolución al cliente (resta del pagado). */
+          es_devolucion: boolean;
+          referencia: string | null;
+          notas: string | null;
+          /** Ruta dentro del bucket 'facturas-gastos' (prefijo pagos/). */
+          comprobante_url: string | null;
+          registrado_por: string | null;
+          created_at: string;
+          anulado: boolean;
+          anulado_motivo: string | null;
+          anulado_por: string | null;
+          anulado_at: string | null;
+        };
+        /** Inmutable: no hay política de update/delete; se anula con anular_pago(). */
+        Insert: {
+          id?: string;
+          orden_id: string;
+          fecha?: string;
+          monto: number;
+          medio?: MedioPago;
+          es_devolucion?: boolean;
+          referencia?: string | null;
+          notas?: string | null;
+          comprobante_url?: string | null;
+          /** Se llena con auth.uid(); si se envía debe coincidir con el usuario. */
+          registrado_por?: string | null;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "pagos_orden_orden_id_fkey";
+            columns: ["orden_id"];
+            isOneToOne: false;
+            referencedRelation: "ordenes_servicio";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gastos_caja_menor: {
         Row: {
           id: string;
@@ -411,6 +467,55 @@ export type Database = {
         };
         Relationships: [];
       };
+      v_saldo_ordenes: {
+        Row: {
+          orden_id: string | null;
+          placa: string | null;
+          cliente: string | null;
+          telefono: string | null;
+          estado: EstadoOrden | null;
+          fecha_entrega: string | null;
+          total_cobrado: number | null;
+          pagado: number | null;
+          saldo: number | null;
+          estado_pago: EstadoPago | null;
+          /** date */
+          ultimo_pago: string | null;
+        };
+        Relationships: [];
+      };
+      v_cartera: {
+        Row: {
+          orden_id: string | null;
+          placa: string | null;
+          cliente: string | null;
+          telefono: string | null;
+          estado: EstadoOrden | null;
+          fecha_entrega: string | null;
+          total_cobrado: number | null;
+          pagado: number | null;
+          saldo: number | null;
+          estado_pago: EstadoPago | null;
+          ultimo_pago: string | null;
+          /** null si la orden aún no se entrega. */
+          dias_desde_entrega: number | null;
+        };
+        Relationships: [];
+      };
+      v_recaudo_mensual: {
+        Row: {
+          /** date: primer día del mes */
+          mes: string | null;
+          recaudado: number | null;
+          devoluciones: number | null;
+          neto: number | null;
+          neto_efectivo: number | null;
+          neto_transferencia: number | null;
+          neto_tarjeta: number | null;
+          neto_otro: number | null;
+        };
+        Relationships: [];
+      };
       v_inventario_reposicion: {
         Row: {
           id: string | null;
@@ -428,6 +533,10 @@ export type Database = {
       obtener_orden_publica: {
         Args: { p_token: string };
         Returns: OrdenPublica | null;
+      };
+      anular_pago: {
+        Args: { p_pago_id: string; p_motivo: string };
+        Returns: Database["public"]["Tables"]["pagos_orden"]["Row"];
       };
       es_staff: {
         Args: Record<PropertyKey, never>;
@@ -447,6 +556,7 @@ export type Database = {
       tipo_evidencia: TipoEvidencia;
       tipo_unidad: TipoUnidad;
       categoria_gasto: CategoriaGasto;
+      medio_pago: MedioPago;
     };
     CompositeTypes: Record<string, never>;
   };

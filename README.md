@@ -11,6 +11,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
 1. **Base de datos** (Supabase > SQL Editor), en este orden:
    1. `polo_air_cool_fase1.sql`
    2. `polo_air_cool_fase2.sql`
+   3. `polo_air_cool_fase3.sql` (pagos y abonos de clientes; ver su bloque opcional de migración al final)
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
    (`admin` u `operario`) con el SQL que aparece al inicio de `polo_air_cool_fase1.sql`.
    Sin rol, el login se rechaza.
