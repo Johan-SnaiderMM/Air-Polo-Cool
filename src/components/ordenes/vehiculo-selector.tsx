@@ -198,11 +198,12 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
           </div>
           <div>
             <label htmlFor="modelo" className={LABEL}>
-              Modelo
+              Línea
             </label>
             <input
               id="modelo"
               name="modelo"
+              placeholder="Ej: Spark GT"
               value={nuevo.modelo}
               onChange={(e) => campo("modelo", e.target.value)}
               autoComplete="off"
@@ -214,11 +215,12 @@ export function VehiculoSelector({ inicial = null }: { inicial?: VehiculoResulta
 
         <div>
           <label htmlFor="anio" className={LABEL}>
-            Año <span className="font-normal text-stone-500">(opcional)</span>
+            Modelo <span className="font-normal text-stone-500">(año, opcional)</span>
           </label>
           <input
             id="anio"
             name="anio"
+            placeholder="Ej: 2018"
             type="number"
             inputMode="numeric"
             min={1950}

@@ -215,12 +215,12 @@ export async function guardarOrden(
     if (!/^[A-Z0-9]{5,8}$/.test(placa)) {
       return { error: "La placa debe tener entre 5 y 8 letras/números." };
     }
-    if (!marca || !modelo) return { error: "Ingresa la marca y el modelo." };
+    if (!marca || !modelo) return { error: "Ingresa la marca y la línea." };
     if (
       anio !== null &&
       (Number.isNaN(anio) || !Number.isInteger(anio) || anio < 1950 || anio > 2100)
     ) {
-      return { error: "El año debe estar entre 1950 y 2100." };
+      return { error: "El modelo (año) debe estar entre 1950 y 2100." };
     }
 
     const { data: existente } = await supabase

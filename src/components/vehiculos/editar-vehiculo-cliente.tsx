@@ -72,12 +72,12 @@ function VehiculoForm({ vehiculo, onListo }: { vehiculo: Tables<"vehiculos">; on
           <input id="ev_marca" name="marca" value={v.marca} onChange={(e) => setV({ ...v, marca: e.target.value })} required className={INPUT} />
         </div>
         <div>
-          <label htmlFor="ev_modelo" className={LABEL}>Modelo</label>
+          <label htmlFor="ev_modelo" className={LABEL}>Línea</label>
           <input id="ev_modelo" name="modelo" value={v.modelo} onChange={(e) => setV({ ...v, modelo: e.target.value })} required className={INPUT} />
         </div>
       </div>
       <div>
-        <label htmlFor="ev_anio" className={LABEL}>Año</label>
+        <label htmlFor="ev_anio" className={LABEL}>Modelo (año)</label>
         <input id="ev_anio" name="anio" type="number" inputMode="numeric" min={1950} max={2100} value={v.anio} onChange={(e) => setV({ ...v, anio: e.target.value })} className={INPUT} />
       </div>
       <div className="grid grid-cols-2 gap-3">

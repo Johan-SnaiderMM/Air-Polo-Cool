@@ -106,7 +106,9 @@ export type Database = {
           /** Normalizada por trigger: MAYÚSCULAS, sin espacios ni guiones. */
           placa: string;
           marca: string;
+          /** En el taller esto es la LÍNEA (Spark GT, Duster…). Se conserva el nombre de columna. */
           modelo: string;
+          /** En el taller esto es el MODELO (año de fabricación). Se conserva el nombre de columna. */
           anio: number | null;
           tipo_gas_sugerido: TipoGasSugerido | null;
           carga_estandar_gramos: number | null;

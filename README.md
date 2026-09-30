@@ -47,6 +47,11 @@ Producción: https://polo-air-cool.vercel.app · Repositorio: https://github.com
 - **Manual:** `git push` (despliega) o `npm run deploy` (CLI de Vercel directo; requiere `npx vercel login`).
 - Las variables de entorno viven en Vercel (Project Settings > Environment Variables); cambiarlas requiere redesplegar.
 
+## Vocabulario del taller
+
+Un vehículo se describe como **Marca – Línea – Modelo** (ej. Chevrolet – Spark GT – 2018), donde *Modelo* es el año.
+En la base de datos las columnas siguen llamándose `marca`, `modelo` (= línea) y `anio` (= modelo); solo cambian las etiquetas de la interfaz.
+
 ## Estructura
 
 - `src/app/(app)/` — pantallas internas (protegidas): inicio, órdenes, vehículos, garantías, inventario, caja menor.
