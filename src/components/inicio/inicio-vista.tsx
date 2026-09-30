@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, BellRing, ChevronRight, MessageCircle, Package, Plus, ShieldCheck } from "lucide-react";
 import { OrdenCard, type OrdenResumen } from "@/components/ordenes/orden-card";
 import { Dinero } from "@/components/ui/dinero";
+import type { TotalesMedio } from "@/lib/caja";
 import { formatearCantidad } from "@/lib/inventario";
 import { ESTADO_DOT, ESTADO_LABEL } from "@/lib/ordenes";
 import type { EstadoOrden, TipoUnidad } from "@/types/database";
@@ -22,8 +23,8 @@ export type InicioDatos = {
     stock_actual: number | null;
   }[];
   utilidadMes: number;
-  /** Efectivo disponible en la caja física (null si la Fase 4 aún no está en la base). */
-  saldoCaja: number | null;
+  /** Cobrado en el mes por medio de pago (null si la Fase 3 aún no está en la base). */
+  cobrosMes: TotalesMedio | null;
   /** Cuentas por cobrar (null si la Fase 3 aún no está en la base). */
   porCobrar: { total: number; ordenes: number } | null;
   mantenimientos: {
@@ -130,21 +131,24 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
         </div>
       </div>
 
-      {/* ---------- Caja y cartera ---------- */}
-      {(datos.saldoCaja !== null || datos.porCobrar !== null) && (
+      {/* ---------- Cobros y cartera ---------- */}
+      {(datos.cobrosMes !== null || datos.porCobrar !== null) && (
         <div className="grid grid-cols-2 gap-3">
           <Link
-            href="/caja-menor?vista=caja"
+            href="/caja-menor?vista=cobros"
             className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-soft transition-colors active:bg-stone-50"
           >
             <p className="flex items-center justify-between text-[12px] text-stone-500">
-              En caja
+              Cobrado del mes
               <ArrowUpRight className="size-3.5" aria-hidden />
             </p>
-            <p className={`mt-1 text-[18px] ${(datos.saldoCaja ?? 0) < 0 ? "text-brick-600" : ""}`}>
-              <Dinero valor={datos.saldoCaja ?? 0} />
+            <p className="mt-1 text-[18px]">
+              <Dinero valor={datos.cobrosMes?.total ?? 0} />
             </p>
-            <p className="mt-1 text-[12px] text-stone-500">Efectivo disponible</p>
+            <p className="mt-1 text-[12px] text-stone-500">
+              Efectivo <Dinero valor={datos.cobrosMes?.efectivo ?? 0} /> · Transf.{" "}
+              <Dinero valor={datos.cobrosMes?.transferencia ?? 0} />
+            </p>
           </Link>
           <Link
             href="/cartera"

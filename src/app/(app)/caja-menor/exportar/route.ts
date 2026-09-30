@@ -8,7 +8,7 @@ import {
   ordenarLibro,
   type FilaLibro,
 } from "@/lib/libro";
-import type { MedioPago, TipoMovCaja } from "@/types/database";
+import type { MedioPago } from "@/types/database";
 
 // Los datos son del usuario y cambian a cada rato: nunca se cachea.
 export const dynamic = "force-dynamic";
@@ -20,17 +20,9 @@ const MEDIO: Record<MedioPago, string> = {
   otro: "Otro",
 };
 
-const MOVIMIENTO: Record<TipoMovCaja, { label: string; sentido: "Entrada" | "Salida" }> = {
-  fondo_inicial: { label: "Fondo inicial", sentido: "Entrada" },
-  reposicion: { label: "Reposición", sentido: "Entrada" },
-  retiro: { label: "Retiro", sentido: "Salida" },
-  ajuste_sobrante: { label: "Ajuste por sobrante (arqueo)", sentido: "Entrada" },
-  ajuste_faltante: { label: "Ajuste por faltante (arqueo)", sentido: "Salida" },
-};
-
 /**
  * GET /caja-menor/exportar?mes=YYYY-MM
- * CSV del libro de movimientos del mes (gastos, cobros, caja y cierres) listo para Excel.
+ * CSV del libro de movimientos del mes (gastos y cobros, con medio de pago) listo para Excel.
  */
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -40,7 +32,7 @@ export async function GET(request: NextRequest) {
   const mes = normalizarMes(request.nextUrl.searchParams.get("mes") ?? undefined);
   const { desde, hasta } = rangoMes(mes);
 
-  const [gastos, pagos, movs, cierres] = await Promise.all([
+  const [gastos, pagos] = await Promise.all([
     supabase
       .from("gastos_caja_menor")
       .select("fecha, created_at, categoria, descripcion, monto, autor, anulado, anulado_motivo, ordenes_servicio(vehiculos(placa))")
@@ -51,19 +43,9 @@ export async function GET(request: NextRequest) {
       .select("fecha, created_at, monto, medio, es_devolucion, referencia, notas, autor, anulado, anulado_motivo, ordenes_servicio(vehiculos(placa))")
       .gte("fecha", desde)
       .lt("fecha", hasta),
-    supabase
-      .from("caja_movimientos")
-      .select("fecha, created_at, tipo, monto, notas, autor, anulado, anulado_motivo")
-      .gte("fecha", desde)
-      .lt("fecha", hasta),
-    supabase
-      .from("cierres_caja")
-      .select("fecha, created_at, saldo_sistema, conteo_fisico, diferencia, resultado, notas, autor, anulado, anulado_motivo")
-      .gte("fecha", desde)
-      .lt("fecha", hasta),
   ]);
 
-  const error = gastos.error ?? pagos.error ?? movs.error ?? cierres.error;
+  const error = gastos.error ?? pagos.error;
   if (error) {
     return new NextResponse(
       `No se pudo generar el reporte: ${error.message}. ¿Ya ejecutaste polo_air_cool_fase3.sql y fase4.sql?`,
@@ -106,42 +88,6 @@ export async function GET(request: NextRequest) {
       anulado: p.anulado,
       motivoAnulacion: p.anulado_motivo,
       referencia: p.referencia,
-    });
-  }
-
-  for (const m of movs.data ?? []) {
-    filas.push({
-      fecha: m.fecha,
-      creado: m.created_at,
-      tipo: "Movimiento de caja",
-      concepto: MOVIMIENTO[m.tipo].label,
-      descripcion: m.notas,
-      monto: m.monto,
-      sentido: MOVIMIENTO[m.tipo].sentido,
-      medio: "Efectivo (caja física)",
-      placa: null,
-      autor: m.autor,
-      anulado: m.anulado,
-      motivoAnulacion: m.anulado_motivo,
-      referencia: null,
-    });
-  }
-
-  for (const c of cierres.data ?? []) {
-    filas.push({
-      fecha: c.fecha,
-      creado: c.created_at,
-      tipo: "Cierre de caja",
-      concepto: `Arqueo: ${c.resultado}`,
-      descripcion: `Sistema ${c.saldo_sistema} · Conteo ${c.conteo_fisico} · Diferencia ${c.diferencia}${c.notas ? ` · ${c.notas}` : ""}`,
-      monto: c.conteo_fisico,
-      sentido: "—",
-      medio: "Efectivo (caja física)",
-      placa: null,
-      autor: c.autor,
-      anulado: c.anulado,
-      motivoAnulacion: c.anulado_motivo,
-      referencia: null,
     });
   }
 

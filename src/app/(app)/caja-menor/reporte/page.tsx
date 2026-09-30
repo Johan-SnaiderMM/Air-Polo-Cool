@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { LineaFirma, Membrete, SeccionImpresa } from "@/components/print/membrete";
 import { BarraImpresion } from "@/components/print/boton-imprimir";
 import { Dinero } from "@/components/ui/dinero";
-import { CATEGORIAS, CATEGORIA_LABEL, etiquetaMes, hoyBogota, normalizarMes, rangoMes } from "@/lib/caja";
+import { CATEGORIAS, CATEGORIA_LABEL, MEDIO_COBRO_LABEL, etiquetaMes, normalizarMes, rangoMes, totalesPorMedio } from "@/lib/caja";
 import { formatearFecha } from "@/lib/ordenes";
 
 export const metadata: Metadata = { title: "Reporte de balance" };
@@ -18,7 +18,7 @@ export default async function ReporteBalancePage({
   const { desde, hasta } = rangoMes(mes);
   const supabase = await createClient();
 
-  const [balance, gastos, rentab, cartera, saldoCaja] = await Promise.all([
+  const [balance, gastos, rentab, cartera, pagos] = await Promise.all([
     supabase.from("v_balance_real").select("*").eq("mes", `${mes}-01`).maybeSingle(),
     supabase
       .from("gastos_caja_menor")
@@ -35,7 +35,12 @@ export default async function ReporteBalancePage({
       .order("utilidad_real", { ascending: false })
       .limit(40),
     supabase.from("v_cartera").select("saldo").limit(1000),
-    supabase.rpc("fn_saldo_caja"),
+    supabase
+      .from("pagos_orden")
+      .select("medio, monto, es_devolucion")
+      .eq("anulado", false)
+      .gte("fecha", desde)
+      .lt("fecha", hasta),
   ]);
 
   const b = balance.data;
@@ -43,6 +48,7 @@ export default async function ReporteBalancePage({
     categoria: c,
     total: (gastos.data ?? []).filter((g) => g.categoria === c).reduce((s, g) => s + g.monto, 0),
   })).filter((c) => c.total > 0);
+  const porMedio = totalesPorMedio(pagos.data ?? []);
   const totalGastos = porCategoria.reduce((s, c) => s + c.total, 0);
   const totalCartera = (cartera.data ?? []).reduce((s, c) => s + (c.saldo ?? 0), 0);
 
@@ -87,13 +93,28 @@ export default async function ReporteBalancePage({
           <p className="text-stone-500">
             Facturado en el mes (órdenes entregadas): <Dinero valor={b?.facturado ?? 0} /> · Por cobrar (total
             acumulado): <Dinero valor={totalCartera} />
-            {!saldoCaja.error && (
-              <>
-                {" "}
-                · Saldo de caja a la fecha ({hoyBogota()}): <Dinero valor={Number(saldoCaja.data ?? 0)} />
-              </>
-            )}
           </p>
+        </SeccionImpresa>
+
+        <SeccionImpresa titulo="Cobrado por medio de pago">
+          <dl className="max-w-sm space-y-1">
+            {(["efectivo", "transferencia", "tarjeta", "otro"] as const)
+              .filter((m) => m === "efectivo" || m === "transferencia" || porMedio[m] !== 0)
+              .map((m) => (
+                <div key={m} className="flex justify-between">
+                  <dt className="text-stone-500">{MEDIO_COBRO_LABEL[m]}</dt>
+                  <dd>
+                    <Dinero valor={porMedio[m]} />
+                  </dd>
+                </div>
+              ))}
+            <div className="flex justify-between border-t border-stone-300 pt-1 font-medium">
+              <dt>Total cobrado</dt>
+              <dd>
+                <Dinero valor={porMedio.total} />
+              </dd>
+            </div>
+          </dl>
         </SeccionImpresa>
 
         <SeccionImpresa titulo="Gastos por categoría">

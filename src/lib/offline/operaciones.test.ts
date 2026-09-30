@@ -46,14 +46,6 @@ describe("validarOperacion: pago, caja y evidencia", () => {
     });
     expect(mal.ok).toBe(false);
   });
-  it("caja: solo los tres tipos manuales (los ajustes los crea el arqueo)", () => {
-    const ok = (tipo: string) =>
-      validarOperacion({ tipo: "caja.movimiento", datos: { id: ID, fecha: "2026-09-29", tipo, monto: 1000 } }).ok;
-    expect(ok("fondo_inicial")).toBe(true);
-    expect(ok("reposicion")).toBe(true);
-    expect(ok("retiro")).toBe(true);
-    expect(ok("ajuste_sobrante")).toBe(false);
-  });
   it("evidencia: exige extensión, tipo y ids válidos; siempre lleva archivo", () => {
     const r = validarOperacion({ tipo: "evidencia.subir", datos: { id: ID, orden_id: ID2, tipo: "prueba_tecnica", extension: "webp" } });
     expect(r.ok && r.valor.tipo === "evidencia.subir" && r.valor.conArchivo).toBe(true);

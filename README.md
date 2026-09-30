@@ -12,7 +12,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    1. `polo_air_cool_fase1.sql`
    2. `polo_air_cool_fase2.sql`
    3. `polo_air_cool_fase3.sql` (pagos y abonos de clientes; ver su bloque opcional de migración al final)
-   4. `polo_air_cool_fase4.sql` (caja real y arqueo, gastos auditables, cotizaciones, pertenencias, mantenimiento)
+   4. `polo_air_cool_fase4.sql` (gastos auditables, cobros por medio de pago, cotizaciones, pertenencias, mantenimiento)
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
    (`admin` u `operario`) con el SQL que aparece al inicio de `polo_air_cool_fase1.sql`.
    Sin rol, el login se rechaza.
@@ -63,15 +63,16 @@ En la base de datos las columnas siguen llamándose `marca`, `modelo` (= línea)
 | `/cotizaciones` | Cotización previa (estados borrador → enviada → aprobada → convertida en orden), WhatsApp y PDF |
 | `/cartera` | Cuentas por cobrar por cliente, con recordatorio de saldo por WhatsApp |
 | `/vehiculos`, `/garantias` | Historial por placa; garantías y **mantenimientos preventivos** con recordatorio por WhatsApp |
-| `/caja-menor` | **Gastos** (POS, plantillas, fecha, orden asociada, edición/anulación auditada), **Caja** (saldo, arqueo y cierre), **Balance** (base cobrado, gráfica por categoría, rentabilidad, CSV/PDF) |
+| `/caja-menor` | **Gastos** (POS, plantillas, fecha, orden asociada, edición/anulación auditada), **Cobros** (efectivo vs. transferencia del mes), **Balance** (base cobrado, gráfica por categoría, rentabilidad, CSV/PDF) |
 
 ## Reglas contables
 
-- **Caja física** = fondo + reposiciones − retiros ± ajustes de arqueo + cobros **en efectivo** (netos de devoluciones) − gastos.
-  Las transferencias y tarjetas afectan el balance, **no** la caja.
+- **Sin caja física**: el taller maneja el dinero de forma informal, así que no hay saldo, fondo, arqueo ni cierre.
+  Cada cobro guarda su **medio de pago** (efectivo, transferencia, tarjeta, otro) y la pestaña **Cobros** muestra
+  cuánto entró por cada uno. Las tablas de caja que creó `fase4.sql` siguen en la base pero la app ya no las usa.
 - **Utilidad neta real** = cobrado del mes − costo de repuestos (órdenes entregadas) − gastos de caja menor.
   No se asume que lo facturado está pagado; el saldo por cobrar sale de `pagos_orden`.
-- **Nada se borra**: gastos, pagos, movimientos y cierres se **anulan con motivo** (queda quién, cuándo y por qué);
+- **Nada se borra**: gastos y pagos se **anulan con motivo** (queda quién, cuándo y por qué);
   las ediciones de un gasto guardan los valores anteriores.
 - **Autoría**: selector "Polo / Soporte" en el encabezado; se estampa en los registros nuevos. No es un login ni un rol:
   la seguridad real sigue siendo la sesión de Supabase.
@@ -79,11 +80,10 @@ En la base de datos las columnas siguen llamándose `marca`, `modelo` (= línea)
 ## Persistencia y modo sin conexión
 
 **Qué funciona sin red** (se guarda en el teléfono y se sube solo al volver la conexión): registrar **gastos**,
-**abonos/pagos**, **movimientos de caja**, **crear órdenes** (con vehículo/cliente nuevos) y **subir fotos**
+**abonos/pagos**, **crear órdenes** (con vehículo/cliente nuevos) y **subir fotos**
 (evidencias y recibos). Además se pueden **consultar las pantallas ya visitadas**.
 
-**Qué requiere conexión**: editar o anular registros, cerrar caja (el saldo lo calcula el servidor para que no se
-altere), cotizaciones, editar una orden existente y cualquier pantalla que no se haya abierto antes en ese teléfono.
+**Qué requiere conexión**: editar o anular registros, cotizaciones, editar una orden existente y cualquier pantalla que no se haya abierto antes en ese teléfono.
 
 **Dónde vive cada dato local**
 
@@ -115,7 +115,7 @@ altere), cotizaciones, editar una orden existente y cualquier pantalla que no se
 - `src/app/login/` — acceso del taller.
 - `src/proxy.ts` — refresca la sesión de Supabase y redirige a `/login` (en Next 16 reemplaza a `middleware.ts`).
 - `src/utils/supabase/` — clientes: navegador, servidor, público (anónimo) y admin (service role, solo servidor).
-- `src/lib/` — reglas puras (garantías, teléfonos, meses, arqueo, CSV, cotizaciones, plantillas de WhatsApp) y sus pruebas.
+- `src/lib/` — reglas puras (garantías, teléfonos, meses, cobros por medio, CSV, cotizaciones, plantillas de WhatsApp) y sus pruebas.
 - `src/lib/offline/` — operaciones offline (validación), almacén IndexedDB, algoritmo de sincronización y búsqueda local.
 - `src/components/sync/` — proveedores de sincronización y autoría, estado de conexión y panel de pendientes.
 - `public/sw.js` — service worker (lectura offline de páginas ya visitadas); `public/offline.html` — pantalla sin conexión.
@@ -134,7 +134,7 @@ altere), cotizaciones, editar una orden existente y cualquier pantalla que no se
 `npm test` (Vitest) cubre las reglas puras, la validación de operaciones offline, el algoritmo de sincronización
 (FIFO, errores permanentes/transitorios, sesión expirada), el almacén IndexedDB (con `fake-indexeddb`) y la
 estrategia del service worker (con un entorno simulado). Las migraciones SQL se validaron con un Postgres local
-(PGlite): 50 comprobaciones de seguridad, saldos, arqueo, anulaciones, cotizaciones y mantenimiento.
+(PGlite): 50 comprobaciones de seguridad, saldos, anulaciones, cotizaciones y mantenimiento.
 
 ## Pendiente conocido
 

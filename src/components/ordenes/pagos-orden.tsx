@@ -53,8 +53,8 @@ type Props = {
 
 /**
  * Pagos y abonos ligados a la orden. El saldo por cobrar sale de aquí: nunca se
- * asume que el total de la orden está pagado. Efectivo entra a la caja física;
- * transferencia y tarjeta cuentan en el balance pero no en la caja.
+ * asume que el total de la orden está pagado. El medio (efectivo, transferencia…)
+ * solo sirve para saber cómo entró la plata: se resume en Caja › Cobros.
  * Registrar funciona sin conexión; anular requiere conexión.
  */
 export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props) {
@@ -279,8 +279,8 @@ export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props)
         </div>
         <p className="text-[12px] text-stone-500">
           {medio === "efectivo"
-            ? "Entra a la caja física (suma al saldo de caja)."
-            : "Cuenta en el balance pero NO en la caja física (queda en el banco / datáfono)."}
+            ? "Se registra como cobro en efectivo."
+            : "Se registra como cobro por " + MEDIO_LABEL[medio].toLowerCase() + " (queda en el banco / datáfono)."}
         </p>
 
         {medio !== "efectivo" && (

@@ -181,23 +181,6 @@ export async function ejecutarOperacion(
       return { ok: true };
     }
 
-    case "caja.movimiento": {
-      const d = op.datos;
-      const { error } = await supabase.from("caja_movimientos").insert({
-        id: d.id,
-        fecha: d.fecha,
-        tipo: d.tipo,
-        monto: d.monto,
-        notas: d.notas,
-        autor: d.autor,
-      });
-      if (error) {
-        if (error.code === "23505") return { ok: true, duplicado: true };
-        return falloDb(error);
-      }
-      return { ok: true };
-    }
-
     case "evidencia.subir": {
       const d = op.datos;
       const img = validarImagen(archivo);

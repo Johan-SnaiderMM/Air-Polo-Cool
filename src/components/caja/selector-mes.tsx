@@ -9,7 +9,7 @@ type Props = {
   extra?: Record<string, string>;
 };
 
-export type VistaCaja = "gastos" | "caja" | "balance";
+export type VistaCaja = "gastos" | "cobros" | "balance";
 
 export function hrefCaja(vista: VistaCaja, mes: string, extra?: Record<string, string>) {
   const params = new URLSearchParams();

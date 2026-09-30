@@ -53,7 +53,6 @@ export async function procesarOperacion(formData: FormData): Promise<ResultadoOp
     const op = validada.valor;
     switch (op.tipo) {
       case "gasto.crear":
-      case "caja.movimiento":
         revalidatePath("/caja-menor");
         break;
       case "pago.crear":

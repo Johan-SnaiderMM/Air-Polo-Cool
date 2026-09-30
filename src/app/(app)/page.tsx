@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
-import { etiquetaMes, mesActual } from "@/lib/caja";
+import { etiquetaMes, mesActual, rangoMes, totalesPorMedio } from "@/lib/caja";
 import { InicioVista, type InicioDatos } from "@/components/inicio/inicio-vista";
 import type { OrdenResumen } from "@/components/ordenes/orden-card";
 import { enlaceWhatsApp, mensajeMantenimiento } from "@/lib/whatsapp";
@@ -14,9 +14,9 @@ export default async function InicioPage() {
   const supabase = await createClient();
   const mes = mesActual();
 
-  // Las consultas de las Fases 3 y 4 (caja, cartera, mantenimientos) devuelven error si el SQL
+  // Las consultas de las Fases 3 y 4 (cobros, cartera, mantenimientos) devuelven error si el SQL
   // todavía no se ejecutó: en ese caso se muestran ceros / se ocultan, sin romper el inicio.
-  const [activas, criticosCount, criticos, porVencer, vencidas, balance, saldoCaja, cartera, mantenimientos] =
+  const [activas, criticosCount, criticos, porVencer, vencidas, balance, cobros, cartera, mantenimientos] =
     await Promise.all([
       supabase
         .from("ordenes_servicio")
@@ -35,7 +35,12 @@ export default async function InicioPage() {
       supabase.from("v_garantias").select("orden_id", { count: "exact", head: true }).eq("semaforo", "amarillo"),
       supabase.from("v_garantias").select("orden_id", { count: "exact", head: true }).eq("semaforo", "rojo"),
       supabase.from("v_balance_real").select("utilidad_real").eq("mes", `${mes}-01`).maybeSingle(),
-      supabase.rpc("fn_saldo_caja"),
+      supabase
+        .from("pagos_orden")
+        .select("medio, monto, es_devolucion")
+        .eq("anulado", false)
+        .gte("fecha", rangoMes(mes).desde)
+        .lt("fecha", rangoMes(mes).hasta),
       supabase.from("v_cartera").select("saldo").limit(1000),
       supabase
         .from("v_mantenimientos")
@@ -77,7 +82,7 @@ export default async function InicioPage() {
         : []
     ),
     utilidadMes: utilidadMes ?? 0,
-    saldoCaja: saldoCaja.error ? null : Number(saldoCaja.data ?? 0),
+    cobrosMes: cobros.error ? null : totalesPorMedio(cobros.data ?? []),
     porCobrar: cartera.error
       ? null
       : {

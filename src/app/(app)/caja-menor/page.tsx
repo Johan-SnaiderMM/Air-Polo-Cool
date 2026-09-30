@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import { hoyBogota, mesActual, mesAnterior, normalizarMes, rangoMes } from "@/lib/caja";
-import { AccionesCaja } from "@/components/caja/acciones-caja";
+import { mesActual, mesAnterior, normalizarMes, rangoMes } from "@/lib/caja";
 import { BalanceMensual, type FilaBalance } from "@/components/caja/balance-mensual";
 import { GastoForm } from "@/components/caja/gasto-form";
 import {
@@ -11,17 +10,12 @@ import {
   totalesVacios,
   type TotalesCategoria,
 } from "@/components/caja/grafico-categorias";
-import {
-  HistorialCaja,
-  type CierreVista,
-  type MovimientoVista,
-} from "@/components/caja/historial-caja";
+import { CobrosMes, type CobroVista } from "@/components/caja/cobros-mes";
 import { ListaGastos, type EdicionHistorial, type GastoVista } from "@/components/caja/lista-gastos";
 import { RentabilidadOrdenes, type FilaRentabilidad } from "@/components/caja/rentabilidad-ordenes";
-import { SaldoCajaCard } from "@/components/caja/saldo-caja-card";
 import { SelectorMes, hrefCaja, type VistaCaja } from "@/components/caja/selector-mes";
 import { Dinero } from "@/components/ui/dinero";
-import { etiquetaMes } from "@/lib/caja";
+import { etiquetaMes, totalesPorMedio } from "@/lib/caja";
 
 export const metadata: Metadata = { title: "Caja" };
 
@@ -34,12 +28,12 @@ const CODIGOS_MIGRACION = new Set(["PGRST205", "PGRST202", "PGRST204", "42P01", 
 
 const PESTANAS: { id: VistaCaja; label: string }[] = [
   { id: "gastos", label: "Gastos" },
-  { id: "caja", label: "Caja" },
+  { id: "cobros", label: "Cobros" },
   { id: "balance", label: "Balance" },
 ];
 
 function esVista(v: string | undefined): v is VistaCaja {
-  return v === "caja" || v === "balance" || v === "gastos";
+  return v === "cobros" || v === "balance" || v === "gastos";
 }
 
 function AvisoMigracion() {
@@ -68,73 +62,46 @@ export default async function CajaMenorPage({
   let contenido: React.ReactNode;
 
   // =====================================================================
-  // CAJA: saldo, arqueo y movimientos
+  // COBROS: lo cobrado en el mes por medio de pago (efectivo / transferencia)
   // =====================================================================
-  if (vista === "caja") {
-    const hoy = hoyBogota();
-    const [saldo, dia, cierres, movs] = await Promise.all([
-      supabase.rpc("fn_saldo_caja"),
-      supabase.from("v_caja_diaria").select("*").eq("fecha", hoy).maybeSingle(),
-      supabase
-        .from("cierres_caja")
-        .select("id, fecha, saldo_sistema, conteo_fisico, diferencia, resultado, autor, notas, anulado, anulado_motivo")
-        .order("fecha", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(6),
-      supabase
-        .from("caja_movimientos")
-        .select("id, fecha, tipo, monto, notas, autor, anulado, anulado_motivo, cierre_id")
-        .order("fecha", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(12),
-    ]);
+  if (vista === "cobros") {
+    const { desde, hasta } = rangoMes(mes);
+    const { data, error } = await supabase
+      .from("pagos_orden")
+      .select(
+        "id, orden_id, fecha, monto, medio, es_devolucion, referencia, anulado, ordenes_servicio(vehiculos(placa, clientes(nombre)))"
+      )
+      .gte("fecha", desde)
+      .lt("fecha", hasta)
+      .eq("anulado", false)
+      .order("fecha", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(500);
 
-    const errorMigracion = [saldo.error, cierres.error, movs.error].some(
-      (e) => e?.code && CODIGOS_MIGRACION.has(e.code)
-    );
-
-    const cierreVista: CierreVista[] = (cierres.data ?? []).map((c) => ({
-      id: c.id,
-      fecha: c.fecha,
-      saldoSistema: c.saldo_sistema,
-      conteoFisico: c.conteo_fisico,
-      diferencia: c.diferencia,
-      resultado: c.resultado,
-      autor: c.autor,
-      notas: c.notas,
-      anulado: c.anulado,
-      anuladoMotivo: c.anulado_motivo,
+    const errorMigracion = !!error?.code && CODIGOS_MIGRACION.has(error.code);
+    const pagos = data ?? [];
+    const cobros: CobroVista[] = pagos.slice(0, 100).map((p) => ({
+      id: p.id,
+      ordenId: p.orden_id,
+      fecha: p.fecha,
+      placa: p.ordenes_servicio?.vehiculos?.placa ?? null,
+      cliente: p.ordenes_servicio?.vehiculos?.clientes?.nombre ?? null,
+      medio: p.medio,
+      monto: p.monto,
+      esDevolucion: p.es_devolucion,
+      referencia: p.referencia,
     }));
-    const movVista: MovimientoVista[] = (movs.data ?? []).map((m) => ({
-      id: m.id,
-      fecha: m.fecha,
-      tipo: m.tipo,
-      monto: m.monto,
-      notas: m.notas,
-      autor: m.autor,
-      anulado: m.anulado,
-      anuladoMotivo: m.anulado_motivo,
-      deArqueo: m.cierre_id !== null,
-    }));
-    const saldoActual = Number(saldo.data ?? 0);
-    const cerradaHoy = cierreVista.some((c) => c.fecha === hoy && !c.anulado);
 
     contenido = errorMigracion ? (
       <AvisoMigracion />
     ) : (
       <>
-        <SaldoCajaCard
-          saldo={saldoActual}
-          cerradaHoy={cerradaHoy}
-          hoy={{
-            entradas: dia.data?.entradas ?? 0,
-            cobrosEfectivo: dia.data?.cobros_efectivo ?? 0,
-            gastos: dia.data?.gastos ?? 0,
-            salidas: dia.data?.salidas ?? 0,
-          }}
-        />
-        <AccionesCaja saldo={saldoActual} cerradaHoy={cerradaHoy} />
-        <HistorialCaja cierres={cierreVista} movimientos={movVista} />
+        <CobrosMes totales={totalesPorMedio(pagos)} cobros={cobros} />
+        {error && (
+          <p role="alert" className="rounded-lg bg-brick-50 px-3 py-2 text-sm text-brick-700">
+            No se pudieron cargar los cobros: {error.message}
+          </p>
+        )}
       </>
     );
   }
@@ -356,14 +323,9 @@ export default async function CajaMenorPage({
         ))}
       </nav>
 
-      {vista !== "caja" && (
-        <SelectorMes mes={mes} vista={vista} extra={mostrarAnulados && vista === "gastos" ? { anulados: "1" } : undefined} />
-      )}
+      <SelectorMes mes={mes} vista={vista} extra={mostrarAnulados && vista === "gastos" ? { anulados: "1" } : undefined} />
 
       {contenido}
     </section>
   );
 }
-
-
-

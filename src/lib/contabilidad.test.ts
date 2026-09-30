@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { autorONull, esAutor, inicialAutor } from "@/lib/autor";
-import { comparar, desgloseLimpio, limpiarCantidad, totalDesglose } from "@/lib/arqueo";
 import { celdaCsv, construirCsv } from "@/lib/csv";
 import { ENCABEZADOS_LIBRO, filaALibroCsv, ordenarLibro, totalesLibro, type FilaLibro } from "@/lib/libro";
+import { totalesPorMedio } from "@/lib/caja";
 import { plantillasValidas, PLANTILLAS_POR_DEFECTO } from "@/lib/plantillas-gasto";
 import { variacion } from "@/components/caja/grafico-categorias";
 import { mensajeMantenimiento, mensajeCobro } from "@/lib/whatsapp";
@@ -18,21 +18,23 @@ describe("autoría", () => {
   });
 });
 
-describe("arqueo", () => {
-  it("suma billetes y monedas por denominación", () => {
-    expect(totalDesglose({ "50000": 4, "20000": 1, "1000": 3, "500": 2 })).toBe(224000);
+describe("cobros por medio de pago", () => {
+  const p = (medio: "efectivo" | "transferencia" | "tarjeta" | "otro", monto: number, extra = {}) => ({
+    medio, monto, es_devolucion: false, ...extra,
   });
-  it("ignora denominaciones inexistentes y cantidades basura", () => {
-    expect(totalDesglose({ "7": 10, "50000": -3, "20000": "x" as unknown as number })).toBe(0);
-    expect(limpiarCantidad(2.9)).toBe(2);
-    expect(limpiarCantidad("abc")).toBe(0);
-    expect(desgloseLimpio({ "50000": 2, "9999": 5, "1000": 0 })).toEqual({ "50000": 2 });
-    expect(desgloseLimpio(null)).toEqual({});
+  it("separa efectivo de transferencia y suma el total", () => {
+    const t = totalesPorMedio([p("efectivo", 50000), p("transferencia", 120000), p("efectivo", 30000), p("tarjeta", 10000)]);
+    expect(t).toEqual({ efectivo: 80000, transferencia: 120000, tarjeta: 10000, otro: 0, total: 210000 });
   });
-  it("cuadrado / faltante / sobrante", () => {
-    expect(comparar(205000, 205000)).toEqual({ diferencia: 0, resultado: "cuadrado" });
-    expect(comparar(205000, 200000)).toEqual({ diferencia: -5000, resultado: "faltante" });
-    expect(comparar(205000, 210000)).toEqual({ diferencia: 5000, resultado: "sobrante" });
+  it("resta devoluciones del medio en que se devolvieron e ignora anulados", () => {
+    const t = totalesPorMedio([
+      p("efectivo", 100000),
+      p("efectivo", 20000, { es_devolucion: true }),
+      p("transferencia", 999, { anulado: true }),
+    ]);
+    expect(t.efectivo).toBe(80000);
+    expect(t.transferencia).toBe(0);
+    expect(t.total).toBe(80000);
   });
 });
 

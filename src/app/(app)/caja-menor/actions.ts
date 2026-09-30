@@ -2,12 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { desgloseLimpio, totalDesglose } from "@/lib/arqueo";
 import { autorONull } from "@/lib/autor";
 import { esCategoria, hoyBogota } from "@/lib/caja";
 import { mensajeDeError } from "@/lib/errores";
 import { esUuid } from "@/lib/ordenes";
-import type { Json } from "@/types/database";
 
 /**
  * Acciones de caja que requieren conexión (auditoría y cálculo en el servidor).
@@ -86,75 +84,4 @@ export async function anularGasto(datos: { id: string; motivo: string; autor: st
   if (error) return { ok: false, error: mensajeDeError(error) };
   refrescar();
   return { ok: true, mensaje: "Gasto anulado." };
-}
-
-// ---------------------------------------------------------------------
-// Caja: saldo, arqueo y cierre
-// ---------------------------------------------------------------------
-
-/** Saldo de caja al cierre de una fecha (lo usa el arqueo para fechas pasadas). */
-export async function saldoCajaAl(fecha: string): Promise<{ ok: true; saldo: number } | { ok: false; error: string }> {
-  const { supabase, user } = await contexto();
-  if (!user) return SESION;
-  if (!esFecha(fecha) || fecha > hoyBogota()) return { ok: false, error: "Fecha inválida." };
-  const { data, error } = await supabase.rpc("fn_saldo_caja", { p_hasta: fecha });
-  if (error) return { ok: false, error: mensajeDeError(error) };
-  return { ok: true, saldo: Number(data ?? 0) };
-}
-
-/**
- * Cierra la caja del día: el SERVIDOR calcula el saldo del sistema y compara con el
- * conteo físico. Si hay diferencia se registra un ajuste, de modo que el saldo
- * queda igual al efectivo realmente contado.
- */
-export async function cerrarCaja(datos: {
-  fecha: string;
-  desglose: Record<string, number>;
-  notas: string;
-  autor: string;
-}): Promise<AccionCaja> {
-  const { supabase, user } = await contexto();
-  if (!user) return SESION;
-  if (!esFecha(datos.fecha) || datos.fecha > hoyBogota()) {
-    return { ok: false, error: "No se puede cerrar la caja de una fecha futura." };
-  }
-
-  const desglose = desgloseLimpio(datos.desglose);
-  const conteo = totalDesglose(desglose);
-
-  const { data, error } = await supabase.rpc("cerrar_caja", {
-    p_fecha: datos.fecha,
-    p_conteo: conteo,
-    p_desglose: desglose as Json,
-    p_notas: datos.notas.trim().slice(0, 500) || null,
-    p_autor: autorONull(datos.autor),
-  });
-  if (error) return { ok: false, error: mensajeDeError(error) };
-  refrescar();
-  return { ok: true, id: data?.id, mensaje: `Caja cerrada: ${data?.resultado ?? ""}` };
-}
-
-export async function anularCierre(datos: { id: string; motivo: string }): Promise<AccionCaja> {
-  const { supabase, user } = await contexto();
-  if (!user) return SESION;
-  if (!esUuid(datos.id)) return { ok: false, error: "Cierre inválido." };
-  if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
-  const { error } = await supabase.rpc("anular_cierre", { p_id: datos.id, p_motivo: datos.motivo.trim().slice(0, 300) });
-  if (error) return { ok: false, error: mensajeDeError(error) };
-  refrescar();
-  return { ok: true, mensaje: "Cierre anulado." };
-}
-
-export async function anularMovimientoCaja(datos: { id: string; motivo: string }): Promise<AccionCaja> {
-  const { supabase, user } = await contexto();
-  if (!user) return SESION;
-  if (!esUuid(datos.id)) return { ok: false, error: "Movimiento inválido." };
-  if (datos.motivo.trim().length < 3) return { ok: false, error: "Escribe el motivo de la anulación." };
-  const { error } = await supabase.rpc("anular_movimiento_caja", {
-    p_id: datos.id,
-    p_motivo: datos.motivo.trim().slice(0, 300),
-  });
-  if (error) return { ok: false, error: mensajeDeError(error) };
-  refrescar();
-  return { ok: true, mensaje: "Movimiento anulado." };
 }

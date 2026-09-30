@@ -1,6 +1,6 @@
 /**
  * Libro de movimientos del mes para el contador (exportación CSV/Excel).
- * Une gastos, pagos de clientes, movimientos de caja y cierres en un solo listado
+ * Une gastos y cobros de clientes (con su medio de pago) en un solo listado
  * cronológico con: Fecha, Categoría, Monto, Medio de pago, Placa asociada, Autor.
  * Los registros ANULADOS se incluyen (marcados) para que la auditoría cuadre.
  */
@@ -8,8 +8,8 @@ export type FilaLibro = {
   fecha: string; // YYYY-MM-DD
   /** Momento de creación (desempate estable dentro del mismo día). */
   creado: string;
-  tipo: string; // Gasto | Cobro | Devolución | Caja | Cierre de caja
-  concepto: string; // categoría del gasto, concepto del cobro, tipo de movimiento…
+  tipo: string; // Gasto | Cobro | Devolución
+  concepto: string; // categoría del gasto, concepto del cobro, …
   descripcion: string | null;
   monto: number;
   sentido: "Entrada" | "Salida" | "—";

@@ -65,7 +65,7 @@ export function BalanceMensual({
   return (
     <div className="space-y-6">
       <div className="divide-y divide-stone-200/70 overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-soft">
-        <Linea signo="+" titulo="Cobrado" detalle="Pagos recibidos en el mes, netos de devoluciones" valor={actual.cobrado} />
+        <Linea signo="+" titulo="Cobrado" detalle="Efectivo y transferencias del mes, netos de devoluciones" valor={actual.cobrado} />
         <Linea signo="−" titulo="Costo de repuestos" detalle="Piezas de las órdenes entregadas en el mes" valor={actual.costoRepuestos} />
         <Linea signo="−" titulo="Gastos de caja menor" detalle="Gastos vigentes del mes (sin anulados)" valor={actual.gastos} />
       </div>

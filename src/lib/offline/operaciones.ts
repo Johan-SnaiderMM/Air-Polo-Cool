@@ -21,8 +21,6 @@ import type {
 } from "@/types/database";
 
 export const MEDIOS_PAGO: MedioPago[] = ["efectivo", "transferencia", "tarjeta", "otro"];
-export const TIPOS_MOV_MANUAL = ["fondo_inicial", "reposicion", "retiro"] as const;
-export type TipoMovManual = (typeof TIPOS_MOV_MANUAL)[number];
 
 export type DatosGasto = {
   id: string;
@@ -42,15 +40,6 @@ export type DatosPago = {
   medio: MedioPago;
   es_devolucion: boolean;
   referencia: string | null;
-  notas: string | null;
-  autor: Autor | null;
-};
-
-export type DatosMovimientoCaja = {
-  id: string;
-  fecha: string;
-  tipo: TipoMovManual;
-  monto: number;
   notas: string | null;
   autor: Autor | null;
 };
@@ -96,7 +85,6 @@ export type DatosEvidencia = {
 export type Operacion =
   | { tipo: "gasto.crear"; datos: DatosGasto; conArchivo?: boolean; extension?: "webp" | "jpg" }
   | { tipo: "pago.crear"; datos: DatosPago; conArchivo?: boolean; extension?: "webp" | "jpg" }
-  | { tipo: "caja.movimiento"; datos: DatosMovimientoCaja }
   | { tipo: "orden.crear"; datos: DatosOrden }
   | { tipo: "evidencia.subir"; datos: DatosEvidencia; conArchivo: true };
 
@@ -196,29 +184,6 @@ export function validarOperacion(entrada: unknown): Validacion<Operacion> {
             medio: d.medio as MedioPago,
             es_devolucion: d.es_devolucion === true,
             referencia: textoONull(d.referencia, 120),
-            notas: textoONull(d.notas),
-            autor: autorONull(d.autor),
-          },
-        },
-      };
-    }
-
-    case "caja.movimiento": {
-      if (!esUuid(String(d.id))) return { ok: false, error: "Movimiento inválido (id)." };
-      if (!esFecha(d.fecha)) return { ok: false, error: "Fecha inválida." };
-      if (!esMonto(d.monto)) return { ok: false, error: "El monto debe ser mayor a 0." };
-      if (!(TIPOS_MOV_MANUAL as readonly string[]).includes(String(d.tipo))) {
-        return { ok: false, error: "Tipo de movimiento inválido." };
-      }
-      return {
-        ok: true,
-        valor: {
-          tipo: "caja.movimiento",
-          datos: {
-            id: String(d.id),
-            fecha: d.fecha,
-            tipo: d.tipo as TipoMovManual,
-            monto: Math.round(d.monto * 100) / 100,
             notas: textoONull(d.notas),
             autor: autorONull(d.autor),
           },
@@ -333,8 +298,6 @@ export function describirOperacion(op: Operacion): string {
       return `Gasto ${moneda.format(op.datos.monto)}${op.conArchivo ? " · con recibo" : ""}`;
     case "pago.crear":
       return `${op.datos.es_devolucion ? "Devolución" : "Abono"} ${moneda.format(op.datos.monto)} (${op.datos.medio})`;
-    case "caja.movimiento":
-      return `Caja: ${op.datos.tipo.replace("_", " ")} ${moneda.format(op.datos.monto)}`;
     case "orden.crear":
       return op.datos.vehiculo.nuevo
         ? `Orden nueva · ${op.datos.vehiculo.placa.toUpperCase()}`

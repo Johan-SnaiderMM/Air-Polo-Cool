@@ -89,3 +89,33 @@ export function etiquetaDia(fecha: string): string {
     timeZone: "UTC",
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
+
+// ---------- Cobros por medio de pago ----------
+
+export type MedioCobro = "efectivo" | "transferencia" | "tarjeta" | "otro";
+
+export const MEDIO_COBRO_LABEL: Record<MedioCobro, string> = {
+  efectivo: "Efectivo",
+  transferencia: "Transferencia",
+  tarjeta: "Tarjeta",
+  otro: "Otro",
+};
+
+export type TotalesMedio = Record<MedioCobro, number> & { total: number };
+
+/**
+ * Suma lo cobrado por medio de pago, neto de devoluciones y sin contar pagos anulados.
+ * Solo sirve para saber CÓMO entró la plata (efectivo vs. transferencia); no hay saldo físico.
+ */
+export function totalesPorMedio(
+  pagos: { medio: MedioCobro; monto: number; es_devolucion: boolean; anulado?: boolean }[]
+): TotalesMedio {
+  const t: TotalesMedio = { efectivo: 0, transferencia: 0, tarjeta: 0, otro: 0, total: 0 };
+  for (const p of pagos) {
+    if (p.anulado) continue;
+    const valor = p.es_devolucion ? -p.monto : p.monto;
+    t[p.medio] += valor;
+    t.total += valor;
+  }
+  return t;
+}
