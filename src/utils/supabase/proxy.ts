@@ -4,6 +4,7 @@ import type { Database } from "@/types/database";
 import { supabaseEnv } from "@/utils/supabase/env";
 
 const RUTAS_PROTEGIDAS = [
+  "/agenda",
   "/ordenes",
   "/vehiculos",
   "/garantias",

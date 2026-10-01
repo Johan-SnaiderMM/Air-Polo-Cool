@@ -218,3 +218,60 @@ describe("mantenimiento", () => {
     expect(r.rows[0].motivo).toBeNull();
   });
 });
+
+describe("agenda (citas)", () => {
+  const insertarCita = (extra = "") =>
+    `insert into public.citas (vehiculo_id, fecha_hora, tipo${extra ? ", " + extra.split("=")[0] : ""})
+     select id, now() + interval '1 day', 'servicio'${extra ? ", " + extra.split("=")[1] : ""} from public.vehiculos limit 1`;
+
+  it("una cita de Polo es real; la que soporte crea en modo prueba solo la ve soporte", async () => {
+    await como("polo");
+    await db.exec(insertarCita());
+    expect(await contar("citas", "es_prueba = false")).toBe(1);
+
+    await como("soporte");
+    expect(await contar("citas")).toBe(1); // modo real: ve la de Polo
+    await db.exec(`select public.cambiar_modo_prueba(true)`);
+    expect(await contar("citas")).toBe(0);
+    await db.exec(insertarCita());
+    expect(await contar("citas", "es_prueba")).toBe(1);
+
+    await como("polo");
+    expect(await contar("citas")).toBe(1);
+    expect(await contar("citas", "es_prueba")).toBe(0);
+
+    await como("soporte");
+    await db.exec(`select public.cambiar_modo_prueba(false)`);
+  });
+
+  it("Polo no puede marcar como cumplida una cita de prueba ni crear una con el modo equivocado", async () => {
+    await como("polo");
+    await db.exec(`update public.citas set estado = 'cancelada'`);
+    expect(await contar("citas", "estado = 'cancelada'")).toBe(1); // solo la real; la de prueba ni la ve
+    expect(await codigoDeError(db.exec(insertarCita("es_prueba=true")))).toBe("42501");
+  });
+
+  it("las reglas de la tabla: tipo y estado válidos, nota acotada", async () => {
+    await como("polo");
+    const malo = (campos: string, valores: string) =>
+      codigoDeError(db.exec(`insert into public.citas (vehiculo_id, fecha_hora, ${campos}) select id, now(), ${valores} from public.vehiculos limit 1`));
+    expect(await malo("tipo", "'otro'")).toBe("23514");
+    expect(await malo("estado", "'perdida'")).toBe("23514");
+    expect(await malo("notas", `'${"n".repeat(1001)}'`)).toBe("23514");
+  });
+
+  it("durante el mantenimiento Polo no agenda ni modifica citas; soporte sí", async () => {
+    await como("soporte");
+    await db.exec(`select public.cambiar_mantenimiento(true, 'prueba')`);
+    await como("polo");
+    expect(await codigoDeError(db.exec(insertarCita()))).toBe("PC001");
+    expect(await codigoDeError(db.exec(`update public.citas set estado = 'cumplida'`))).toBe("PC001");
+    expect(await contar("citas")).toBeGreaterThan(0); // consultar sí puede
+
+    await como("soporte");
+    await db.exec(insertarCita());
+    await db.exec(`select public.cambiar_mantenimiento(false)`);
+    await como("polo");
+    await db.exec(insertarCita());
+  });
+});

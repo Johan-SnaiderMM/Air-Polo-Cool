@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BellRing, ChevronRight, MessageCircle, Package, Plus, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, BellRing, CalendarDays, ChevronRight, MessageCircle, Package, Plus, ShieldCheck } from "lucide-react";
 import { OrdenCard, type OrdenResumen } from "@/components/ordenes/orden-card";
 import { Dinero } from "@/components/ui/dinero";
 import type { TotalesMedio } from "@/lib/caja";
@@ -10,6 +10,8 @@ import type { EstadoOrden, TipoUnidad } from "@/types/database";
 export type InicioDatos = {
   /** Fecha de hoy ya formateada (ej. "martes, 29 de septiembre"). */
   fechaHoy: string;
+  /** Citas pendientes de hoy y de mañana (null si la fase 7 aún no está en la base). */
+  agenda: { hoy: number; manana: number } | null;
   mesEtiqueta: string;
   porEstado: { estado: EstadoOrden; total: number }[];
   listas: OrdenResumen[];
@@ -83,6 +85,27 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
           Nueva orden
         </Link>
       </div>
+
+      {/* ---------- Agenda ---------- */}
+      {datos.agenda && (
+        <Link
+          href="/agenda"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white p-4 shadow-soft transition-colors active:bg-stone-50"
+        >
+          <span className="flex items-center gap-3">
+            <CalendarDays className="size-5 text-stone-500" strokeWidth={1.75} aria-hidden />
+            <span>
+              <span className="block text-[15px] font-medium">Agenda</span>
+              <span className="block text-[13px] text-stone-500">
+                {datos.agenda.hoy === 0 && datos.agenda.manana === 0
+                  ? "Nada agendado para hoy ni mañana"
+                  : `Hoy ${datos.agenda.hoy} ${datos.agenda.hoy === 1 ? "cita" : "citas"} · mañana ${datos.agenda.manana}`}
+              </span>
+            </span>
+          </span>
+          <ChevronRight className="size-4 text-stone-400" aria-hidden />
+        </Link>
+      )}
 
       {/* ---------- Estado del taller ---------- */}
       <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-soft">

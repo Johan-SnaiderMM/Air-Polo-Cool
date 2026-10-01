@@ -1,5 +1,6 @@
 import type { InicioDatos } from "@/components/inicio/inicio-vista";
 import { etiquetaMes, mesActual, rangoMes, totalesPorMedio } from "@/lib/caja";
+import { contarAgendaInicio } from "@/lib/datos/agenda";
 import { SELECT_ORDEN_RESUMEN } from "@/lib/datos/ordenes";
 import { enlaceWhatsApp, mensajeMantenimiento } from "@/lib/whatsapp";
 import type { EstadoOrden } from "@/types/database";
@@ -20,7 +21,7 @@ function nombreVehiculo(marca: string | null, modelo: string | null, anio: numbe
 }
 
 /**
- * Datos del inicio: nueve consultas independientes a la vez. Las de las fases 3 y 4 (cobros,
+ * Datos del inicio: diez consultas independientes a la vez. Las de las fases 3 y 4 (cobros,
  * cartera, mantenimientos) devuelven error si el SQL aún no se ejecutó: en ese caso se muestran
  * ceros o se ocultan, sin romper el inicio.
  */
@@ -28,7 +29,7 @@ export async function cargarDatosInicio(supabase: ClienteServidor): Promise<Inic
   const mes = mesActual();
   const { desde, hasta } = rangoMes(mes);
 
-  const [activas, criticosCount, criticos, porVencer, vencidas, balance, cobros, cartera, mantenimientos] =
+  const [activas, criticosCount, criticos, porVencer, vencidas, balance, cobros, cartera, mantenimientos, agenda] =
     await Promise.all([
       supabase
         .from("ordenes_servicio")
@@ -58,6 +59,7 @@ export async function cargarDatosInicio(supabase: ClienteServidor): Promise<Inic
         .in("estado_mantenimiento", ["vencido", "proximo"])
         .order("dias_restantes", { ascending: true })
         .limit(50),
+      contarAgendaInicio(supabase),
     ]);
 
   // Si la fase 4 aún no está, v_balance_real no existe: se cae a la vista de la fase 1.
@@ -72,6 +74,7 @@ export async function cargarDatosInicio(supabase: ClienteServidor): Promise<Inic
 
   return {
     fechaHoy: formatoFechaHoy.format(new Date()),
+    agenda,
     mesEtiqueta: etiquetaMes(mes).replace(" de ", " "),
     porEstado: ESTADOS_ACTIVOS.map((estado) => ({
       estado,

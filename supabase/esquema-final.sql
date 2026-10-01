@@ -27,6 +27,18 @@ cierres_caja.notas text null default -
 cierres_caja.registrado_por uuid null default auth.uid()
 cierres_caja.resultado text null default -
 cierres_caja.saldo_sistema numeric not null default -
+citas.autor text null default -
+citas.created_at timestamp with time zone not null default now()
+citas.es_prueba boolean not null default en_modo_prueba()
+citas.estado text not null default 'pendiente'::text
+citas.fecha_hora timestamp with time zone not null default -
+citas.id uuid not null default gen_random_uuid()
+citas.notas text null default -
+citas.recordatorio_enviado_at timestamp with time zone null default -
+citas.registrado_por uuid null default auth.uid()
+citas.tipo text not null default 'servicio'::text
+citas.updated_at timestamp with time zone not null default now()
+citas.vehiculo_id uuid not null default -
 clientes.created_at timestamp with time zone not null default now()
 clientes.documento text null default -
 clientes.es_prueba boolean not null default en_modo_prueba()
@@ -186,6 +198,21 @@ cierres_caja: cierres_caja_id_not_null NOT NULL id
 cierres_caja: cierres_caja_pkey PRIMARY KEY (id)
 cierres_caja: cierres_caja_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 cierres_caja: cierres_caja_saldo_sistema_not_null NOT NULL saldo_sistema
+citas: citas_autor_check CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+citas: citas_created_at_not_null NOT NULL created_at
+citas: citas_es_prueba_not_null NOT NULL es_prueba
+citas: citas_estado_check CHECK ((estado = ANY (ARRAY['pendiente'::text, 'cumplida'::text, 'cancelada'::text])))
+citas: citas_estado_not_null NOT NULL estado
+citas: citas_fecha_hora_not_null NOT NULL fecha_hora
+citas: citas_id_not_null NOT NULL id
+citas: citas_notas_check CHECK (((notas IS NULL) OR (length(notas) <= 1000)))
+citas: citas_pkey PRIMARY KEY (id)
+citas: citas_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
+citas: citas_tipo_check CHECK ((tipo = ANY (ARRAY['servicio'::text, 'mantenimiento'::text])))
+citas: citas_tipo_not_null NOT NULL tipo
+citas: citas_updated_at_not_null NOT NULL updated_at
+citas: citas_vehiculo_id_fkey FOREIGN KEY (vehiculo_id) REFERENCES vehiculos(id) ON DELETE RESTRICT
+citas: citas_vehiculo_id_not_null NOT NULL vehiculo_id
 clientes: clientes_created_at_not_null NOT NULL created_at
 clientes: clientes_es_prueba_not_null NOT NULL es_prueba
 clientes: clientes_id_not_null NOT NULL id
@@ -345,12 +372,15 @@ vehiculos: vehiculos_tipo_gas_sugerido_check CHECK ((tipo_gas_sugerido = ANY (AR
 -- INDICES
 CREATE UNIQUE INDEX caja_movimientos_pkey ON public.caja_movimientos USING btree (id)
 CREATE UNIQUE INDEX cierres_caja_pkey ON public.cierres_caja USING btree (id)
+CREATE UNIQUE INDEX citas_pkey ON public.citas USING btree (id)
 CREATE UNIQUE INDEX clientes_pkey ON public.clientes USING btree (id)
 CREATE UNIQUE INDEX cotizacion_items_pkey ON public.cotizacion_items USING btree (id)
 CREATE UNIQUE INDEX cotizaciones_pkey ON public.cotizaciones USING btree (id)
 CREATE UNIQUE INDEX evidencias_fotograficas_pkey ON public.evidencias_fotograficas USING btree (id)
 CREATE UNIQUE INDEX gastos_caja_menor_pkey ON public.gastos_caja_menor USING btree (id)
 CREATE INDEX idx_caja_mov_fecha ON public.caja_movimientos USING btree (fecha DESC) WHERE (NOT anulado)
+CREATE INDEX idx_citas_pendientes ON public.citas USING btree (fecha_hora) WHERE (estado = 'pendiente'::text)
+CREATE INDEX idx_citas_vehiculo ON public.citas USING btree (vehiculo_id, fecha_hora DESC)
 CREATE INDEX idx_clientes_nombre_trgm ON public.clientes USING gin (nombre extensions.gin_trgm_ops)
 CREATE INDEX idx_clientes_telefono ON public.clientes USING btree (telefono)
 CREATE INDEX idx_clientes_telefono_trgm ON public.clientes USING gin (telefono extensions.gin_trgm_ops)
@@ -389,6 +419,7 @@ CREATE UNIQUE INDEX ux_vehiculos_placa_modo ON public.vehiculos USING btree (pla
 CREATE UNIQUE INDEX vehiculos_pkey ON public.vehiculos USING btree (id)
 
 -- TRIGGERS
+CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.citas FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.cotizacion_items FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.cotizaciones FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
@@ -399,6 +430,7 @@ CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON publi
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.pagos_orden FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.vehiculos FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_citas_updated_at BEFORE UPDATE ON public.citas FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_clientes_updated_at BEFORE UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_cot_items_bloqueo BEFORE INSERT OR DELETE OR UPDATE ON public.cotizacion_items FOR EACH ROW EXECUTE FUNCTION fn_cotizacion_items_bloqueo()
 CREATE TRIGGER trg_cotizaciones_updated_at BEFORE UPDATE ON public.cotizaciones FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
@@ -413,6 +445,11 @@ CREATE TRIGGER trg_vehiculos_placa BEFORE INSERT OR UPDATE OF placa ON public.ve
 public.caja_movimientos movs_staff_insert INSERT using(-) check((( SELECT es_staff() AS es_staff) AND (tipo = ANY (ARRAY['fondo_inicial'::tipo_mov_caja, 'reposicion'::tipo_mov_caja, 'retiro'::tipo_mov_caja])) AND (anulado = false) AND (cierre_id IS NULL))) roles={authenticated}
 public.caja_movimientos movs_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.cierres_caja cierres_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
+public.citas citas_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
+public.citas citas_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
+public.citas citas_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
+public.citas citas_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
+public.citas citas_staff_update UPDATE using(( SELECT es_staff() AS es_staff)) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
 public.clientes clientes_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
 public.clientes clientes_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.clientes clientes_staff_insert INSERT using(-) check(( SELECT es_staff() AS es_staff)) roles={authenticated}
@@ -471,6 +508,7 @@ storage.objects polo_storage_staff_update UPDATE using(((bucket_id = ANY (ARRAY[
 -- RLS ACTIVADO
 caja_movimientos t
 cierres_caja t
+citas t
 clientes t
 cotizacion_items t
 cotizaciones t
@@ -1511,6 +1549,7 @@ tipo_unidad: unidad,gramo,libra,onza
 -- PERMISOS DE TABLA
 caja_movimientos authenticated INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE
 cierres_caja authenticated INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE
+citas authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 clientes authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 cotizacion_items authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 cotizaciones authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   construirMensaje,
   enlaceWhatsApp,
+  mensajeCita,
   mensajeGarantia,
   soloDigitos,
   urlPublicaOrden,
@@ -54,5 +55,19 @@ describe("enlaces", () => {
   });
   it("url pública sin doble barra", () => {
     expect(urlPublicaOrden("https://polo.example/", "tok")).toBe("https://polo.example/orden/tok");
+  });
+});
+
+describe('recordatorio de cita', () => {
+  const d = { cliente: 'Juan Pérez López', vehiculo: 'Chevrolet Spark GT 2018', placa: 'ABC123', cuando: 'mañana a las 9:30 a. m.' };
+  it('servicio: saluda por el primer nombre e incluye vehículo, placa y cuándo', () => {
+    const m = mensajeCita({ ...d, tipo: 'servicio' });
+    expect(m).toContain('Hola Juan,');
+    expect(m).toContain('la revisión de tu Chevrolet Spark GT 2018 (placa ABC123)');
+    expect(m).toContain('mañana a las 9:30 a. m.');
+    expect(m).toContain('reprogramamos');
+  });
+  it('mantenimiento: lo dice como mantenimiento preventivo', () => {
+    expect(mensajeCita({ ...d, tipo: 'mantenimiento' })).toContain('mantenimiento preventivo del aire acondicionado de tu Chevrolet Spark GT 2018');
   });
 });

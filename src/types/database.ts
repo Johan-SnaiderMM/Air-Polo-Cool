@@ -48,7 +48,11 @@ export type EstadoCotizacion =
   | "rechazada"
   | "convertida";
 
-export type EstadoMantenimiento = "vencido" | "proximo" | "lejano";
+/** Agenda: qué se viene a hacer y cómo va la cita. */
+export type TipoCita = "servicio" | "mantenimiento";
+export type EstadoCita = "pendiente" | "cumplida" | "cancelada";
+
+export type EstadoMantenimiento ="vencido" | "proximo" | "lejano";
 
 /** Checklist de pertenencias al ingreso (ordenes_servicio.pertenencias). */
 export type Pertenencias = {
@@ -601,6 +605,52 @@ export type Database = {
             columns: ["cotizacion_id"];
             isOneToOne: false;
             referencedRelation: "cotizaciones";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** Fase 7: agenda. Un vehículo que viene en una fecha y hora. */
+      citas: {
+        Row: {
+          id: string;
+          vehiculo_id: string;
+          /** Instante exacto (se muestra en hora de Colombia). */
+          fecha_hora: string;
+          tipo: TipoCita;
+          estado: EstadoCita;
+          notas: string | null;
+          /** Se llena al tocar el botón de WhatsApp. */
+          recordatorio_enviado_at: string | null;
+          autor: Autor | null;
+          registrado_por: string | null;
+          es_prueba: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vehiculo_id: string;
+          fecha_hora: string;
+          tipo?: TipoCita;
+          estado?: EstadoCita;
+          notas?: string | null;
+          recordatorio_enviado_at?: string | null;
+          autor?: Autor | null;
+          es_prueba?: boolean;
+        };
+        Update: {
+          fecha_hora?: string;
+          tipo?: TipoCita;
+          estado?: EstadoCita;
+          notas?: string | null;
+          recordatorio_enviado_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "citas_vehiculo_id_fkey";
+            columns: ["vehiculo_id"];
+            isOneToOne: false;
+            referencedRelation: "vehiculos";
             referencedColumns: ["id"];
           },
         ];

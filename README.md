@@ -16,6 +16,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    4. `…04_fase4_gastos_cotizaciones.sql` (gastos auditables, cotizaciones, pertenencias, mantenimiento)
    5. `…05_fase5_fotos_repuesto.sql` (cada foto de repuesto retirado / instalado queda ligada a su repuesto)
    6. `…06_fase6_soporte.sql` (usuario de soporte: modo prueba y mantenimiento; ver «Usuario de soporte»)
+   7. `…07_fase7_agenda.sql` (agenda de citas; requiere la fase 6)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
@@ -64,11 +65,30 @@ En la base de datos las columnas siguen llamándose `marca`, `modelo` (= línea)
 | Ruta | Qué hace |
 | --- | --- |
 | `/` | Inicio: estado del taller, caja, por cobrar, alertas (garantías, mantenimientos, stock) y utilidad |
+| `/agenda` | **Agenda de citas**: quién viene y a qué hora (hoy, mañana…), con recordatorio por WhatsApp; incluye los mantenimientos preventivos que aún no tienen cita (ver «Agenda») |
 | `/ordenes` | Órdenes con pertenencias al ingreso, repuestos, fotos, **pagos y saldo**, comprobante/PDF |
 | `/cotizaciones` | Cotización previa (estados borrador → enviada → aprobada → convertida en orden), WhatsApp y PDF |
 | `/cartera` | Cuentas por cobrar por cliente, con recordatorio de saldo por WhatsApp |
 | `/vehiculos`, `/garantias` | Historial por placa; garantías y **mantenimientos preventivos** con recordatorio por WhatsApp |
 | `/caja-menor` | **Gastos** (POS, plantillas, fecha, orden asociada, edición/anulación auditada), **Cobros** (efectivo vs. transferencia del mes), **Balance** (base cobrado, gráfica por categoría, rentabilidad, CSV/PDF) |
+
+## Agenda
+
+Una cita es «este vehículo viene tal día a tal hora» y solo guarda lo mínimo: vehículo (que ya tiene a su cliente), día, hora,
+tipo (servicio / mantenimiento) y una nota. Pertenencias, kilometraje y diagnóstico se toman cuando el vehículo llega y se
+crea la orden.
+
+- **Agendar:** el mismo selector de las órdenes y cotizaciones: se busca un vehículo ya registrado o se da de alta uno nuevo con
+  lo básico (nombre y WhatsApp del cliente, placa, marca, línea; el año es opcional).
+- **Vista:** `/agenda` agrupa por día (Hoy, Mañana, …). Las citas de días anteriores que nadie marcó salen aparte en «Sin
+  atender» (hasta 14 días atrás) para recibirlas, reprogramarlas o cancelarlas. Hoy y mañana también se resumen en el inicio.
+- **Recordatorio:** el botón abre WhatsApp con el mensaje ya redactado y anota que se avisó (si se reprograma, se puede volver a
+  avisar). No hay envío automático.
+- **Recibir vehículo:** marca la cita como cumplida y abre «Nueva orden» con ese vehículo ya elegido.
+- **Mantenimientos por programar:** los vehículos con mantenimiento preventivo vencido o próximo (ver «Garantías») y sin cita
+  aparecen al final de la agenda con «Agendar» (abre el formulario con el vehículo, el tipo y el día que les toca) y «Avisarle».
+- **Horas:** se guardan como instante y se muestran siempre en hora de Colombia (UTC-5, sin horario de verano).
+- **Límites:** requiere conexión (no pasa por la cola offline). Respeta el modo prueba y el mantenimiento de la fase 6.
 
 ## Fotos de repuestos
 
@@ -127,7 +147,7 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
 - `src/proxy.ts` — refresca la sesión de Supabase y redirige a `/login` (en Next 16 reemplaza a `middleware.ts`).
 - `src/utils/supabase/` — clientes: navegador, servidor, público (anónimo) y admin (service role, solo servidor).
 - `src/lib/` — reglas puras (garantías, teléfonos, meses, cobros por medio, CSV, cotizaciones, plantillas de WhatsApp) y sus pruebas.
-- `src/lib/datos/` — capa de acceso a datos, una por área: `ordenes` (lista, detalle, comprobante), `inicio`, `caja` (gastos, cobros, balance, reporte), `vehiculos`, `garantias`, `cartera`, `inventario`, `cotizaciones`. Las páginas no hacen consultas: piden un modelo ya armado (con tipos propios, sin `as`), y lo independiente se consulta en paralelo. `mapeo.ts` tiene las transformaciones puras; se prueban con un Supabase simulado.
+- `src/lib/datos/` — capa de acceso a datos, una por área: `ordenes` (lista, detalle, comprobante), `inicio`, `caja` (gastos, cobros, balance, reporte), `vehiculos`, `garantias`, `cartera`, `inventario`, `cotizaciones`, `agenda`. Las páginas no hacen consultas: piden un modelo ya armado (con tipos propios, sin `as`), y lo independiente se consulta en paralelo. `mapeo.ts` tiene las transformaciones puras; se prueban con un Supabase simulado.
 - `src/lib/offline/` — operaciones offline (validación), almacén IndexedDB, algoritmo de sincronización y búsqueda local.
 - `src/components/sync/` — `sync-provider.tsx` compone tres hooks: `use-red` (conexión efectiva), `use-snapshot` (datos de referencia locales) y `use-cola` (registrar, sincronizar, reintentar); además el proveedor de autoría y el panel de pendientes.
 - `public/sw.js` — service worker (lectura offline de páginas ya visitadas); `public/offline.html` — pantalla sin conexión.
@@ -202,7 +222,7 @@ encolar o enviar) y el servidor (que nunca confía en lo que recibe):
 
 - `comunes.ts` — piezas reutilizables (id, fecha, monto, WhatsApp, placa, año…), cada una con su mensaje en español, y
   `validar(esquema, datos)` que devuelve `{ ok, valor }` o el mensaje del primer problema.
-- `vehiculo.ts`, `orden.ts`, `gasto.ts`, `inventario.ts`, `cotizacion.ts` — formularios y ediciones (los números llegan como texto). En cotizaciones, el error de un ítem nombra el ítem o su descripción.
+- `vehiculo.ts`, `orden.ts`, `gasto.ts`, `inventario.ts`, `cotizacion.ts`, `cita.ts` — formularios y ediciones (los números llegan como texto). En cotizaciones, el error de un ítem nombra el ítem o su descripción.
 - `operaciones.ts` — las operaciones offline (gasto, pago, foto, orden nueva). **Los tipos** (`Operacion`, `DatosGasto`…)
   **se derivan del esquema**: el validador y el tipo no pueden desincronizarse.
 

@@ -144,3 +144,20 @@ export function mensajeCotizacion(d: {
   lineas.push("", `Total: ${moneda.format(d.total)}`, `Válida hasta el ${d.vigenteHasta}.`, "", "Si estás de acuerdo, respóndenos y agendamos el trabajo. ❄️");
   return lineas.join("\n");
 }
+
+/** Recordatorio de una cita agendada. `cuando` ya viene redactado: "mañana a las 9:30 a. m.". */
+export function mensajeCita(d: {
+  cliente: string;
+  /** "Chevrolet Spark GT 2018" */
+  vehiculo: string;
+  placa: string;
+  cuando: string;
+  tipo: "servicio" | "mantenimiento";
+}): string {
+  const nombre = primerNombre(d.cliente);
+  const motivo =
+    d.tipo === "mantenimiento"
+      ? `el mantenimiento preventivo del aire acondicionado de tu ${d.vehiculo} (placa ${d.placa})`
+      : `la revisión de tu ${d.vehiculo} (placa ${d.placa})`;
+  return `Hola ${nombre}, te recordamos tu cita en Polo Air Cool para ${motivo}: ${d.cuando}. Si no puedes asistir, avísanos y la reprogramamos. ¡Te esperamos! ❄️`;
+}
