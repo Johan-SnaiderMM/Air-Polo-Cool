@@ -84,7 +84,9 @@ crea la orden.
   atender» (hasta 14 días atrás) para recibirlas, reprogramarlas o cancelarlas. Hoy y mañana también se resumen en el inicio.
 - **Recordatorio:** el botón abre WhatsApp con el mensaje ya redactado y anota que se avisó (si se reprograma, se puede volver a
   avisar). No hay envío automático.
-- **Recibir vehículo:** marca la cita como cumplida y abre «Nueva orden» con ese vehículo ya elegido.
+- **Recibir vehículo:** abre «Nueva orden» con ese vehículo ya elegido. La cita **se cierra sola cuando la orden se guarda** (la
+  operación de la orden lleva el id de la cita y el servidor la marca como cumplida, solo si es del mismo vehículo y sigue
+  pendiente). Si la orden se guardó sin red, la cita se cierra cuando se sincroniza; si nunca se guarda, la cita sigue pendiente.
 - **Mantenimientos por programar:** los vehículos con mantenimiento preventivo vencido o próximo (ver «Garantías») y sin cita
   aparecen al final de la agenda con «Agendar» (abre el formulario con el vehículo, el tipo y el día que les toca) y «Avisarle».
 - **Horas:** se guardan como instante y se muestran siempre en hora de Colombia (UTC-5, sin horario de verano).

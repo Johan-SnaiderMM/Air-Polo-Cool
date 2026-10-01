@@ -55,6 +55,31 @@ describe("procesarOperacion (punto único de escritura offline)", () => {
     expect(vi.mocked(revalidatePath).mock.calls.map((c) => c[0])).toEqual([`/ordenes/${ORDEN}`, "/cartera", "/caja-menor", "/"]);
   });
 
+  describe("orden nueva", () => {
+    const CITA = "423e4567-e89b-12d3-a456-426614174000";
+    const ordenNueva = (extra: Record<string, unknown> = {}) => ({
+      tipo: "orden.crear",
+      datos: { id: ORDEN, vehiculo: { nuevo: false, id: ID }, estado: "recibido", autor: "Polo", ...extra },
+    });
+    const baseVehiculo = (l: Llamada): Respuesta | undefined =>
+      l.tabla === "vehiculos" ? { data: [{ id: ID }] } : l.tabla === "ordenes_servicio" && l.op === "select" ? { data: [] } : undefined;
+
+    it("desde una cita de la agenda: guarda la orden, cierra la cita y refresca la agenda", async () => {
+      const f = usar(baseVehiculo);
+      expect(await procesarOperacion(formulario(ordenNueva({ cita_id: CITA })))).toEqual({ ok: true });
+      expect(f.de("insert", "ordenes_servicio")).toHaveLength(1);
+      expect(f.de("update", "citas")[0].payload).toEqual({ estado: "cumplida" });
+      expect(vi.mocked(revalidatePath).mock.calls.map((c) => c[0])).toEqual(["/ordenes", "/", "/vehiculos", "/agenda"]);
+    });
+
+    it("sin cita no toca la agenda (ni la refresca)", async () => {
+      const f = usar(baseVehiculo);
+      expect(await procesarOperacion(formulario(ordenNueva()))).toEqual({ ok: true });
+      expect(f.llamadas.some((l) => l.tabla === "citas")).toBe(false);
+      expect(vi.mocked(revalidatePath).mock.calls.map((c) => c[0])).toEqual(["/ordenes", "/", "/vehiculos"]);
+    });
+  });
+
   it("recibe el archivo adjunto del FormData y lo sube", async () => {
     const f = usar();
     const archivo = new File([new Uint8Array(20)], "recibo.webp", { type: "image/webp" });

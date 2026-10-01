@@ -44,6 +44,16 @@ async function subir(supabase: Supabase, bucket: string, ruta: string, archivo: 
     .upload(ruta, Buffer.from(await archivo.arrayBuffer()), { contentType: archivo.type, upsert: true });
 }
 
+/**
+ * Si la orden salió de una cita de la agenda, la marca como cumplida. Solo si la cita es de ese
+ * mismo vehículo y sigue pendiente. No es crítico: la orden ya está guardada, así que un fallo (o la
+ * tabla ausente si aún no se ejecutó la fase 7) no la afecta.
+ */
+async function cerrarCitaDeLaOrden(supabase: Supabase, citaId: string | null, vehiculoId: string | null | undefined) {
+  if (!citaId || !vehiculoId) return;
+  await supabase.from("citas").update({ estado: "cumplida" }).eq("id", citaId).eq("vehiculo_id", vehiculoId).eq("estado", "pendiente");
+}
+
 // ---------------------------------------------------------------------
 // Alta de vehículo (y cliente) — compartida con cotizaciones
 // ---------------------------------------------------------------------
@@ -218,8 +228,12 @@ export async function ejecutarOperacion(
 
     case "orden.crear": {
       const d = op.datos;
-      const { data: ya } = await supabase.from("ordenes_servicio").select("id").eq("id", d.id).maybeSingle();
-      if (ya) return { ok: true, duplicado: true };
+      const { data: ya } = await supabase.from("ordenes_servicio").select("id, vehiculo_id").eq("id", d.id).maybeSingle();
+      if (ya) {
+        // Un reintento: la orden ya está; la cita pudo quedar abierta si el intento anterior se cortó.
+        await cerrarCitaDeLaOrden(supabase, d.cita_id, ya.vehiculo_id);
+        return { ok: true, duplicado: true };
+      }
 
       const veh = await asegurarVehiculo(supabase, d.vehiculo);
       if (!veh.ok) return veh.res;
@@ -239,9 +253,13 @@ export async function ejecutarOperacion(
         autor: d.autor,
       });
       if (error) {
-        if (error.code === "23505") return { ok: true, duplicado: true };
+        if (error.code === "23505") {
+          await cerrarCitaDeLaOrden(supabase, d.cita_id, veh.id);
+          return { ok: true, duplicado: true };
+        }
         return falloDb(error);
       }
+      await cerrarCitaDeLaOrden(supabase, d.cita_id, veh.id);
       return { ok: true };
     }
   }

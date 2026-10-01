@@ -22,7 +22,14 @@ import { VALORES_NUEVA, armarOrdenNueva } from "@/lib/orden-nueva";
  * cola de sincronización (misma validación e idempotencia que en línea). La validación vive en
  * lib/orden-nueva.ts; aquí solo se recogen los datos y se informa del resultado.
  */
-export function OrdenFormCrear({ vehiculoInicial }: { vehiculoInicial?: VehiculoResultado | null }) {
+export function OrdenFormCrear({
+  vehiculoInicial,
+  citaId = null,
+}: {
+  vehiculoInicial?: VehiculoResultado | null;
+  /** Cita de la agenda de la que viene la orden: se cierra cuando la orden se guarda. */
+  citaId?: string | null;
+}) {
   const router = useRouter();
   const { registrar } = useSync();
   const { autor } = useAutor();
@@ -39,7 +46,7 @@ export function OrdenFormCrear({ vehiculoInicial }: { vehiculoInicial?: Vehiculo
     e.preventDefault();
     setError(null);
 
-    const r = armarOrdenNueva({ valores, vehiculo, autor });
+    const r = armarOrdenNueva({ valores, vehiculo, autor, citaId });
     if (!r.ok) return setError(r.error);
 
     iniciar(async () => {

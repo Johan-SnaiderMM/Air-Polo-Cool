@@ -67,6 +67,7 @@ export async function procesarOperacion(formData: FormData): Promise<ResultadoOp
         revalidatePath("/ordenes");
         revalidatePath("/");
         revalidatePath("/vehiculos");
+        if (op.datos.cita_id) revalidatePath("/agenda");
         break;
     }
   }

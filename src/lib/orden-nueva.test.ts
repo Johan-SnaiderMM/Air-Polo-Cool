@@ -25,6 +25,13 @@ const armar = (valores: Partial<OrdenFormValores>, vehiculo: SeleccionVehiculo |
   armarOrdenNueva({ valores: { ...VALORES_NUEVA, ...valores }, vehiculo, autor: "Polo", generarId: id });
 
 describe("armarOrdenNueva", () => {
+  it("la cita de la agenda viaja en la orden (o null si no viene de una)", () => {
+    const sinCita = armar({});
+    expect(sinCita.ok && sinCita.valor.cita_id).toBeNull();
+    const r = armarOrdenNueva({ valores: VALORES_NUEVA, vehiculo: existente, autor: "Polo", citaId: "cita-1", generarId: id });
+    expect(r.ok && r.valor.cita_id).toBe("cita-1");
+  });
+
   it("sin vehículo no hay orden", () => {
     expect(armar({}, null)).toEqual({ ok: false, error: "Selecciona un vehículo o registra uno nuevo." });
   });

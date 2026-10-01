@@ -2,8 +2,7 @@
 
 import { useCallback, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CalendarClock, Check, MessageCircle, Snowflake, Wrench } from "lucide-react";
+import { CalendarClock, Check, MessageCircle, Wrench } from "lucide-react";
 import { cambiarEstadoCita, marcarRecordatorio } from "@/app/(app)/agenda/actions";
 import { FormularioCita } from "@/components/agenda/formulario-cita";
 import { TIPO_CITA_LABEL } from "@/lib/agenda";
@@ -11,24 +10,14 @@ import type { CitaVista } from "@/lib/datos/agenda";
 
 /**
  * Una cita de la agenda: hora, vehículo y cliente, con sus acciones. «Recordar» abre WhatsApp con el
- * mensaje ya redactado y anota que se avisó; «Recibir» marca que el vehículo llegó y abre la
- * orden con ese vehículo ya elegido.
+ * mensaje ya redactado y anota que se avisó; «Recibir» abre una orden nueva con ese vehículo ya elegido
+ * y la cita se cierra sola cuando la orden se guarda (no antes).
  */
 export function TarjetaCita({ cita, atrasada = false }: { cita: CitaVista; atrasada?: boolean }) {
-  const router = useRouter();
   const [pendiente, iniciar] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const cerrar = useCallback(() => setEditando(false), []);
-
-  function recibir() {
-    setError(null);
-    iniciar(async () => {
-      const r = await cambiarEstadoCita({ id: cita.id, estado: "cumplida" });
-      if (r.ok) router.push(`/ordenes/nueva?vehiculo=${cita.vehiculoId}`);
-      else setError(r.error);
-    });
-  }
 
   function cancelar() {
     if (!window.confirm(`¿Cancelar la cita de ${cita.placa}?`)) return;
@@ -84,15 +73,12 @@ export function TarjetaCita({ cita, atrasada = false }: { cita: CitaVista; atras
             {cita.recordadoAt ? "Recordado" : "Recordar"}
           </a>
         )}
-        <button
-          type="button"
-          onClick={recibir}
-          disabled={pendiente}
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-ink text-sm font-medium text-white active:opacity-90 disabled:opacity-60"
+        <Link
+          href={`/ordenes/nueva?vehiculo=${cita.vehiculoId}&cita=${cita.id}`}
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-ink text-sm font-medium text-white active:opacity-90"
         >
-          {pendiente && <Snowflake className="size-4 animate-copo" aria-hidden />}
           Recibir vehículo
-        </button>
+        </Link>
       </div>
 
       <div className="flex items-center justify-between text-[13px]">

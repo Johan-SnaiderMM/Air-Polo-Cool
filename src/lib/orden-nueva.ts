@@ -55,9 +55,11 @@ export function armarOrdenNueva(entrada: {
   valores: OrdenFormValores;
   vehiculo: SeleccionVehiculo | null;
   autor: DatosOrden["autor"];
+  /** Cita de la agenda de la que viene la orden (se cierra al guardarla). */
+  citaId?: string | null;
   generarId?: () => string;
 }): Validacion<DatosOrden> {
-  const { valores: v, vehiculo, autor, generarId = nuevoId } = entrada;
+  const { valores: v, vehiculo, autor, citaId = null, generarId = nuevoId } = entrada;
   if (!vehiculo) return { ok: false, error: "Selecciona un vehículo o registra uno nuevo." };
 
   const datosVehiculo = armarVehiculo(vehiculo, generarId);
@@ -76,6 +78,7 @@ export function armarOrdenNueva(entrada: {
       pertenencias: v.pertenencias,
       mantenimiento_meses: listoOEntregado ? v.mantenimiento_meses : null,
       autor,
+      cita_id: citaId,
     },
   };
 }

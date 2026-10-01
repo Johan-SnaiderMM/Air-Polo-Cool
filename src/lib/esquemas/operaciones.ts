@@ -22,7 +22,7 @@ import {
 } from "@/lib/esquemas/comunes";
 import { mantenimientoSchema, pertenenciasONull } from "@/lib/esquemas/orden";
 import { vehiculoOrdenSchema, type DatosVehiculoOrden } from "@/lib/esquemas/vehiculo";
-import { esEstado, esTipoEvidencia } from "@/lib/ordenes";
+import { esEstado, esTipoEvidencia, esUuid } from "@/lib/ordenes";
 import type { MedioPago } from "@/types/database";
 
 export const MEDIOS_PAGO: MedioPago[] = ["efectivo", "transferencia", "tarjeta", "otro"];
@@ -126,6 +126,8 @@ const datosOrdenSchema = z.object({
   pertenencias: z.unknown().optional().transform((v) => pertenenciasONull(v)),
   mantenimiento_meses: mantenimientoSchema,
   autor: autorSchema,
+  /** Cita de la agenda de la que sale la orden: se cierra al guardarla. Un id que no sirva se descarta (no frena la orden). */
+  cita_id: z.unknown().optional().transform((v) => (typeof v === "string" && esUuid(v) ? v : null)),
 });
 export type DatosOrden = z.output<typeof datosOrdenSchema>;
 

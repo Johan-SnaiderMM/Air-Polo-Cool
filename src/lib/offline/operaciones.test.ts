@@ -101,6 +101,14 @@ describe("validarOperacion: orden.crear", () => {
     expect(rKm.ok && rKm.valor.tipo === "orden.crear" && rKm.valor.datos.kilometraje).toBeNull();
     expect(con({ estado: "volando" }).ok).toBe(false);
   });
+  it("cita_id: un uuid se conserva; ausente o inválido se descarta sin frenar la orden", () => {
+    const con = (extra: Record<string, unknown>) =>
+      validarOperacion({ tipo: "orden.crear", datos: { id: ID2, vehiculo: { nuevo: false, id: ID }, ...extra } });
+    const citaDe = (r: ReturnType<typeof con>) => (r.ok && r.valor.tipo === "orden.crear" ? r.valor.datos.cita_id : "no es orden");
+    expect(citaDe(con({ cita_id: ID }))).toBe(ID);
+    expect(citaDe(con({}))).toBeNull(); // operaciones guardadas antes de existir la agenda
+    for (const malo of ["x", 5, null, {}]) expect(citaDe(con({ cita_id: malo })), String(malo)).toBeNull();
+  });
   it("rechaza vehículo sin id válido", () => {
     expect(validarOperacion({ tipo: "orden.crear", datos: { id: ID2, vehiculo: { nuevo: false, id: "x" } } }).ok).toBe(false);
   });

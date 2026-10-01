@@ -162,13 +162,13 @@ describe("evidencia.subir", () => {
 });
 
 describe("orden.crear", () => {
-  const orden = (vehiculo: Extract<Operacion, { tipo: "orden.crear" }>["datos"]["vehiculo"]): Operacion => ({
+  const orden = (vehiculo: Extract<Operacion, { tipo: "orden.crear" }>["datos"]["vehiculo"], citaId: string | null = null): Operacion => ({
     tipo: "orden.crear",
     datos: {
       id: ORDEN, vehiculo, kilometraje: 85000, diagnostico_inicial: "Fuga", trabajos_a_realizar: null, mano_obra: 200000,
       total_cobrado: 450000, dias_garantia: 90, estado: "recibido",
       pertenencias: { carroceria: "sin_danos", llanta_repuesto: true, herramientas: false, documentos: false, objetos_valor: "", notas: "" },
-      mantenimiento_meses: null, autor: "Polo",
+      mantenimiento_meses: null, autor: "Polo", cita_id: citaId,
     },
   });
   const nuevoVehiculo = {
@@ -238,5 +238,60 @@ describe("orden.crear", () => {
       expect(r, JSON.stringify(cambio)).toMatchObject({ ok: false, permanente: true });
       expect(f.de("insert"), JSON.stringify(cambio)).toHaveLength(0);
     }
+  });
+
+  describe("si la orden sale de una cita de la agenda", () => {
+    const CITA = "423e4567-e89b-12d3-a456-426614174000";
+    const vehiculoExistente = (l: Llamada): Respuesta | undefined =>
+      l.tabla === "vehiculos" ? { data: [{ id: ID }] } : l.tabla === "ordenes_servicio" && l.op === "select" ? { data: [] } : undefined;
+
+    it("al guardar la orden cierra la cita, solo si es de ese vehículo y sigue pendiente", async () => {
+      const { r, f } = await ejecutar(orden({ nuevo: false, id: ID }, CITA), null, vehiculoExistente);
+      expect(r).toEqual({ ok: true });
+      const [u] = f.de("update", "citas");
+      expect(u.payload).toEqual({ estado: "cumplida" });
+      expect(u.filtros).toEqual([
+        { col: "id", op: "eq", valor: CITA },
+        { col: "vehiculo_id", op: "eq", valor: ID },
+        { col: "estado", op: "eq", valor: "pendiente" },
+      ]);
+      // Y lo hace DESPUÉS de insertar la orden, nunca antes.
+      const orden_ = f.llamadas.findIndex((l) => l.op === "insert" && l.tabla === "ordenes_servicio");
+      expect(f.llamadas.findIndex((l) => l.op === "update" && l.tabla === "citas")).toBeGreaterThan(orden_);
+    });
+
+    it("con un vehículo nuevo la cita se cierra con el id del vehículo recién creado", async () => {
+      const { r, f } = await ejecutar(orden(nuevoVehiculo, CITA), null, sin("ordenes_servicio", "vehiculos", "clientes"));
+      expect(r).toEqual({ ok: true });
+      expect(f.de("update", "citas")[0].filtros).toContainEqual({ col: "vehiculo_id", op: "eq", valor: ID });
+    });
+
+    it("si la orden no se pudo guardar, la cita queda pendiente", async () => {
+      const { r, f } = await ejecutar(orden({ nuevo: false, id: ID }, CITA), null, (l) =>
+        l.tabla === "ordenes_servicio" && l.op === "insert" ? { error: { code: "23514", message: "check" } } : vehiculoExistente(l)
+      );
+      expect(r).toMatchObject({ ok: false });
+      expect(f.de("update", "citas")).toHaveLength(0);
+    });
+
+    it("un reintento (la orden ya existe) también cierra la cita que pudo quedar abierta", async () => {
+      const { r, f } = await ejecutar(orden({ nuevo: false, id: ID }, CITA), null, (l) =>
+        l.tabla === "ordenes_servicio" ? { data: [{ id: ORDEN, vehiculo_id: ID }] } : undefined
+      );
+      expect(r).toEqual({ ok: true, duplicado: true });
+      expect(f.de("update", "citas")[0].filtros).toContainEqual({ col: "vehiculo_id", op: "eq", valor: ID });
+    });
+
+    it("si cerrar la cita falla (o la tabla no existe aún), la orden igual queda guardada", async () => {
+      const { r } = await ejecutar(orden({ nuevo: false, id: ID }, CITA), null, (l) =>
+        l.tabla === "citas" ? { error: { code: "42P01", message: "no existe" } } : vehiculoExistente(l)
+      );
+      expect(r).toEqual({ ok: true });
+    });
+
+    it("una orden sin cita no toca la agenda", async () => {
+      const { f } = await ejecutar(orden({ nuevo: false, id: ID }), null, vehiculoExistente);
+      expect(f.llamadas.some((l) => l.tabla === "citas")).toBe(false);
+    });
   });
 });

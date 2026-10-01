@@ -11,9 +11,9 @@ export const metadata: Metadata = { title: "Nueva orden" };
 export default async function NuevaOrdenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vehiculo?: string }>;
+  searchParams: Promise<{ vehiculo?: string; cita?: string }>;
 }) {
-  const { vehiculo: vehiculoId } = await searchParams;
+  const { vehiculo: vehiculoId, cita } = await searchParams;
 
   // ?vehiculo=<id> preselecciona el vehículo (desde su historial).
   const vehiculoInicial =
@@ -32,7 +32,8 @@ export default async function NuevaOrdenPage({
         <h2 className="font-serif text-[26px] leading-tight font-medium tracking-tight">Nueva orden</h2>
       </div>
 
-      <OrdenFormCrear vehiculoInicial={vehiculoInicial} />
+      {/* ?cita=<id> viene de la agenda: esa cita se cierra al guardar la orden. */}
+      <OrdenFormCrear vehiculoInicial={vehiculoInicial} citaId={vehiculoInicial && cita && esUuid(cita) ? cita : null} />
 
       <p className="text-center text-sm text-stone-500">
         Al crear la orden podrás adjuntar las fotos de ingreso.
