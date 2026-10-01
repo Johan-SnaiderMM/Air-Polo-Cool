@@ -48,3 +48,6 @@ next-env.d.ts
 
 # pausa local de la publicación automática
 .deploy-hold
+
+# contexto comercial (precios, planes): solo local, no se sube
+CONTEXTO.md
