@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Check, MessageCircle, Snowflake, Wrench } from "lucide-react";
 import { cambiarEstadoCita, marcarRecordatorio } from "@/app/(app)/agenda/actions";
@@ -98,6 +99,9 @@ export function TarjetaCita({ cita, atrasada = false }: { cita: CitaVista; atras
         <button type="button" onClick={() => setEditando(true)} className="min-h-10 px-1 font-medium text-stone-600 underline underline-offset-2">
           {atrasada ? "Reprogramar" : "Cambiar día u hora"}
         </button>
+        <Link href={`/vehiculos/${cita.vehiculoId}`} className="flex min-h-10 items-center px-1 font-medium text-stone-600 underline underline-offset-2">
+          Datos del vehículo
+        </Link>
         <button type="button" onClick={cancelar} disabled={pendiente} className="min-h-10 px-1 font-medium text-brick-700 disabled:opacity-60">
           Cancelar cita
         </button>
