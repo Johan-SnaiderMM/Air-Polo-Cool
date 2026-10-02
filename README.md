@@ -313,6 +313,7 @@ esa persona registre.
 - El service role se usa solo en el servidor (marcado `server-only`): firmar URLs de fotos, el límite de intentos de ingreso y la gestión del equipo.
 - Permisos: el `operario` crea y edita; solo el `admin` borra (repuestos de una orden, fotos, gastos).
 - El envío automático de WhatsApp está **apagado** salvo `WHATSAPP_AUTO_ENVIO=true`.
+- Los mensajes de WhatsApp **no llevan emojis modernos** (en teléfonos con tipografías viejas salen como «?»): solo ✓ y ❄. Una prueba lo vigila. Cuando el pago de una orden queda completo, «Pagos y saldo» ofrece **Agradecer el pago por WhatsApp** (si hubo transferencia, el mensaje dice que ya llegó).
 - **Límite de intentos de ingreso** (fase 9): tres contadores independientes que bloquean 15 minutos —**correo + IP: 5 fallos**,
   correo (cualquier IP): 20, IP (cualquier correo): 40, todos en ventanas de 15 min—. Se consulta **antes** de preguntarle a Supabase
   (quien está bloqueado no puede seguir probando, ni aunque acierte) y responde el mismo mensaje exista o no el correo. Un extraño

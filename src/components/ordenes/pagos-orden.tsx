@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, useTransition } from "react";
-import { Camera, CheckCircle2, CloudUpload, ExternalLink, Snowflake, X } from "lucide-react";
+import { Camera, CheckCircle2, CloudUpload, ExternalLink, MessageCircle, Snowflake, X } from "lucide-react";
 import { anularPago } from "@/app/(app)/ordenes/pagos-actions";
 import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
@@ -14,6 +14,7 @@ import { etiquetaDia, hoyBogota } from "@/lib/caja";
 import { comprimirImagen } from "@/lib/imagen";
 import { MEDIOS_PAGO, nuevoId } from "@/lib/offline/operaciones";
 import { formatearMoneda } from "@/lib/ordenes";
+import { enlaceWhatsApp, mensajePagoRecibido } from "@/lib/whatsapp";
 import type { Autor, EstadoOrden, MedioPago } from "@/types/database";
 import { MEDIO_PAGO_LABEL } from "@/lib/caja";
 
@@ -43,6 +44,8 @@ type Props = {
   estadoOrden: EstadoOrden;
   totalCobrado: number;
   pagos: PagoVista[];
+  /** Para el mensaje de agradecimiento; sin teléfono no se ofrece. */
+  cliente?: { nombre: string; telefono: string | null; placa: string } | null;
 };
 
 /**
@@ -51,7 +54,7 @@ type Props = {
  * solo sirve para saber cómo entró la plata: se resume en Caja › Cobros.
  * Registrar funciona sin conexión; anular requiere conexión.
  */
-export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props) {
+export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos, cliente = null }: Props) {
   const { registrar, online } = useSync();
   const { autor } = useAutor();
   const inputFoto = useRef<HTMLInputElement>(null);
@@ -67,6 +70,20 @@ export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props)
         : pagado > 0
           ? "parcial"
           : "pendiente";
+  // Pago completo (también si pagó de más): se ofrece agradecerle por WhatsApp. Si alguno de sus abonos fue
+  // por transferencia, el mensaje le confirma que esa transferencia ya llegó.
+  const pagoCompleto = totalCobrado > 0 && pagado >= totalCobrado;
+  const hrefAgradecimiento =
+    pagoCompleto && cliente?.telefono
+      ? enlaceWhatsApp(
+          cliente.telefono,
+          mensajePagoRecibido({
+            cliente: cliente.nombre,
+            placa: cliente.placa,
+            porTransferencia: vigentes.some((p) => !p.esDevolucion && p.medio === "transferencia"),
+          })
+        )
+      : null;
   const avance = totalCobrado > 0 ? Math.max(0, Math.min(100, (pagado / totalCobrado) * 100)) : 0;
 
   const [digitos, setDigitos] = useState("");
@@ -176,6 +193,17 @@ export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props)
             </dd>
           </div>
         </dl>
+        {hrefAgradecimiento && (
+          <a
+            href={hrefAgradecimiento}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 flex h-12 items-center justify-center gap-2 rounded-xl bg-sage-600 text-[15px] font-semibold text-white active:bg-sage-700"
+          >
+            <MessageCircle className="size-5" aria-hidden />
+            Agradecer el pago por WhatsApp
+          </a>
+        )}
         {totalCobrado <= 0 && (
           <p className="mt-2 text-[12px] text-stone-500">
             La orden aún no tiene total cobrado: puedes registrar un anticipo de todas formas.

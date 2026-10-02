@@ -3,7 +3,10 @@ import {
   construirMensaje,
   enlaceWhatsApp,
   mensajeCita,
+  mensajeCotizacion,
   mensajeGarantia,
+  mensajeMantenimiento,
+  mensajePagoRecibido,
   soloDigitos,
   urlPublicaOrden,
 } from "@/lib/whatsapp";
@@ -69,5 +72,43 @@ describe('recordatorio de cita', () => {
   });
   it('mantenimiento: lo dice como mantenimiento preventivo', () => {
     expect(mensajeCita({ ...d, tipo: 'mantenimiento' })).toContain('mantenimiento preventivo del aire acondicionado de tu Chevrolet Spark GT 2018');
+  });
+});
+
+describe("pago completo: agradecimiento", () => {
+  const d = { cliente: "Juan Pérez López", placa: "ABC123" };
+  it("por transferencia: confirma que la transferencia ya llegó y agradece", () => {
+    const m = mensajePagoRecibido({ ...d, porTransferencia: true });
+    expect(m).toContain("Hola Juan, tu transferencia ya llegó. ✓");
+    expect(m).toContain("(placa ABC123) quedó pagado en su totalidad");
+    expect(m).toContain("Gracias por confiar en los servicios de Polo Air Cool");
+  });
+  it("sin transferencia: dice que se recibió el pago", () => {
+    const m = mensajePagoRecibido({ ...d, porTransferencia: false });
+    expect(m).toContain("Hola Juan, recibimos tu pago. ✓");
+    expect(m).not.toContain("transferencia");
+  });
+});
+
+describe("sin emojis modernos (en teléfonos viejos salen como «?»)", () => {
+  // Emoticonos y pictogramas (U+1F000–1FAFF), ✅ (U+2705) y el selector de variación (U+FE0F).
+  const moderno = /[\u{1F000}-\u{1FAFF}\u{2705}\u{FE0F}]/u;
+  const f = "10 oct 2026";
+  const textos: Record<string, string> = {
+    recepcion: construirMensaje("recepcion", base),
+    listo: construirMensaje("listo", base),
+    entregado: construirMensaje("entregado", base),
+    garantiaVencida: mensajeGarantia({ cliente: "Ana", placa: "X", fechaFin: f, diasRestantes: -1 }),
+    garantiaPorVencer: mensajeGarantia({ cliente: "Ana", placa: "X", fechaFin: f, diasRestantes: 3 }),
+    mantenimiento: mensajeMantenimiento({ cliente: "Ana", placa: "X", vehiculo: "Spark" }),
+    cotizacion: mensajeCotizacion({ cliente: "Ana", vehiculo: "Spark", placa: "X", manoObra: 1, items: [], total: 1, vigenteHasta: f }),
+    cita: mensajeCita({ cliente: "Ana", vehiculo: "Spark", placa: "X", cuando: "hoy", tipo: "servicio" }),
+    pago: mensajePagoRecibido({ cliente: "Ana", placa: "X", porTransferencia: true }),
+  };
+  it.each(Object.entries(textos))("%s no lleva emojis modernos", (_nombre, texto) => {
+    expect(texto).not.toMatch(moderno);
+  });
+  it("el visto del mensaje «listo» es ✓", () => {
+    expect(textos.listo).toContain("listo para entrega. ✓");
   });
 });

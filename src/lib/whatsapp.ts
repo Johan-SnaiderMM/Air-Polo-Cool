@@ -1,5 +1,8 @@
 // Plantillas y enlaces de WhatsApp. Módulo puro (sin dependencias de servidor):
 // se puede usar en servidor y en cliente.
+//
+// Sin emojis modernos: en teléfonos con tipografías viejas aparecen como «?». Solo se usan símbolos antiguos
+// (✓ y ❄, de Unicode 1.1, sin selector de variación) que esos teléfonos sí tienen.
 
 export type PlantillaWhatsApp = "recepcion" | "listo" | "entregado";
 
@@ -39,14 +42,14 @@ export function construirMensaje(plantilla: PlantillaWhatsApp, d: DatosMensaje):
   switch (plantilla) {
     case "recepcion":
       return [
-        `Hola ${nombre}, hemos recibido tu ${auto} en Polo Air Cool. ❄️`,
+        `Hola ${nombre}, hemos recibido tu ${auto} en Polo Air Cool. ❄`,
         `Iniciamos el diagnóstico y te mantendremos informado del avance.`,
         `Puedes seguir el estado de tu vehículo aquí: ${d.urlPublica}`,
       ].join("\n\n");
 
     case "listo": {
       const lineas = [
-        `Hola ${nombre}, tu ${auto} está listo para entrega. ✅`,
+        `Hola ${nombre}, tu ${auto} está listo para entrega. ✓`,
         `Revisa el trabajo realizado, repuestos cambiados y tu garantía digital aquí: ${d.urlPublica}`,
       ];
       if (d.totalCobrado > 0) {
@@ -57,7 +60,7 @@ export function construirMensaje(plantilla: PlantillaWhatsApp, d: DatosMensaje):
 
     case "entregado": {
       const lineas = [
-        `Hola ${nombre}, gracias por confiar en Polo Air Cool. Entregamos tu ${auto}. 🙌`,
+        `Hola ${nombre}, gracias por confiar en Polo Air Cool. Entregamos tu ${auto}.`,
         d.garantiaHasta
           ? `Tu garantía digital está vigente hasta el ${d.garantiaHasta}. Consúltala aquí: ${d.urlPublica}`
           : `Puedes consultar el detalle del servicio aquí: ${d.urlPublica}`,
@@ -91,13 +94,13 @@ export function mensajeGarantia(d: {
 }): string {
   const nombre = primerNombre(d.cliente);
   if (d.diasRestantes < 0) {
-    return `Hola ${nombre}, te informamos que la garantía del servicio de tu vehículo (placa ${d.placa}) en Polo Air Cool venció el ${d.fechaFin}. Si necesitas una revisión, escríbenos y con gusto te atendemos. ❄️`;
+    return `Hola ${nombre}, te informamos que la garantía del servicio de tu vehículo (placa ${d.placa}) en Polo Air Cool venció el ${d.fechaFin}. Si necesitas una revisión, escríbenos y con gusto te atendemos. ❄`;
   }
   const cuando =
     d.diasRestantes === 0
       ? "vence hoy"
       : `vence en ${d.diasRestantes} ${d.diasRestantes === 1 ? "día" : "días"} (${d.fechaFin})`;
-  return `Hola ${nombre}, te recordamos que la garantía del servicio de tu vehículo (placa ${d.placa}) en Polo Air Cool ${cuando}. Si notas algo con el aire acondicionado, escríbenos para revisarlo mientras la garantía siga vigente. ❄️`;
+  return `Hola ${nombre}, te recordamos que la garantía del servicio de tu vehículo (placa ${d.placa}) en Polo Air Cool ${cuando}. Si notas algo con el aire acondicionado, escríbenos para revisarlo mientras la garantía siga vigente. ❄`;
 }
 
 /** Recordatorio de mantenimiento preventivo (formal, sin enlace). */
@@ -108,7 +111,7 @@ export function mensajeMantenimiento(d: {
   vehiculo: string;
 }): string {
   const nombre = primerNombre(d.cliente);
-  return `Hola ${nombre}, desde Polo Air Cool te recordamos que tu vehículo ${d.vehiculo} (placa ${d.placa}) está listo para su revisión preventiva del aire acondicionado. Escríbenos y agendamos tu cita. ❄️`;
+  return `Hola ${nombre}, desde Polo Air Cool te recordamos que tu vehículo ${d.vehiculo} (placa ${d.placa}) está listo para su revisión preventiva del aire acondicionado. Escríbenos y agendamos tu cita. ❄`;
 }
 
 /** Recordatorio amable de saldo pendiente. */
@@ -141,7 +144,7 @@ export function mensajeCotizacion(d: {
     ),
   ];
   if (d.manoObra > 0) lineas.push(`• Mano de obra: ${moneda.format(d.manoObra)}`);
-  lineas.push("", `Total: ${moneda.format(d.total)}`, `Válida hasta el ${d.vigenteHasta}.`, "", "Si estás de acuerdo, respóndenos y agendamos el trabajo. ❄️");
+  lineas.push("", `Total: ${moneda.format(d.total)}`, `Válida hasta el ${d.vigenteHasta}.`, "", "Si estás de acuerdo, respóndenos y agendamos el trabajo. ❄");
   return lineas.join("\n");
 }
 
@@ -159,5 +162,22 @@ export function mensajeCita(d: {
     d.tipo === "mantenimiento"
       ? `el mantenimiento preventivo del aire acondicionado de tu ${d.vehiculo} (placa ${d.placa})`
       : `la revisión de tu ${d.vehiculo} (placa ${d.placa})`;
-  return `Hola ${nombre}, te recordamos tu cita en Polo Air Cool para ${motivo}: ${d.cuando}. Si no puedes asistir, avísanos y la reprogramamos. ¡Te esperamos! ❄️`;
+  return `Hola ${nombre}, te recordamos tu cita en Polo Air Cool para ${motivo}: ${d.cuando}. Si no puedes asistir, avísanos y la reprogramamos. ¡Te esperamos! ❄`;
+}
+
+/**
+ * Agradecimiento al cliente cuando su pago quedó completo. Si pagó (en parte) por transferencia se le confirma
+ * que «su transferencia ya llegó»; si no, que se recibió su pago.
+ */
+export function mensajePagoRecibido(d: {
+  cliente: string;
+  placa: string;
+  porTransferencia: boolean;
+}): string {
+  const nombre = primerNombre(d.cliente);
+  const recibido = d.porTransferencia ? "tu transferencia ya llegó" : "recibimos tu pago";
+  return [
+    `Hola ${nombre}, ${recibido}. ✓`,
+    `El servicio de tu vehículo (placa ${d.placa}) quedó pagado en su totalidad. Gracias por confiar en los servicios de Polo Air Cool, siempre es un gusto atenderte.`,
+  ].join("\n\n");
 }

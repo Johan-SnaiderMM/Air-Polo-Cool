@@ -180,6 +180,7 @@ export default async function OrdenPage({
           estadoOrden={orden.estado}
           totalCobrado={orden.total_cobrado}
           pagos={pagos}
+          cliente={v?.clientes ? { nombre: v.clientes.nombre, telefono: v.clientes.telefono ?? null, placa: v.placa ?? "" } : null}
         />
       </div>
 
