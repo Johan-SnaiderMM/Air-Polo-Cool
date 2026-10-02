@@ -162,7 +162,7 @@ export function politicaPrivacidad(r: typeof RESPONSABLE = RESPONSABLE): Documen
         id: "cookies",
         titulo: "13. Cookies y almacenamiento en tu dispositivo",
         parrafos: [
-          "La aplicación usa solo lo necesario para funcionar: una cookie de sesión para mantenerte dentro del sistema y almacenamiento local para guardar tu preferencia de tema (claro u oscuro), los registros que hagas sin conexión hasta que se sincronicen y copias de pantallas ya vistas. No usamos cookies de publicidad ni de seguimiento de terceros. Las notificaciones solo se activan si tú lo decides.",
+          "La aplicación usa solo lo necesario para funcionar: una cookie de sesión para mantenerte dentro del sistema y almacenamiento local para guardar tu preferencia de tema (claro u oscuro), los registros que hagas sin conexión hasta que se sincronicen y copias de pantallas ya vistas. No usamos cookies de publicidad ni de seguimiento de terceros. Medimos, de forma agregada, sin cookies y sin datos personales, qué pantallas de la aplicación se usan y qué tan rápido cargan, para mejorar el servicio; el enlace de seguimiento de tu vehículo no se mide. Las notificaciones solo se activan si tú lo decides.",
         ],
       },
       {

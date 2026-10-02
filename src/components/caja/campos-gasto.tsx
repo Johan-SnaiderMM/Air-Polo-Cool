@@ -75,7 +75,7 @@ export function CamposGasto({
           maxLength={300}
           placeholder={notaEtiqueta}
           autoComplete="off"
-          className="h-12 min-w-0 flex-1 rounded-xl border border-stone-200/80 bg-white px-4 text-[15px] outline-none placeholder:text-stone-400 focus:border-stone-400"
+          className="h-12 min-w-0 flex-1 rounded-xl border border-stone-200/80 bg-white px-4 text-[15px] outline-none placeholder:text-stone-500 focus:border-stone-400"
         />
         {accionNota}
       </div>

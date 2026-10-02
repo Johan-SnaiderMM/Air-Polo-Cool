@@ -47,7 +47,7 @@ export function PosMonto({ id, etiqueta, digitos, onChange, tamano = "grande", a
           placeholder="0"
           value={digitos ? miles.format(Number(digitos)) : ""}
           onChange={(e) => onChange(limpiarDigitos(e.target.value))}
-          className={`w-full min-w-0 bg-transparent text-right font-mono leading-none tracking-tight tabular-nums outline-none placeholder:text-stone-300 ${
+          className={`w-full min-w-0 bg-transparent text-right font-mono leading-none tracking-tight tabular-nums outline-none placeholder:text-stone-400 ${
             grande ? "text-4xl" : "text-3xl"
           }`}
         />

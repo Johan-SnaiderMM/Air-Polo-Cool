@@ -30,7 +30,7 @@
     --color-stone-100: #1d2942;
     --color-stone-200: #263350;
     --color-stone-300: #33425f;
-    --color-stone-400: #6f7f99;
+    --color-stone-400: #77869f;
     --color-stone-500: #94a3bb;
     --color-stone-600: #aebbd0;
     --color-stone-700: #c6d0e0;
@@ -90,10 +90,10 @@
     color: #d3dcf0;
   }
   :root[data-tema="dark"] .bg-ink .text-stone-400 {
-    color: #b4c2e0;
+    color: #c1cde5;
   }
   :root[data-tema="dark"] .bg-ink .text-stone-500 {
-    color: #9fb0d4;
+    color: #c2cde4;
   }
 
   /* Texto de las insignias y avisos de estado: tonos claros del mismo matiz. */

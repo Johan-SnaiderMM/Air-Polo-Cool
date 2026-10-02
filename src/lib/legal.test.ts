@@ -59,6 +59,9 @@ describe("política de privacidad: lo que exige la Ley 1581 de 2012", () => {
 
   it("aclara que no usa cookies de publicidad ni de seguimiento de terceros", () => {
     expect(texto).toMatch(/No usamos cookies de publicidad/);
+    // La analítica de uso es agregada, sin cookies y no mide el enlace del cliente (src/lib/analitica.ts).
+    expect(texto).toMatch(/sin cookies y sin datos personales/);
+    expect(texto).toMatch(/el enlace de seguimiento de tu vehículo no se mide/);
   });
 });
 

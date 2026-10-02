@@ -231,7 +231,7 @@ export function InicioVista({ datos }: { datos: InicioDatos }) {
             </div>
             <span
               className={`font-mono text-xl tabular-nums ${
-                datos.garantiasPorVencer > 0 ? "text-ochre-700" : "text-stone-400"
+                datos.garantiasPorVencer > 0 ? "text-ochre-700" : "text-stone-500"
               }`}
             >
               {datos.garantiasPorVencer}

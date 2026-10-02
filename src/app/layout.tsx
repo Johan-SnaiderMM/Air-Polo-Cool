@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Analitica } from "@/components/analitica";
 import { RegistrarServiceWorker } from "@/components/sync/registrar-sw";
 import { SCRIPT_TEMA } from "@/lib/tema";
 import "./globals.css";
@@ -45,7 +46,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
   // Barra del navegador / estado del teléfono: sigue al sistema desde el primer momento; al elegir un tema a mano,
   // el botón del encabezado la ajusta (src/components/layout/boton-tema.tsx).
@@ -71,6 +71,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-paper text-ink">
         {children}
         <RegistrarServiceWorker />
+        <Analitica />
       </body>
     </html>
   );

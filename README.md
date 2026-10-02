@@ -171,6 +171,25 @@ El botón de la luna/sol del encabezado alterna entre claro y oscuro y recuerda 
 - **Buscadores:** la app es privada. `robots.txt` bloquea todo (`src/app/robots.ts`) y todas las páginas llevan `noindex`.
   Si algún día hay una página pública del taller, se permite solo esa ruta.
 
+## Analítica y auditorías
+
+- **Analítica de uso, sin cookies:** Vercel Web Analytics (qué pantallas se usan) y Speed Insights (velocidad real de carga en los
+  teléfonos). **Hay que activarlas una vez** en Vercel: proyecto → pestañas *Analytics* y *Speed Insights* → Enable; hasta entonces no
+  envían nada. Antes de enviar cada evento, `src/lib/analitica.ts` descarta el **portal del cliente** (`/orden/…`, su dirección lleva el
+  token de la orden), quita parámetros y reemplaza identificadores por `:id`. Lo que haga soporte también cuenta (es el mismo sitio).
+  La política de privacidad ya lo menciona.
+- **Lighthouse (móvil, producción, 2 de octubre de 2026; páginas públicas):** rendimiento **97–99**, accesibilidad 94 (su único fallo era el zoom, ya corregido; falta volver a medir tras publicar),
+  buenas prácticas **100**, SEO 63–66 (por diseño: la app es privada y lleva `noindex`). LCP 1,6–1,8 s, CLS 0.
+  Las páginas con sesión no se pueden medir así; para eso está Speed Insights.
+- **Zoom:** se quitó `maximum-scale=1` (impedía agrandar con los dedos). Para que el iPhone no amplíe la página al tocar un campo, los
+  campos de formulario miden 16 px en pantallas táctiles (`globals.css`).
+- **Contraste (WCAG AA):** los grises de apoyo (`stone-500`, 220 usos, daba 4,36:1) y los iconos (`stone-400`, 2,6:1) se oscurecieron;
+  los textos pequeños y los marcadores de campo pasaron a `stone-500`. Las combinaciones de color del sistema, en claro y oscuro,
+  están comprobadas por `src/test/contraste.test.ts`: si alguien cambia un color y pierde legibilidad, la prueba falla.
+- **Enlaces rotos:** `src/test/enlaces.test.ts` cruza cada enlace o redirección interna con las rutas que existen (hoy: 0 rotos).
+- **Pendiente, opcional:** reducir JavaScript sin usar (~30–55 KiB, ya es chico) y la latencia del primer byte desde Colombia (la
+  función corre en EE. UU.; revisar la región de Vercel y de Supabase).
+
 ## Fotos de repuestos
 
 Al tomar una foto de **repuesto retirado** o **instalado**, primero se elige de qué repuesto de la orden es. En la

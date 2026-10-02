@@ -34,8 +34,9 @@
   --color-stone-100: #edf1f6;
   --color-stone-200: #dfe5ee;
   --color-stone-300: #c9d2df;
-  --color-stone-400: #94a1b5;
-  --color-stone-500: #6b7a90;
+  /* 400 y 500 oscurecidos (auditoría de contraste): 500 llega a 4,5:1 sobre todos los fondos claros; 400, a 3:1 para iconos. */
+  --color-stone-400: #8490a2;
+  --color-stone-500: #606d81;
   --color-stone-600: #4e5b70;
   --color-stone-700: #3a4557;
   --color-stone-800: #263043;
@@ -98,6 +99,29 @@ body {
   /* Evita el "rebote" que rompe la sensación de app en modo standalone */
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Campos de formulario a 16 px en pantallas táctiles: por debajo de eso, el iPhone amplía la página al tocar un campo.
+ * Así se puede permitir el zoom con los dedos (accesibilidad) sin que la página salte al escribir.
+ */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Grises de texto sobre las tarjetas oscuras (bg-ink): con 400/500 más oscuros arriba, aquí se fijan claros. */
+.bg-ink .text-stone-300 {
+  color: #c9d2df;
+}
+.bg-ink .text-stone-400 {
+  color: #a9b6cb;
+}
+.bg-ink .text-stone-500 {
+  color: #93a3bd;
 }
 
 ::selection {

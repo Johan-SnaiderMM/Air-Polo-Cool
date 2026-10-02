@@ -66,16 +66,16 @@ export function GraficoCategorias({
                 <span className="flex items-center gap-2 text-stone-700">
                   <Icono className="size-4 text-stone-400" strokeWidth={1.5} aria-hidden />
                   {CATEGORIA_LABEL[c]}
-                  {actual[c] > 0 && <span className="text-stone-400">{porcentaje} %</span>}
+                  {actual[c] > 0 && <span className="text-stone-500">{porcentaje} %</span>}
                 </span>
                 <span className="flex items-baseline gap-2">
                   <Dinero valor={actual[c]} className="text-[13px]" />
                   {v !== null && (
-                    <span className={`text-[11px] ${v > 0 ? "text-ochre-700" : "text-stone-400"}`}>
+                    <span className={`text-[11px] ${v > 0 ? "text-ochre-700" : "text-stone-500"}`}>
                       {v > 0 ? "▲" : v < 0 ? "▼" : "="} {Math.abs(v)} %
                     </span>
                   )}
-                  {v === null && actual[c] > 0 && <span className="text-[11px] text-stone-400">nuevo</span>}
+                  {v === null && actual[c] > 0 && <span className="text-[11px] text-stone-500">nuevo</span>}
                 </span>
               </div>
               <div

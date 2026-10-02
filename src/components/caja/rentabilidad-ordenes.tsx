@@ -51,7 +51,7 @@ export function RentabilidadOrdenes({ filas }: { filas: FilaRentabilidad[] }) {
                 <p className={`text-[15px] ${f.utilidadReal < 0 ? "text-brick-600" : ""}`}>
                   <Dinero valor={f.utilidadReal} />
                 </p>
-                {margen !== null && <p className="text-[11px] text-stone-400">{margen} %</p>}
+                {margen !== null && <p className="text-[11px] text-stone-500">{margen} %</p>}
               </div>
               <ChevronRight className="size-4 shrink-0 text-stone-300" aria-hidden />
             </Link>
