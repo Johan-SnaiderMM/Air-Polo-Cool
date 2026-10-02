@@ -190,8 +190,8 @@ export async function contarAgendaInicio(
 }
 
 /**
- * Citas pendientes de un vehículo para hoy y los próximos 7 días (para decidir, al recibirlo, si el
- * ingreso es de una cita). `incluirId` fuerza a incluir esa cita (la de la que se viene desde la agenda)
+ * Citas pendientes de un vehículo de hoy, de los próximos 7 días y las atrasadas que nadie atendió (hasta
+ * 14 días atrás), para decidir al recibirlo si el ingreso es de una de ellas. `incluirId` fuerza a incluir esa cita (la de la que se viene desde la agenda)
  * aunque caiga más lejos. Sin la tabla (migración pendiente) devuelve la lista vacía y el error.
  */
 export async function citasDelVehiculo(
@@ -200,7 +200,7 @@ export async function citasDelVehiculo(
   incluirId: string | null = null,
   hoy = hoyBogota()
 ): Promise<{ citas: CitaDeVehiculo[]; error: string | null }> {
-  const desde = instanteBogota(hoy, "00:00");
+  const desde = instanteBogota(sumarDias(hoy, -DIAS_ATRASADAS), "00:00");
   const hasta = instanteBogota(sumarDias(hoy, DIAS_AVISO_CITA + 1), "00:00");
   const { data, error } = await supabase
     .from("citas")
@@ -233,6 +233,7 @@ export async function citasDelVehiculo(
         fechaHora: f.fecha_hora,
         tipo: f.tipo,
         esHoy: fecha === hoy,
+        atrasada: fecha < hoy,
         etiquetaDia: etiquetaDiaAgenda(fecha, hoy),
         horaTexto: horaLegible(f.fecha_hora),
       };

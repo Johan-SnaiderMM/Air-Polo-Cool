@@ -7,17 +7,26 @@ const cita = (id: string, esHoy: boolean): CitaDeVehiculo => ({
   fechaHora: "2026-10-02T14:30:00.000Z",
   tipo: "servicio",
   esHoy,
+  atrasada: false,
   etiquetaDia: esHoy ? "Hoy" : "Mañana",
   horaTexto: "9:30 a. m.",
 });
 const hoy = cita("hoy", true);
 const manana = cita("manana", false);
+const atrasada: CitaDeVehiculo = { ...cita("ayer", false), atrasada: true, etiquetaDia: "Martes 29 de septiembre" };
 
 describe("citas del vehículo al crear una orden", () => {
   it("la cita de hoy viene elegida; las de los próximos días NO se asumen (hay que preguntar)", () => {
     expect(eleccionPorDefecto([hoy, manana], null)).toBe("hoy");
     expect(eleccionPorDefecto([manana], null)).toBeUndefined();
     expect(eleccionPorDefecto([], null)).toBeUndefined();
+  });
+
+  it("una cita atrasada tampoco se asume: se pregunta, salvo que haya cita de hoy o se llegue desde ella", () => {
+    expect(eleccionPorDefecto([atrasada], null)).toBeUndefined();
+    expect(faltaElegirCita([atrasada], eleccionPorDefecto([atrasada], null))).toBe(true);
+    expect(eleccionPorDefecto([atrasada, hoy], null)).toBe("hoy");
+    expect(eleccionPorDefecto([atrasada, manana], "ayer")).toBe("ayer");
   });
 
   it("si se llega desde la agenda, esa cita viene elegida aunque sea de otro día; si ya no está, cae a la de hoy", () => {

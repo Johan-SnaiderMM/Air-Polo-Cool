@@ -113,7 +113,10 @@ export function agruparCitas<T extends { fechaHora: string }>(
 // Citas del vehículo al crear una orden
 // ---------------------------------------------------------------------
 
-/** Cuántos días hacia adelante se pregunta, al crear una orden, si el ingreso es de una cita programada. */
+/**
+ * Cuántos días hacia adelante se pregunta, al crear una orden, si el ingreso es de una cita programada.
+ * También se ofrecen las citas atrasadas que siguen sin atender (hasta `DIAS_ATRASADAS` días atrás).
+ */
 export const DIAS_AVISO_CITA = 7;
 
 /** Valor de la elección cuando el ingreso NO es de ninguna de las citas ofrecidas. */
@@ -127,7 +130,9 @@ export type CitaDeVehiculo = {
   tipo: TipoCita;
   /** Si es hoy: se propone como la cita de este ingreso sin preguntar. */
   esHoy: boolean;
-  /** "Hoy", "Mañana" o "Domingo 4 de octubre". */
+  /** Día anterior a hoy y nadie la atendió: se pregunta, igual que las de los próximos días. */
+  atrasada: boolean;
+  /** "Hoy", "Mañana" o "Domingo 4 de octubre" (también para los días pasados). */
   etiquetaDia: string;
   /** "9:30 a. m." */
   horaTexto: string;

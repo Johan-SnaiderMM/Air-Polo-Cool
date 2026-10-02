@@ -40,8 +40,9 @@ function Opcion({
 
 /**
  * Pregunta, al recibir un vehículo que tiene citas pendientes, si este ingreso es de una de ellas.
- * La de hoy viene elegida (se cierra sola al guardar la orden); las de los próximos días hay que
- * responderlas: «sí» la marca como cumplida aunque el cliente haya venido antes, «no» la deja agendada.
+ * La de hoy viene elegida (se cierra sola al guardar la orden); las de los próximos días y las atrasadas
+ * hay que responderlas: «sí» la marca como cumplida (aunque el cliente haya venido antes o después de lo
+ * agendado), «no» la deja agendada.
  */
 export function CitaDeLaOrden({
   citas,
@@ -77,7 +78,9 @@ export function CitaDeLaOrden({
             detalle={
               c.esHoy
                 ? `${TIPO_CITA_LABEL[c.tipo]} · se marca como cumplida al guardar`
-                : `${TIPO_CITA_LABEL[c.tipo]} · si el cliente vino antes, se marca como cumplida`
+                : c.atrasada
+                  ? `${TIPO_CITA_LABEL[c.tipo]} · nadie la atendió; se marca como cumplida`
+                  : `${TIPO_CITA_LABEL[c.tipo]} · si el cliente vino antes, se marca como cumplida`
             }
           />
         ))}

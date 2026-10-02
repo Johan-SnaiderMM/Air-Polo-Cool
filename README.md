@@ -88,11 +88,11 @@ crea la orden.
   operación de la orden lleva el id de la cita y el servidor la marca como cumplida, solo si es del mismo vehículo y sigue
   pendiente). Si la orden se guardó sin red, la cita se cierra cuando se sincroniza; si nunca se guarda, la cita sigue pendiente.
 - **Nueva orden para un vehículo con citas** (sin pasar por la agenda): al elegir un vehículo ya registrado, el formulario
-  revisa sus citas pendientes de **hoy y los próximos 7 días**. La de **hoy** viene elegida y se cierra sola al guardar la
+  revisa sus citas pendientes de **hoy, los próximos 7 días y las atrasadas**. La de **hoy** viene elegida y se cierra sola al guardar la
   orden. Por las de **los próximos días** pregunta «¿Este ingreso es de la cita programada?»: **sí** la marca como cumplida
-  aunque el cliente haya venido antes; **no** (ingreso aparte) la deja agendada. Hay que responder antes de crear la orden.
-  Un vehículo nuevo no tiene citas; sin red o si la agenda no responde (6 s), la orden se crea igual sin preguntar. Las citas
-  atrasadas (de días anteriores) no entran en esta regla: se atienden desde «Sin atender».
+  aunque el cliente haya venido antes; **no** (ingreso aparte) la deja agendada. Las **atrasadas** (días anteriores que nadie atendió, hasta 14 días atrás, las mismas de
+  «Sin atender») se ofrecen igual y también se preguntan: el cliente pudo llegar tarde. Hay que responder antes de crear la orden.
+  Un vehículo nuevo no tiene citas; sin red o si la agenda no responde (6 s), la orden se crea igual sin preguntar.
 - **Mantenimientos por programar:** los vehículos con mantenimiento preventivo vencido o próximo (ver «Garantías») y sin cita
   aparecen al final de la agenda con «Agendar» (abre el formulario con el vehículo, el tipo y el día que les toca) y «Avisarle».
 - **Horas:** se guardan como instante y se muestran siempre en hora de Colombia (UTC-5, sin horario de verano).

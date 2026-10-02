@@ -8,22 +8,25 @@ const VEH = "123e4567-e89b-12d3-a456-426614174001";
 const corta = (id: string, fecha: string, hora: string, tipo = "servicio") => ({ id, fecha_hora: instanteBogota(fecha, hora), tipo });
 
 describe("citasDelVehiculo", () => {
-  it("pide las pendientes del vehículo desde hoy a las 00:00 hasta el día 7 inclusive, y marca la de hoy", async () => {
-    const f = crearSupabaseFalso({ responder: () => ({ data: [corta("a", "2026-10-01", "15:00"), corta("b", "2026-10-03", "09:30", "mantenimiento")] }) });
+  it("pide las pendientes del vehículo desde 14 días atrás hasta el día 7 inclusive, y marca la de hoy y las atrasadas", async () => {
+    const f = crearSupabaseFalso({
+      responder: () => ({ data: [corta("x", "2026-09-29", "10:00"), corta("a", "2026-10-01", "15:00"), corta("b", "2026-10-03", "09:30", "mantenimiento")] }),
+    });
     const r = await citasDelVehiculo(f.cliente, VEH, null, HOY);
 
     expect(f.de("select", "citas")[0].filtros).toEqual([
       { col: "vehiculo_id", op: "eq", valor: VEH },
       { col: "estado", op: "eq", valor: "pendiente" },
-      { col: "fecha_hora", op: "gte", valor: instanteBogota("2026-10-01", "00:00") },
+      { col: "fecha_hora", op: "gte", valor: instanteBogota("2026-09-17", "00:00") }, // 14 días atrás (como «Sin atender»)
       { col: "fecha_hora", op: "lt", valor: instanteBogota("2026-10-09", "00:00") }, // hoy + 7 días, hasta el final de ese día
     ]);
     expect(r.error).toBeNull();
-    expect(r.citas.map((c) => [c.id, c.esHoy, c.etiquetaDia, c.tipo])).toEqual([
-      ["a", true, "Hoy", "servicio"],
-      ["b", false, "Sábado 3 de octubre", "mantenimiento"],
+    expect(r.citas.map((c) => [c.id, c.esHoy, c.atrasada, c.etiquetaDia, c.tipo])).toEqual([
+      ["x", false, true, "Martes 29 de septiembre", "servicio"],
+      ["a", true, false, "Hoy", "servicio"],
+      ["b", false, false, "Sábado 3 de octubre", "mantenimiento"],
     ]);
-    expect(r.citas[0].horaTexto.replace(/\s/g, " ")).toMatch(/^3:00 p\. ?m\.$/);
+    expect(r.citas[1].horaTexto.replace(/\s/g, " ")).toMatch(/^3:00 p\. ?m\.$/);
   });
 
   it("incluye la cita de la que se llega desde la agenda aunque caiga fuera de la ventana, sin duplicarla", async () => {
