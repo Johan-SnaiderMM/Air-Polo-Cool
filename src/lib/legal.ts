@@ -8,9 +8,13 @@
  */
 import { TALLER } from "@/lib/taller";
 
-/** Datos del responsable del tratamiento. Completa los que falten (todos son opcionales). */
+/**
+ * Datos del RESPONSABLE del tratamiento: el TALLER (Polo Air Cool), no quien desarrolló la plataforma, que actúa como
+ * encargado. Completa los que falten (todos son opcionales). No se necesita el documento personal de nadie: si el dueño
+ * del taller es persona natural basta su nombre completo y un contacto; el NIT solo se muestra si el taller lo quiere.
+ */
 export const RESPONSABLE = {
-  /** Razón social o nombre del propietario, tal como aparece en el RUT. */
+  /** Razón social o nombre del propietario del taller, tal como aparece en su RUT. */
   razonSocial: null as string | null,
   nit: null as string | null,
   direccion: null as string | null,
@@ -100,6 +104,7 @@ export function politicaPrivacidad(r: typeof RESPONSABLE = RESPONSABLE): Documen
           "No vendemos tus datos. Los compartimos solo con quienes hacen posible el servicio, como encargados del tratamiento:",
         ],
         lista: [
+          "Proveedor tecnológico que desarrolla, mantiene y da soporte a la plataforma: puede acceder a los datos únicamente para prestar ese soporte y mantenimiento, bajo el deber de confidencialidad y siguiendo las instrucciones del taller; no los usa para fines propios.",
           "Proveedor de base de datos, autenticación y almacenamiento de archivos (fotos y comprobantes): Supabase.",
           "Proveedor de alojamiento de la aplicación: Vercel.",
           "WhatsApp (Meta): cuando el taller te escribe, el mensaje sale desde su propia cuenta de WhatsApp y se rige por las condiciones de esa plataforma.",

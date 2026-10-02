@@ -39,6 +39,12 @@ describe("política de privacidad: lo que exige la Ley 1581 de 2012", () => {
     }
   });
 
+  it("aclara que quien desarrolla la plataforma actúa como encargado: solo accede por soporte, no para fines propios", () => {
+    expect(texto).toMatch(/desarrolla, mantiene y da soporte/);
+    expect(texto).toMatch(/únicamente para prestar ese soporte/);
+    expect(texto).toMatch(/no los usa para fines propios/);
+  });
+
   it("recoge los derechos del titular, el canal de la SIC y los plazos legales (10 y 15 días hábiles)", () => {
     expect(texto).toMatch(/Ley 1581 de 2012/);
     expect(texto).toMatch(/Superintendencia de Industria y Comercio/);
