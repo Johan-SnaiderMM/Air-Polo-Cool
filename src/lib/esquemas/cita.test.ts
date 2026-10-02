@@ -25,7 +25,7 @@ describe("formulario de cita", () => {
       ok: true,
       valor: { fecha: "2026-10-02", hora: "09:30", tipo: "servicio", notas: "Trae el compresor", autor: "Polo" },
     });
-    expect(validar(citaFormSchema, { ...base, autor: "Hacker" })).toMatchObject({ ok: true, valor: { autor: null, notas: null } });
+    expect(validar(citaFormSchema, { ...base, autor: "x".repeat(60) })).toMatchObject({ ok: true, valor: { autor: null, notas: null } });
     const larga = validar(citaFormSchema, { ...base, notas: "n".repeat(900) });
     expect(larga.ok && larga.valor.notas).toHaveLength(500);
   });

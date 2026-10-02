@@ -49,7 +49,7 @@ describe("editarGasto", () => {
   });
 
   it("edita por la RPC (queda historial en la base): monto redondeado, descripción limpia y autor válido", async () => {
-    const { r, f } = await editar({ monto: 25000.456, autor: "Hacker" });
+    const { r, f } = await editar({ monto: 25000.456, autor: "x".repeat(60) });
     expect(r).toEqual({ ok: true, mensaje: "Gasto actualizado." });
     expect(f.de("rpc", "editar_gasto")[0].payload).toEqual({
       p_id: GASTO,

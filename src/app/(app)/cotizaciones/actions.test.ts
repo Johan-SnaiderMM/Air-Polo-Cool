@@ -179,7 +179,7 @@ describe("cambiarEstadoCotizacion y convertirCotizacion", () => {
   it("convertir: llama a la función atómica de la base (no inserta a mano) y refresca órdenes e inicio", async () => {
     const ORDEN = "323e4567-e89b-12d3-a456-426614174000";
     const f = usar((l) => (l.op === "rpc" ? { data: ORDEN } : undefined));
-    expect(await convertirCotizacion({ id: COT, autor: "Hacker" })).toEqual({ ok: true, ordenId: ORDEN });
+    expect(await convertirCotizacion({ id: COT, autor: "x".repeat(60) })).toEqual({ ok: true, ordenId: ORDEN });
     expect(f.de("rpc", "convertir_cotizacion")[0].payload).toEqual({ p_id: COT, p_autor: null });
     expect(f.de("insert")).toHaveLength(0);
     expect(vi.mocked(revalidatePath).mock.calls.map((c) => c[0])).toEqual(["/cotizaciones", `/cotizaciones/${COT}`, "/ordenes", "/"]);

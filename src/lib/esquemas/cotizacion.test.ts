@@ -62,7 +62,7 @@ describe("formulario de cotización", () => {
   });
 
   it("convierte mano de obra y vigencia, recorta notas y descarta un autor desconocido", () => {
-    const r = validar(cotizacionFormSchema, { ...base, mano_obra: "150000", vigencia_dias: "30", notas: `  ${"n".repeat(1200)} `, autor: "Hacker" });
+    const r = validar(cotizacionFormSchema, { ...base, mano_obra: "150000", vigencia_dias: "30", notas: `  ${"n".repeat(1200)} `, autor: "x".repeat(60) });
     expect(r).toMatchObject({ ok: true, valor: { mano_obra: 150000, vigencia_dias: 30, autor: null } });
     expect(r.ok && r.valor.notas).toHaveLength(1000);
   });

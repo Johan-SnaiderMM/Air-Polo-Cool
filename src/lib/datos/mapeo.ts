@@ -7,6 +7,7 @@ import type { EdicionHistorial } from "@/components/caja/lista-gastos";
 import type { EvidenciaVista } from "@/components/ordenes/galeria-evidencias";
 import type { PagoVista } from "@/components/ordenes/pagos-orden";
 import type { LineaRepuesto } from "@/components/ordenes/repuestos-orden";
+import { autorONull } from "@/lib/autor";
 import { redondearDinero } from "@/lib/inventario";
 import type { Autor, Json, MedioPago, TipoEvidencia, TipoUnidad } from "@/types/database";
 
@@ -140,7 +141,7 @@ export function edicionesHistorial(valor: Json): EdicionHistorial[] {
       {
         at: e.at,
         por: typeof e.por === "string" ? e.por : null,
-        autor: e.autor === "Polo" || e.autor === "Soporte técnico" ? e.autor : null,
+        autor: autorONull(e.autor),
         antes: typeof antes === "object" && antes !== null && !Array.isArray(antes) ? antes : undefined,
       },
     ];

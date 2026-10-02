@@ -48,12 +48,12 @@ describe("cambiarEstadoOrden", () => {
     if (l.op === "update") return { data: [{ id: ORDEN }] };
     return undefined;
   };
-  const cambiar = (estado: string, extra: { nota?: string; meses?: number | null; autor?: string | null } = {}) =>
-    cambiarEstadoOrden({ ordenId: ORDEN, estado, nota: extra.nota ?? "", mantenimientoMeses: extra.meses ?? null, autor: extra.autor ?? "Polo" });
+  const cambiar = (estado: string, extra: { nota?: string; meses?: number | null } = {}) =>
+    cambiarEstadoOrden({ ordenId: ORDEN, estado, nota: extra.nota ?? "", mantenimientoMeses: extra.meses ?? null });
 
   it("valida orden, estado y el motivo de una cancelación", async () => {
     const f = usar(previa("recibido"));
-    expect(await cambiarEstadoOrden({ ordenId: "x", estado: "listo", nota: "", mantenimientoMeses: null, autor: null })).toEqual({ ok: false, error: "Orden inválida." });
+    expect(await cambiarEstadoOrden({ ordenId: "x", estado: "listo", nota: "", mantenimientoMeses: null })).toEqual({ ok: false, error: "Orden inválida." });
     expect(await cambiar("volando")).toEqual({ ok: false, error: "Estado inválido." });
     expect(await cambiar("cancelado", { nota: " a " })).toEqual({ ok: false, error: "Escribe el motivo de la cancelación." });
     expect(f.llamadas).toHaveLength(0);
@@ -107,12 +107,20 @@ describe("cambiarEstadoOrden", () => {
     expect(f.de("update")[0].payload).toMatchObject({ mantenimiento_meses: null });
   });
 
-  it("cancelar guarda el motivo en la bitácora; un autor desconocido no se registra", async () => {
+  it("cancelar guarda el motivo en la bitácora", async () => {
     const f = usar(previa("en_proceso"));
-    await cambiar("cancelado", { nota: "el cliente desistió", autor: "Hacker" });
+    await cambiar("cancelado", { nota: "el cliente desistió" });
     const notas = String((f.de("update")[0].payload as { notas: string }).notas);
     expect(notas).toContain("En proceso → Cancelado · el cliente desistió");
-    expect(notas).not.toContain("Hacker");
+  });
+
+  it("la bitácora lleva el nombre del perfil de la sesión (el teléfono no puede poner otro)", async () => {
+    const perfil = { data: [{ nombre: "Carlos Pérez", rol: "operario", activo: true, es_soporte: false }] };
+    const f = usar((l) => (l.rpc === "mi_perfil" ? perfil : previa("recibido")(l)));
+    await cambiar("diagnostico");
+    const notas = String((f.de("update")[0].payload as { notas: string }).notas);
+    expect(notas).toMatch(/· Carlos Pérez · Recibido → Diagnóstico/);
+    expect(notas).not.toContain("· Polo ·");
   });
 
   it("si la actualización no toca ninguna fila (permisos) o falla, lo dice y no refresca", async () => {

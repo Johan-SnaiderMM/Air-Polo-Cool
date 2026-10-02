@@ -16,8 +16,8 @@ describe("validarOperacion: gasto.crear", () => {
       expect(r.valor.datos.autor).toBe("Polo");
     }
   });
-  it("descarta autores no permitidos (queda null)", () => {
-    const r = validarOperacion({ tipo: "gasto.crear", datos: { ...base, autor: "Hacker" } });
+  it("descarta un autor que no tiene forma de nombre (queda null)", () => {
+    const r = validarOperacion({ tipo: "gasto.crear", datos: { ...base, autor: "x".repeat(60) } });
     expect(r.ok && r.valor.tipo === "gasto.crear" && r.valor.datos.autor).toBeNull();
   });
   it("rechaza id, fecha, monto y categoría inválidos", () => {

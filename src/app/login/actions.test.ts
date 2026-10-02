@@ -17,7 +17,7 @@ vi.mock("@/utils/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 const AHORA = new Date("2026-10-02T15:00:00Z");
 const PROHIBIDO_EN_CLAVES = ["polo@example.com", "203.0.113.7", "203.0.113.8"];
 
-type ResultadoAuth = { data: { user: { app_metadata: Record<string, unknown> } | null }; error: { status?: number; message: string } | null };
+type ResultadoAuth = { data: { user: { app_metadata: Record<string, unknown> } | null }; error: { status?: number; code?: string; message: string } | null };
 const bien = (rol: unknown = "operario"): ResultadoAuth => ({ data: { user: { app_metadata: { rol } } }, error: null });
 const mal = (status = 400): ResultadoAuth => ({ data: { user: null }, error: { status, message: "Invalid login credentials" } });
 
@@ -113,6 +113,12 @@ describe("contraseña incorrecta", () => {
     const r = await iniciarSesion({}, formulario());
     expect(r.error).toMatch(/Demasiados intentos fallidos/);
     expect(r.error).toMatch(/15 minutos/);
+  });
+
+  it("un ayudante desactivado recibe un mensaje claro y eso NO suma al contador de contraseñas malas", async () => {
+    const { admin } = preparar({ auth: { data: { user: null }, error: { status: 400, code: "user_banned", message: "User is banned" } } });
+    expect(await iniciarSesion({}, formulario())).toEqual({ error: "Tu acceso está desactivado. Habla con el dueño del taller." });
+    expect(llamadasRpc(admin, "registrar_fallo_login")).toHaveLength(0);
   });
 
   it("el límite propio de Supabase (429) se explica aparte y NO suma al contador", async () => {

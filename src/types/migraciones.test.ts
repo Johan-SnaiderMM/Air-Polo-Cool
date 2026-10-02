@@ -26,6 +26,13 @@ const REPETIDAS_A_PROPOSITO: Record<string, string> = {
     "El trigger de la fase 1 la necesita desde el principio; la fase 4 la amplía con el próximo mantenimiento.",
   "policy:gastos_staff_insert on gastos_caja_menor":
     "La fase 1 la crea; la fase 4 le añade la condición «no anulado» al agregar esa columna.",
+  "function:es_staff":
+    "La fase 10 la redefine (SECURITY DEFINER) para cortar el acceso de un perfil desactivado; la tabla perfiles nace en esa fase.",
+  "function:es_admin": "Igual que es_staff: la fase 10 añade la comprobación de perfil desactivado.",
+  "function:editar_gasto": "La fase 10 deja de limitar el autor a dos nombres y toma el del perfil de la sesión.",
+  "function:anular_gasto": "Igual que editar_gasto (autor = perfil de la sesión).",
+  "function:cerrar_caja": "Igual que editar_gasto (autor = perfil de la sesión).",
+  "function:convertir_cotizacion": "Igual que editar_gasto (autor = perfil de la sesión).",
 };
 
 /** Quita comentarios SQL de línea para no contar definiciones que solo se mencionan en texto. */

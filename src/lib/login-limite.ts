@@ -39,4 +39,5 @@ export function mensajeBloqueo(hasta: Date, ahora: Date = new Date()): string {
 }
 
 export const MENSAJE_CREDENCIALES = "Correo o contraseña incorrectos.";
+export const MENSAJE_ACCESO_DESACTIVADO = "Tu acceso está desactivado. Habla con el dueño del taller.";
 export const MENSAJE_LIMITE_PROVEEDOR = "Demasiados intentos en poco tiempo. Espera unos minutos y vuelve a intentarlo.";

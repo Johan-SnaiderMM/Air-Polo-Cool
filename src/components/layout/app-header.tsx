@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useState } from "react";
-import { Bell, CloudOff, FlaskConical, Snowflake, LogOut, Wrench } from "lucide-react";
+import { Bell, CloudOff, FlaskConical, Snowflake, LogOut, UserRound, Wrench } from "lucide-react";
 import { cerrarSesion } from "@/app/login/actions";
 import { PanelAvisos } from "@/components/avisos/panel-avisos";
 import { BotonTema } from "@/components/layout/boton-tema";
@@ -102,6 +103,14 @@ export function AppHeader({ soporte }: { soporte: EstadoSoporte }) {
           )}
 
           <BotonTema />
+
+          <Link
+            href="/cuenta"
+            aria-label="Mi cuenta"
+            className="flex size-10 items-center justify-center rounded-full text-stone-500 transition-colors active:bg-stone-200/60"
+          >
+            <UserRound className="size-[18px]" strokeWidth={1.75} aria-hidden />
+          </Link>
 
           {soporte.esSoporte && (
             <button

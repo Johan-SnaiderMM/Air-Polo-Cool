@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { autorONull } from "@/lib/autor";
+import { autorDeUsuario } from "@/lib/autor";
+import { cargarPerfil } from "@/lib/datos/perfil";
 import { filtroVehiculos } from "@/lib/consultas";
 import { mensajeDeError } from "@/lib/errores";
 import {
@@ -284,7 +285,7 @@ export type CambioEstadoResultado =
 
 /**
  * Cambia SOLO el estado de una orden y deja constancia en su bitácora (líneas al final de `notas`:
- * momento, autor, transición y observación). Al pasar a Listo / Entregado guarda el próximo
+ * momento, quién lo hizo, transición y observación). Al pasar a Listo / Entregado guarda el próximo
  * mantenimiento elegido; si se sale de esos estados, lo limpia. Requiere conexión.
  */
 export async function cambiarEstadoOrden(datos: {
@@ -292,7 +293,6 @@ export async function cambiarEstadoOrden(datos: {
   estado: string;
   nota: string;
   mantenimientoMeses: number | null;
-  autor: string | null;
 }): Promise<CambioEstadoResultado> {
   const { supabase, user } = await obtenerSesion();
   if (!user) return SESION_EXPIRADA;
@@ -320,7 +320,8 @@ export async function cambiarEstadoOrden(datos: {
 
   const linea = armarLineaHistorial({
     momento: new Date(),
-    autor: autorONull(datos.autor),
+    // El nombre sale de la sesión (su perfil), no de lo que mande el teléfono.
+    autor: autorDeUsuario(user, await cargarPerfil(supabase)),
     de: previa.estado,
     a: estado,
     nota,

@@ -136,7 +136,7 @@ describe("gasto (edición y anulación)", () => {
     ] as const) {
       expect(error(validar(editarGastoSchema, { ...base, ...cambio })), JSON.stringify(cambio)).toBe(msg);
     }
-    expect(validar(editarGastoSchema, { ...base, ordenId: null, autor: "Hacker", descripcion: "" })).toMatchObject({
+    expect(validar(editarGastoSchema, { ...base, ordenId: null, autor: "x".repeat(60), descripcion: "" })).toMatchObject({
       ok: true, valor: { ordenId: null, autor: null, descripcion: null },
     });
   });

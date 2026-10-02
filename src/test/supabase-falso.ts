@@ -27,7 +27,9 @@ export type OpcionesFalso = {
   /** Decide qué responde la «base» a cada consulta. Sin respuesta: `{ data: null }`. */
   responder?: (llamada: Llamada) => Respuesta | undefined;
   /** Usuario de la sesión; `null` = sin sesión. Por defecto, un operario. */
-  usuario?: { id?: string; app_metadata?: { rol?: string; soporte?: boolean } } | null;
+  usuario?: { id?: string; email?: string; app_metadata?: { rol?: string; soporte?: boolean } } | null;
+  /** Métodos extra de `auth` (p. ej. `admin`, `signInWithPassword`, `updateUser`) que la prueba quiere vigilar. */
+  auth?: Record<string, unknown>;
   /** Error al subir a Storage (por defecto, sube bien). */
   errorSubida?: ErrorFalso | null;
 };
@@ -94,7 +96,7 @@ export function crearSupabaseFalso(opciones: OpcionesFalso = {}) {
         const r = responder({ op: "rpc", rpc: nombre, payload: args, filtros: [], seleccion: "" });
         return { data: r.data ?? null, error: r.error ?? null };
       }),
-    auth: { getUser: async () => ({ data: { user: usuario }, error: null }) },
+    auth: { getUser: async () => ({ data: { user: usuario }, error: null }), ...opciones.auth },
     storage: {
       from: (bucket: string) => ({
         upload: async (ruta: string, _cuerpo: unknown, o?: { contentType?: string }) => {

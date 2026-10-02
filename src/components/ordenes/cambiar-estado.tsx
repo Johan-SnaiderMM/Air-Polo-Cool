@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Check, ChevronDown, CloudOff, Snowflake } from "lucide-react";
 import { cambiarEstadoOrden } from "@/app/(app)/ordenes/actions";
 import { SelectorMantenimiento, type MesesMantenimiento } from "@/components/ordenes/selector-mantenimiento";
-import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
 import { Dinero } from "@/components/ui/dinero";
 import { ESTADOS_FLUJO, ESTADO_DOT, ESTADO_LABEL, ESTADO_SUPERFICIE } from "@/lib/ordenes";
@@ -56,7 +55,6 @@ function ModalEstado({
   onCerrar,
 }: Props & { onCerrar: () => void }) {
   const router = useRouter();
-  const { autor } = useAutor();
   const { online } = useSync();
   const dialogo = useRef<HTMLDialogElement>(null);
   const [destino, setDestino] = useState<EstadoOrden>(estado);
@@ -86,7 +84,6 @@ function ModalEstado({
         estado: destino,
         nota,
         mantenimientoMeses: pideMantenimiento ? meses : null,
-        autor,
       });
       if (!r.ok) return setError(r.error);
       router.refresh();

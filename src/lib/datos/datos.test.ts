@@ -50,7 +50,7 @@ describe("mapeo", () => {
     expect(
       edicionesHistorial([
         { at: "2026-09-30T10:00:00Z", por: "u1", autor: "Polo", antes: { monto: 5 } },
-        { at: "2026-09-30T11:00:00Z", autor: "Hacker" },
+        { at: "2026-09-30T11:00:00Z", autor: "x".repeat(60) },
         { sinFecha: true },
         "texto",
         null,

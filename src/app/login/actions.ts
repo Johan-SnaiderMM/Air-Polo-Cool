@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   ipDeCliente,
+  MENSAJE_ACCESO_DESACTIVADO,
   MENSAJE_CREDENCIALES,
   MENSAJE_LIMITE_PROVEEDOR,
   mensajeBloqueo,
@@ -54,6 +55,8 @@ export async function iniciarSesion(
   if (error || !data.user) {
     // El límite propio de Supabase (429) no es una contraseña mala: se avisa distinto y no suma al contador.
     if (error?.status === 429) return { error: MENSAJE_LIMITE_PROVEEDOR };
+    // Un ayudante desactivado por el dueño: se le dice por qué (no es una contraseña mala ni suma al contador).
+    if (error?.code === "user_banned") return { error: MENSAJE_ACCESO_DESACTIVADO };
     const bloqueo = admin ? await registrarFallo(admin, claves) : null;
     // Mismo mensaje exista o no el correo: no se revela quién tiene cuenta.
     return { error: bloqueo ? mensajeBloqueo(bloqueo) : MENSAJE_CREDENCIALES };

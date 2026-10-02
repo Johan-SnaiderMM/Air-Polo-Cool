@@ -161,6 +161,15 @@ pagos_orden.notas text null default -
 pagos_orden.orden_id uuid not null default -
 pagos_orden.referencia text null default -
 pagos_orden.registrado_por uuid null default auth.uid()
+perfiles.activo boolean not null default true
+perfiles.correo text null default -
+perfiles.creado_por uuid null default -
+perfiles.created_at timestamp with time zone not null default now()
+perfiles.desactivado_at timestamp with time zone null default -
+perfiles.es_soporte boolean not null default false
+perfiles.id uuid not null default -
+perfiles.nombre text not null default -
+perfiles.rol text not null default -
 push_envios.created_at timestamp with time zone not null default now()
 push_envios.enviados integer not null default 0
 push_envios.fecha date not null default -
@@ -190,7 +199,7 @@ vehiculos.tipo_gas_sugerido text null default -
 -- RESTRICCIONES
 caja_movimientos: caja_movimientos_anulado_not_null NOT NULL anulado
 caja_movimientos: caja_movimientos_anulado_por_fkey FOREIGN KEY (anulado_por) REFERENCES auth.users(id) ON DELETE SET NULL
-caja_movimientos: caja_movimientos_autor_check CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+caja_movimientos: caja_movimientos_autor_check CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
 caja_movimientos: caja_movimientos_cierre_id_fkey FOREIGN KEY (cierre_id) REFERENCES cierres_caja(id) ON DELETE RESTRICT
 caja_movimientos: caja_movimientos_created_at_not_null NOT NULL created_at
 caja_movimientos: caja_movimientos_fecha_not_null NOT NULL fecha
@@ -204,7 +213,7 @@ caja_movimientos: chk_mov_anulacion CHECK ((((anulado = false) AND (anulado_moti
 cierres_caja: chk_cierre_anulacion CHECK ((((anulado = false) AND (anulado_motivo IS NULL) AND (anulado_at IS NULL)) OR ((anulado = true) AND (length(btrim(COALESCE(anulado_motivo, ''::text))) > 0) AND (anulado_at IS NOT NULL))))
 cierres_caja: cierres_caja_anulado_not_null NOT NULL anulado
 cierres_caja: cierres_caja_anulado_por_fkey FOREIGN KEY (anulado_por) REFERENCES auth.users(id) ON DELETE SET NULL
-cierres_caja: cierres_caja_autor_check CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+cierres_caja: cierres_caja_autor_check CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
 cierres_caja: cierres_caja_conteo_fisico_check CHECK ((conteo_fisico >= (0)::numeric))
 cierres_caja: cierres_caja_conteo_fisico_not_null NOT NULL conteo_fisico
 cierres_caja: cierres_caja_created_at_not_null NOT NULL created_at
@@ -214,7 +223,7 @@ cierres_caja: cierres_caja_id_not_null NOT NULL id
 cierres_caja: cierres_caja_pkey PRIMARY KEY (id)
 cierres_caja: cierres_caja_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 cierres_caja: cierres_caja_saldo_sistema_not_null NOT NULL saldo_sistema
-citas: citas_autor_check CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+citas: citas_autor_check CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
 citas: citas_created_at_not_null NOT NULL created_at
 citas: citas_es_prueba_not_null NOT NULL es_prueba
 citas: citas_estado_check CHECK ((estado = ANY (ARRAY['pendiente'::text, 'cumplida'::text, 'cancelada'::text])))
@@ -253,7 +262,7 @@ cotizacion_items: cotizacion_items_inventario_id_fkey FOREIGN KEY (inventario_id
 cotizacion_items: cotizacion_items_pkey PRIMARY KEY (id)
 cotizacion_items: cotizacion_items_precio_unitario_check CHECK ((precio_unitario >= (0)::numeric))
 cotizacion_items: cotizacion_items_precio_unitario_not_null NOT NULL precio_unitario
-cotizaciones: cotizaciones_autor_check CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+cotizaciones: cotizaciones_autor_check CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
 cotizaciones: cotizaciones_created_at_not_null NOT NULL created_at
 cotizaciones: cotizaciones_es_prueba_not_null NOT NULL es_prueba
 cotizaciones: cotizaciones_estado_not_null NOT NULL estado
@@ -279,7 +288,7 @@ evidencias_fotograficas: evidencias_fotograficas_pkey PRIMARY KEY (id)
 evidencias_fotograficas: evidencias_fotograficas_tipo_not_null NOT NULL tipo
 evidencias_fotograficas: evidencias_fotograficas_url_imagen_not_null NOT NULL url_imagen
 gastos_caja_menor: chk_gasto_anulacion CHECK ((((anulado = false) AND (anulado_motivo IS NULL) AND (anulado_at IS NULL)) OR ((anulado = true) AND (length(btrim(COALESCE(anulado_motivo, ''::text))) > 0) AND (anulado_at IS NOT NULL))))
-gastos_caja_menor: chk_gasto_autor CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+gastos_caja_menor: chk_gasto_autor CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
 gastos_caja_menor: gastos_caja_menor_anulado_not_null NOT NULL anulado
 gastos_caja_menor: gastos_caja_menor_anulado_por_fkey FOREIGN KEY (anulado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 gastos_caja_menor: gastos_caja_menor_categoria_not_null NOT NULL categoria
@@ -335,7 +344,7 @@ orden_repuestos: orden_repuestos_precio_unitario_check CHECK ((precio_unitario >
 orden_repuestos: orden_repuestos_precio_unitario_not_null NOT NULL precio_unitario
 ordenes_servicio: chk_entrega_posterior CHECK (((fecha_entrega IS NULL) OR (fecha_entrega >= fecha_ingreso)))
 ordenes_servicio: chk_mantenimiento_meses CHECK (((mantenimiento_meses IS NULL) OR (mantenimiento_meses = ANY (ARRAY[3, 6, 12]))))
-ordenes_servicio: chk_ordenes_autor CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+ordenes_servicio: chk_ordenes_autor CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
 ordenes_servicio: ordenes_servicio_created_at_not_null NOT NULL created_at
 ordenes_servicio: ordenes_servicio_dias_garantia_check CHECK ((dias_garantia >= 0))
 ordenes_servicio: ordenes_servicio_dias_garantia_not_null NOT NULL dias_garantia
@@ -355,7 +364,7 @@ ordenes_servicio: ordenes_servicio_updated_at_not_null NOT NULL updated_at
 ordenes_servicio: ordenes_servicio_vehiculo_id_fkey FOREIGN KEY (vehiculo_id) REFERENCES vehiculos(id) ON DELETE RESTRICT
 ordenes_servicio: ordenes_servicio_vehiculo_id_not_null NOT NULL vehiculo_id
 pagos_orden: chk_anulacion_completa CHECK ((((anulado = false) AND (anulado_motivo IS NULL) AND (anulado_at IS NULL)) OR ((anulado = true) AND (length(btrim(COALESCE(anulado_motivo, ''::text))) > 0) AND (anulado_at IS NOT NULL))))
-pagos_orden: chk_pagos_autor CHECK (((autor IS NULL) OR (autor = ANY (ARRAY['Polo'::text, 'Soporte técnico'::text]))))
+pagos_orden: chk_pagos_autor CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
 pagos_orden: pagos_orden_anulado_not_null NOT NULL anulado
 pagos_orden: pagos_orden_anulado_por_fkey FOREIGN KEY (anulado_por) REFERENCES auth.users(id) ON DELETE SET NULL
 pagos_orden: pagos_orden_created_at_not_null NOT NULL created_at
@@ -370,6 +379,18 @@ pagos_orden: pagos_orden_orden_id_fkey FOREIGN KEY (orden_id) REFERENCES ordenes
 pagos_orden: pagos_orden_orden_id_not_null NOT NULL orden_id
 pagos_orden: pagos_orden_pkey PRIMARY KEY (id)
 pagos_orden: pagos_orden_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
+perfiles: chk_perfiles_nombre_soporte CHECK ((es_soporte OR (lower(btrim(nombre)) <> 'soporte técnico'::text)))
+perfiles: perfiles_activo_not_null NOT NULL activo
+perfiles: perfiles_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES auth.users(id) ON DELETE SET NULL
+perfiles: perfiles_created_at_not_null NOT NULL created_at
+perfiles: perfiles_es_soporte_not_null NOT NULL es_soporte
+perfiles: perfiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+perfiles: perfiles_id_not_null NOT NULL id
+perfiles: perfiles_nombre_check CHECK (((char_length(btrim(nombre)) >= 2) AND (char_length(btrim(nombre)) <= 40)))
+perfiles: perfiles_nombre_not_null NOT NULL nombre
+perfiles: perfiles_pkey PRIMARY KEY (id)
+perfiles: perfiles_rol_check CHECK ((rol = ANY (ARRAY['admin'::text, 'operario'::text])))
+perfiles: perfiles_rol_not_null NOT NULL rol
 push_envios: push_envios_created_at_not_null NOT NULL created_at
 push_envios: push_envios_enviados_not_null NOT NULL enviados
 push_envios: push_envios_fecha_not_null NOT NULL fecha
@@ -449,6 +470,7 @@ CREATE UNIQUE INDEX orden_repuestos_pkey ON public.orden_repuestos USING btree (
 CREATE UNIQUE INDEX ordenes_servicio_pkey ON public.ordenes_servicio USING btree (id)
 CREATE UNIQUE INDEX ordenes_servicio_token_publico_key ON public.ordenes_servicio USING btree (token_publico)
 CREATE UNIQUE INDEX pagos_orden_pkey ON public.pagos_orden USING btree (id)
+CREATE UNIQUE INDEX perfiles_pkey ON public.perfiles USING btree (id)
 CREATE UNIQUE INDEX push_envios_pkey ON public.push_envios USING btree (fecha, franja)
 CREATE UNIQUE INDEX push_suscripciones_endpoint_key ON public.push_suscripciones USING btree (endpoint)
 CREATE UNIQUE INDEX push_suscripciones_pkey ON public.push_suscripciones USING btree (id)
@@ -456,6 +478,7 @@ CREATE UNIQUE INDEX soporte_modo_pkey ON public.soporte_modo USING btree (user_i
 CREATE UNIQUE INDEX ux_cierre_fecha ON public.cierres_caja USING btree (fecha) WHERE (NOT anulado)
 CREATE UNIQUE INDEX ux_clientes_documento_modo ON public.clientes USING btree (documento, es_prueba) WHERE (documento IS NOT NULL)
 CREATE UNIQUE INDEX ux_inventario_codigo_modo ON public.inventario USING btree (codigo, es_prueba)
+CREATE UNIQUE INDEX ux_perfiles_nombre ON public.perfiles USING btree (lower(btrim(nombre)))
 CREATE UNIQUE INDEX ux_vehiculos_placa_modo ON public.vehiculos USING btree (placa, es_prueba)
 CREATE UNIQUE INDEX vehiculos_pkey ON public.vehiculos USING btree (id)
 
@@ -471,6 +494,13 @@ CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON publi
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.pagos_orden FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
 CREATE TRIGGER trg_00_guardia_soporte BEFORE INSERT OR DELETE OR UPDATE ON public.vehiculos FOR EACH ROW EXECUTE FUNCTION fn_guardia_soporte()
+CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.caja_movimientos FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
+CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.cierres_caja FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
+CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.citas FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
+CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.cotizaciones FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
+CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.gastos_caja_menor FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
+CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
+CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.pagos_orden FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
 CREATE TRIGGER trg_citas_updated_at BEFORE UPDATE ON public.citas FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_clientes_updated_at BEFORE UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_cot_items_bloqueo BEFORE INSERT OR DELETE OR UPDATE ON public.cotizacion_items FOR EACH ROW EXECUTE FUNCTION fn_cotizacion_items_bloqueo()
@@ -535,6 +565,7 @@ public.ordenes_servicio ordenes_servicio_staff_update UPDATE using(( SELECT es_s
 public.pagos_orden pagos_orden_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
 public.pagos_orden pagos_staff_insert INSERT using(-) check((( SELECT es_staff() AS es_staff) AND (NOT (registrado_por IS DISTINCT FROM ( SELECT auth.uid() AS uid))) AND (anulado = false))) roles={authenticated}
 public.pagos_orden pagos_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
+public.perfiles perfiles_staff_select SELECT using(( SELECT es_staff() AS es_staff)) check(-) roles={authenticated}
 public.soporte_modo soporte_modo_propio SELECT using((user_id = ( SELECT auth.uid() AS uid))) check(-) roles={authenticated}
 public.vehiculos vehiculos_admin_delete DELETE using(( SELECT es_admin() AS es_admin)) check(-) roles={authenticated}
 public.vehiculos vehiculos_modo ALL using((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) check((es_prueba = ( SELECT en_modo_prueba() AS en_modo_prueba))) roles={authenticated}
@@ -561,6 +592,7 @@ mantenimiento t
 orden_repuestos t
 ordenes_servicio t
 pagos_orden t
+perfiles t
 push_envios t
 push_suscripciones t
 soporte_modo t
@@ -615,13 +647,13 @@ begin
   if length(btrim(coalesce(p_motivo, ''))) = 0 then
     raise exception 'El motivo de la anulación es obligatorio' using errcode = 'check_violation';
   end if;
-  if p_autor is not null and p_autor not in ('Polo', 'Soporte técnico') then
+  if not public.autor_valido(p_autor) then
     raise exception 'Autor inválido' using errcode = 'check_violation';
   end if;
 
   update public.gastos_caja_menor
      set anulado = true, anulado_motivo = btrim(p_motivo), anulado_por = auth.uid(),
-         anulado_autor = p_autor, anulado_at = now()
+         anulado_autor = public.autor_efectivo(p_autor), anulado_at = now()
    where id = p_id and anulado = false
    returning * into v;
   if not found then
@@ -695,6 +727,34 @@ begin
   return v;
 end $function$
 
+CREATE OR REPLACE FUNCTION public.autor_efectivo(p_autor text)
+ RETURNS text
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_nombre text;
+begin
+  if auth.uid() is not null then
+    select nombre into v_nombre from public.perfiles where id = auth.uid();
+    if v_nombre is not null then
+      return v_nombre;
+    end if;
+    return case when p_autor in ('Polo', 'Soporte técnico') then p_autor end;
+  end if;
+  return case when char_length(btrim(coalesce(p_autor, ''))) between 1 and 40 then btrim(p_autor) end;
+end $function$
+
+CREATE OR REPLACE FUNCTION public.autor_valido(p_autor text)
+ RETURNS boolean
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$
+  select p_autor is null or char_length(btrim(p_autor)) between 1 and 40;
+$function$
+
 CREATE OR REPLACE FUNCTION public.cambiar_mantenimiento(p_activo boolean, p_motivo text DEFAULT NULL::text)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -737,16 +797,18 @@ CREATE OR REPLACE FUNCTION public.cerrar_caja(p_fecha date, p_conteo numeric, p_
  SET search_path TO 'public', 'pg_temp'
 AS $function$
 declare
-  hoy    date := (now() at time zone 'America/Bogota')::date;
-  saldo  numeric;
-  v      public.cierres_caja;
+  hoy     date := (now() at time zone 'America/Bogota')::date;
+  saldo   numeric;
+  v       public.cierres_caja;
+  v_autor text;
 begin
   if not public.es_staff() then
     raise exception 'No autorizado' using errcode = 'insufficient_privilege';
   end if;
-  if p_autor is not null and p_autor not in ('Polo', 'Soporte técnico') then
+  if not public.autor_valido(p_autor) then
     raise exception 'Autor inválido' using errcode = 'check_violation';
   end if;
+  v_autor := public.autor_efectivo(p_autor);
   if p_conteo is null or p_conteo < 0 then
     raise exception 'El conteo físico no puede ser negativo' using errcode = 'check_violation';
   end if;
@@ -762,7 +824,7 @@ begin
 
   insert into public.cierres_caja (fecha, saldo_sistema, conteo_fisico, desglose, notas, autor)
   values (p_fecha, saldo, p_conteo, coalesce(p_desglose, '{}'::jsonb),
-          nullif(btrim(coalesce(p_notas, '')), ''), p_autor)
+          nullif(btrim(coalesce(p_notas, '')), ''), v_autor)
   returning * into v;
 
   if v.diferencia <> 0 then
@@ -772,7 +834,7 @@ begin
                  else 'ajuste_faltante'::public.tipo_mov_caja end,
             abs(v.diferencia),
             'Ajuste por arqueo del ' || p_fecha,
-            p_autor,
+            v_autor,
             v.id);
   end if;
 
@@ -794,7 +856,7 @@ begin
   if not public.es_staff() then
     raise exception 'No autorizado' using errcode = 'insufficient_privilege';
   end if;
-  if p_autor is not null and p_autor not in ('Polo', 'Soporte técnico') then
+  if not public.autor_valido(p_autor) then
     raise exception 'Autor inválido' using errcode = 'check_violation';
   end if;
 
@@ -819,7 +881,7 @@ begin
     (vehiculo_id, estado, mano_obra, total_cobrado, trabajos_a_realizar, notas, autor)
   values
     (c.vehiculo_id, 'recibido', c.mano_obra, v_total, v_trabajos,
-     'Origen: cotización del ' || c.fecha || coalesce(E'\n' || c.notas, ''), p_autor)
+     'Origen: cotización del ' || c.fecha || coalesce(E'\n' || c.notas, ''), public.autor_efectivo(p_autor))
   returning id into v_orden;
 
   update public.cotizaciones
@@ -836,8 +898,9 @@ CREATE OR REPLACE FUNCTION public.editar_gasto(p_id uuid, p_fecha date, p_catego
  SET search_path TO 'public', 'pg_temp'
 AS $function$
 declare
-  antes public.gastos_caja_menor;
-  v     public.gastos_caja_menor;
+  antes   public.gastos_caja_menor;
+  v       public.gastos_caja_menor;
+  v_autor text;
 begin
   if not public.es_staff() then
     raise exception 'No autorizado' using errcode = 'insufficient_privilege';
@@ -845,9 +908,10 @@ begin
   if p_monto is null or p_monto <= 0 then
     raise exception 'El monto debe ser mayor a 0' using errcode = 'check_violation';
   end if;
-  if p_autor is not null and p_autor not in ('Polo', 'Soporte técnico') then
+  if not public.autor_valido(p_autor) then
     raise exception 'Autor inválido' using errcode = 'check_violation';
   end if;
+  v_autor := public.autor_efectivo(p_autor);
 
   select * into antes from public.gastos_caja_menor where id = p_id for update;
   if not found then
@@ -867,7 +931,7 @@ begin
          historial   = historial || jsonb_build_array(jsonb_build_object(
                          'at',    now(),
                          'por',   auth.uid(),
-                         'autor', p_autor,
+                         'autor', v_autor,
                          'antes', jsonb_build_object(
                            'fecha', antes.fecha, 'categoria', antes.categoria, 'monto', antes.monto,
                            'descripcion', antes.descripcion, 'orden_id', antes.orden_id)))
@@ -898,10 +962,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.es_admin()
  RETURNS boolean
  LANGUAGE sql
- STABLE
- SET search_path TO 'public'
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
 AS $function$
-  select coalesce((auth.jwt() -> 'app_metadata' ->> 'rol') = 'admin', false);
+  select coalesce((auth.jwt() -> 'app_metadata' ->> 'rol') = 'admin', false)
+     and not exists (select 1 from public.perfiles where id = auth.uid() and not activo);
 $function$
 
 CREATE OR REPLACE FUNCTION public.es_soporte()
@@ -916,10 +981,11 @@ $function$
 CREATE OR REPLACE FUNCTION public.es_staff()
  RETURNS boolean
  LANGUAGE sql
- STABLE
- SET search_path TO 'public'
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
 AS $function$
-  select coalesce((auth.jwt() -> 'app_metadata' ->> 'rol') in ('admin','operario'), false);
+  select coalesce((auth.jwt() -> 'app_metadata' ->> 'rol') in ('admin', 'operario'), false)
+     and not exists (select 1 from public.perfiles where id = auth.uid() and not activo);
 $function$
 
 CREATE OR REPLACE FUNCTION public.fn_cotizacion_items_bloqueo()
@@ -1146,6 +1212,17 @@ AS $function$
                where not g.anulado and g.fecha <= h.hasta), 0);
 $function$
 
+CREATE OR REPLACE FUNCTION public.fn_sellar_autor()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  new.autor := public.autor_efectivo(new.autor);
+  return new;
+end $function$
+
 CREATE OR REPLACE FUNCTION public.fn_set_updated_at()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1175,6 +1252,15 @@ AS $function$
     from public.login_intentos
    where clave = any(p_claves)
      and bloqueado_hasta > now();
+$function$
+
+CREATE OR REPLACE FUNCTION public.mi_perfil()
+ RETURNS TABLE(nombre text, rol text, activo boolean, es_soporte boolean)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select p.nombre, p.rol, p.activo, p.es_soporte from public.perfiles p where p.id = auth.uid();
 $function$
 
 CREATE OR REPLACE FUNCTION public.obtener_orden_publica(p_token text)
@@ -1285,6 +1371,8 @@ anular_cierre(p_id uuid, p_motivo text) anon=f authenticated=t service_role=t
 anular_gasto(p_id uuid, p_motivo text, p_autor text) anon=f authenticated=t service_role=t
 anular_movimiento_caja(p_id uuid, p_motivo text) anon=f authenticated=t service_role=t
 anular_pago(p_pago_id uuid, p_motivo text) anon=f authenticated=t service_role=t
+autor_efectivo(p_autor text) anon=f authenticated=f service_role=t
+autor_valido(p_autor text) anon=f authenticated=f service_role=t
 cambiar_mantenimiento(p_activo boolean, p_motivo text) anon=f authenticated=t service_role=t
 cambiar_modo_prueba(p_activo boolean) anon=f authenticated=t service_role=t
 cerrar_caja(p_fecha date, p_conteo numeric, p_desglose jsonb, p_notas text, p_autor text) anon=f authenticated=t service_role=t
@@ -1292,9 +1380,9 @@ convertir_cotizacion(p_id uuid, p_autor text) anon=f authenticated=t service_rol
 editar_gasto(p_id uuid, p_fecha date, p_categoria categoria_gasto, p_monto numeric, p_descripcion text, p_orden_id uuid, p_autor text) anon=f authenticated=t service_role=t
 en_mantenimiento() anon=f authenticated=t service_role=t
 en_modo_prueba() anon=f authenticated=t service_role=t
-es_admin() anon=t authenticated=t service_role=t
+es_admin() anon=f authenticated=t service_role=t
 es_soporte() anon=f authenticated=t service_role=t
-es_staff() anon=t authenticated=t service_role=t
+es_staff() anon=f authenticated=t service_role=t
 fn_cotizacion_items_bloqueo() anon=t authenticated=t service_role=t
 fn_evidencia_repuesto_coherente() anon=f authenticated=f service_role=t
 fn_generar_token_publico() anon=t authenticated=t service_role=t
@@ -1304,9 +1392,11 @@ fn_normalizar_placa() anon=t authenticated=t service_role=t
 fn_orden_before_write() anon=t authenticated=t service_role=t
 fn_orden_repuestos_stock() anon=f authenticated=f service_role=t
 fn_saldo_caja(p_hasta date) anon=f authenticated=t service_role=t
+fn_sellar_autor() anon=f authenticated=f service_role=t
 fn_set_updated_at() anon=t authenticated=t service_role=t
 limpiar_login(p_clave text) anon=f authenticated=f service_role=t
 login_bloqueado(p_claves text[]) anon=f authenticated=f service_role=t
+mi_perfil() anon=f authenticated=t service_role=t
 obtener_orden_publica(p_token text) anon=t authenticated=t service_role=t
 registrar_fallo_login(p_clave text, p_max integer, p_ventana_seg integer, p_bloqueo_seg integer) anon=f authenticated=f service_role=t
 
@@ -1665,6 +1755,7 @@ mantenimiento authenticated REFERENCES,SELECT,TRIGGER
 orden_repuestos authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 ordenes_servicio authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 pagos_orden authenticated INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE
+perfiles authenticated REFERENCES,SELECT,TRIGGER
 soporte_modo authenticated REFERENCES,SELECT,TRIGGER
 v_balance_mensual authenticated DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
 v_balance_real anon DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE

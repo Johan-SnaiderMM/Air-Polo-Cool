@@ -69,10 +69,12 @@ describe("campos", () => {
     expect(uno(textoObligatorio("Falta"), " ")).toEqual({ ok: false, error: "Falta" });
   });
 
-  it("autorSchema: solo los dos operadores; lo demás se descarta sin rechazar", () => {
+  it("autorSchema: un nombre de 1 a 40 caracteres (lo decide la base); lo demás se descarta sin rechazar", () => {
     expect(uno(autorSchema, "Polo")).toEqual({ ok: true, valor: "Polo" });
-    expect(uno(autorSchema, "Soporte técnico")).toEqual({ ok: true, valor: "Soporte técnico" });
-    expect(uno(autorSchema, "Hacker")).toEqual({ ok: true, valor: null });
+    expect(uno(autorSchema, "  Carlos Pérez ")).toEqual({ ok: true, valor: "Carlos Pérez" });
+    expect(uno(autorSchema, "x".repeat(60))).toEqual({ ok: true, valor: null });
+    expect(uno(autorSchema, "   ")).toEqual({ ok: true, valor: null });
+    expect(uno(autorSchema, 42)).toEqual({ ok: true, valor: null });
     expect(uno(autorSchema, undefined)).toEqual({ ok: true, valor: null });
   });
 

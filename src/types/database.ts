@@ -38,8 +38,14 @@ export type MedioPago = "efectivo" | "transferencia" | "tarjeta" | "otro";
 /** Estado de pago de una orden (v_saldo_ordenes.estado_pago). */
 export type EstadoPago = "sin_total" | "sin_pago" | "parcial" | "pagado" | "sobrepago";
 
-/** Autoría simple: solo dos operadores, sin roles nuevos. */
-export type Autor = "Polo" | "Soporte técnico";
+/**
+ * Autoría: el NOMBRE del perfil de quien registró (1 a 40 caracteres). Lo estampa la base según la sesión.
+ * Lo anterior a la fase 10 conserva «Polo» o «Soporte técnico».
+ */
+export type Autor = string;
+
+/** Roles de acceso (app_metadata.rol). */
+export type RolUsuario = "admin" | "operario";
 
 export type EstadoCotizacion =
   | "borrador"
@@ -727,6 +733,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** Fase 10: una fila por persona con acceso. Solo el servidor (service role) la escribe. */
+      perfiles: {
+        Row: {
+          id: string;
+          nombre: string;
+          correo: string | null;
+          rol: RolUsuario;
+          es_soporte: boolean;
+          activo: boolean;
+          creado_por: string | null;
+          created_at: string;
+          desactivado_at: string | null;
+        };
+        Insert: {
+          id: string;
+          nombre: string;
+          correo?: string | null;
+          rol: RolUsuario;
+          es_soporte?: boolean;
+          activo?: boolean;
+          creado_por?: string | null;
+          created_at?: string;
+          desactivado_at?: string | null;
+        };
+        Update: {
+          nombre?: string;
+          correo?: string | null;
+          rol?: RolUsuario;
+          activo?: boolean;
+          desactivado_at?: string | null;
+        };
+        Relationships: [];
+      };
       /** Fase 6: modo (real/prueba) de cada usuario de soporte. Se cambia con cambiar_modo_prueba(). */
       soporte_modo: {
         Row: {
@@ -951,6 +990,11 @@ export type Database = {
       es_soporte: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
+      };
+      /** Fase 10: mi propio perfil (aunque esté desactivado). Sin fila = usuario sin perfil. */
+      mi_perfil: {
+        Args: Record<PropertyKey, never>;
+        Returns: { nombre: string; rol: string; activo: boolean; es_soporte: boolean }[];
       };
       en_modo_prueba: {
         Args: Record<PropertyKey, never>;

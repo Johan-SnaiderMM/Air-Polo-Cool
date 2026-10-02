@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autorONull, esAutor, inicialAutor } from "@/lib/autor";
+import { autorONull, inicialAutor } from "@/lib/autor";
 import { celdaCsv, construirCsv } from "@/lib/csv";
 import { ENCABEZADOS_LIBRO, filaALibroCsv, ordenarLibro, type FilaLibro } from "@/lib/libro";
 import { totalesPorMedio } from "@/lib/caja";
@@ -8,12 +8,12 @@ import { variacion } from "@/components/caja/grafico-categorias";
 import { mensajeMantenimiento, mensajeCobro } from "@/lib/whatsapp";
 
 describe("autoría", () => {
-  it("solo Polo y Soporte técnico", () => {
-    expect(esAutor("Polo")).toBe(true);
-    expect(esAutor("Soporte técnico")).toBe(true);
-    expect(esAutor("Admin")).toBe(false);
-    expect(autorONull("Otro")).toBeNull();
+  it("el sello es un nombre de persona; la inicial sirve para insignias", () => {
+    expect(autorONull("Polo")).toBe("Polo");
+    expect(autorONull("Carlos")).toBe("Carlos");
+    expect(autorONull("")).toBeNull();
     expect(inicialAutor("Soporte técnico")).toBe("S");
+    expect(inicialAutor("carlos")).toBe("C");
     expect(inicialAutor(null)).toBe("·");
   });
 });

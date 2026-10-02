@@ -19,6 +19,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    7. `…07_fase7_agenda.sql` (agenda de citas; requiere la fase 6)
    8. `…08_fase8_avisos.sql` (suscripciones a los avisos de la agenda; requiere la fase 7)
    9. `…09_fase9_login.sql` (límite de intentos de ingreso; ver «Seguridad»)
+   10. `…10_fase10_equipo.sql` (perfiles por persona y autoría real; ver «Equipo y perfiles»)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
@@ -207,8 +208,8 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
   No se asume que lo facturado está pagado; el saldo por cobrar sale de `pagos_orden`.
 - **Nada se borra**: gastos y pagos se **anulan con motivo** (queda quién, cuándo y por qué);
   las ediciones de un gasto guardan los valores anteriores.
-- **Autoría**: cada operador entra con su propio usuario y el sello ("Polo" / "Soporte técnico") sale de la sesión; se
-  estampa en los registros nuevos. Es informativo: la seguridad real es la sesión y el RLS de Supabase.
+- **Autoría**: cada persona entra con su propio usuario y el sello es el **nombre de su perfil** (ver «Equipo y perfiles»);
+  lo estampa la base en los registros nuevos, no el teléfono. Lo anterior a los perfiles conserva «Polo» / «Soporte técnico».
 
 ## Persistencia y modo sin conexión
 
@@ -275,12 +276,41 @@ icono de llave del encabezado (solo él lo ve):
   función ni política existente. Sin sesión de usuario (service role, SQL Editor) no restringen nada. Lo prueba
   `src/types/soporte.test.ts` contra un Postgres real en memoria.
 
+## Equipo y perfiles
+
+Cada persona con acceso (el dueño, un ayudante, soporte) tiene su propio usuario de Supabase y un **perfil**
+(`public.perfiles`: nombre visible, rol, activo, si es soporte). El nombre del perfil es el sello de autoría de todo lo que
+esa persona registre.
+
+- **Quién gestiona.** El dueño (rol `admin`) abre **Mi cuenta → Equipo** (`/equipo`): *Agregar un ayudante* (nombre + correo)
+  crea el usuario con rol `operario` y una **contraseña temporal aleatoria** que se muestra **una sola vez** (con un botón que copia
+  las instrucciones para mandárselas); *Nueva contraseña* genera otra; *Desactivar / Reactivar* corta o devuelve el acceso. Solo se
+  gestionan ayudantes: nunca administradores, la cuenta de soporte ni la propia (así nadie deja sin acceso al dueño). Requiere
+  `SUPABASE_SERVICE_ROLE_KEY` en el servidor. Cada persona cambia su contraseña en **Mi cuenta** (`/cuenta`; pide la actual).
+- **Permisos.** El ayudante es `operario`: crea y edita, pero **no borra** (solo el `admin` borra) ni administra el equipo.
+- **El autor lo pone la base.** Un trigger por tabla (`fn_sellar_autor`) sustituye el `autor` al insertar por el nombre del perfil
+  de la sesión; lo que mande el teléfono se ignora. Las funciones que reciben el autor (`editar_gasto`, `anular_gasto`,
+  `cerrar_caja`, `convertir_cotizacion`) hacen lo mismo. Un usuario **sin perfil** solo puede firmar «Polo» o «Soporte técnico»
+  (cualquier otro nombre se descarta); sin sesión de usuario (SQL Editor / service role) se respeta el nombre dado. La bitácora de
+  cambios de estado de una orden toma el nombre del perfil en el servidor.
+- **Desactivar.** Pone `activo = false` (desde ese momento `es_staff()` / `es_admin()` dan falso y la base le niega los datos, sin
+  esperar a que venza su sesión) y **bloquea el ingreso en Supabase Auth** (`ban_duration`); su historial se conserva. Si todavía
+  tenía la app abierta ve «Tu acceso está desactivado»; al intentar entrar de nuevo, el mismo aviso. Un usuario con rol y **sin
+  perfil** conserva su acceso (solo una desactivación explícita lo corta).
+- **Nombres.** Únicos (sin importar mayúsculas, tildes ni espacios), de 2 a 40 caracteres; «Polo» y «Soporte técnico» están reservados.
+- **Migración (fase 10).** Re-ejecutable. Crea el perfil de los usuarios que ya existen: soporte → «Soporte técnico»; el primer admin
+  (o, si no hay, el primer operario) → «Polo»; cualquier otro → la parte inicial de su correo. **El dueño debe tener rol `admin`** para
+  ver Equipo; si hoy es `operario`, el SQL para cambiarlo está al final del archivo.
+- **Pendiente (fases siguientes).** Bitácora de cambios (quién, cuándo, antes/después) para auditar ediciones y borrados, y permisos
+  más finos para el ayudante (p. ej. ocultar el balance). Los registros hechos sin red se sellan con quien tenga la sesión al
+  **sincronizar**, no al crearlos: dos personas con el mismo teléfono lo mezclarían.
+
 ## Seguridad (resumen)
 
 - RLS en todas las tablas; `anon` no puede leer tablas, vistas ni funciones internas.
 - El portal público solo usa la RPC `obtener_orden_publica`: no expone costos de compra, notas internas,
   facturas de proveedor, teléfono ni documento.
-- El service role se usa únicamente para firmar URLs de fotos y está marcado `server-only`.
+- El service role se usa solo en el servidor (marcado `server-only`): firmar URLs de fotos, el límite de intentos de ingreso y la gestión del equipo.
 - Permisos: el `operario` crea y edita; solo el `admin` borra (repuestos de una orden, fotos, gastos).
 - El envío automático de WhatsApp está **apagado** salvo `WHATSAPP_AUTO_ENVIO=true`.
 - **Límite de intentos de ingreso** (fase 9): tres contadores independientes que bloquean 15 minutos —**correo + IP: 5 fallos**,
