@@ -17,6 +17,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    5. `…05_fase5_fotos_repuesto.sql` (cada foto de repuesto retirado / instalado queda ligada a su repuesto)
    6. `…06_fase6_soporte.sql` (usuario de soporte: modo prueba y mantenimiento; ver «Usuario de soporte»)
    7. `…07_fase7_agenda.sql` (agenda de citas; requiere la fase 6)
+   8. `…08_fase8_avisos.sql` (suscripciones a los avisos de la agenda; requiere la fase 7)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
@@ -29,6 +30,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Conexión (obligatorias) |
    | `SUPABASE_SERVICE_ROLE_KEY` | Solo servidor. Firma las fotos del portal público. **Nunca** con prefijo `NEXT_PUBLIC_` |
    | `NEXT_PUBLIC_SITE_URL` | URL pública (`https://tu-dominio.com`) para los enlaces `/orden/[token]` |
+   | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET` | **Avisos** de la agenda (notificaciones push). Ver «Avisos». Sin ellas la app funciona igual, solo sin avisos |
    | `WHATSAPP_*` | Envío automático opcional vía Evolution API / WAHA (ver `.env.example`) |
 
 4. `npm install` y `npm run dev`.
@@ -98,6 +100,37 @@ crea la orden.
 - **Horas:** se guardan como instante y se muestran siempre en hora de Colombia (UTC-5, sin horario de verano).
 - **Límites:** requiere conexión (no pasa por la cola offline). Respeta el modo prueba y el mantenimiento de la fase 6.
 
+## Avisos (notificaciones push)
+
+Dos resúmenes al día llegan al teléfono, aunque la app esté cerrada, a **todos los teléfonos suscritos**:
+
+| Hora (Colombia) | Qué dice |
+| --- | --- |
+| **7:00 a. m.** | Las citas de **hoy**: «3 citas hoy · 2 por recordar» o «… · todas ya recordadas». Si hay citas atrasadas sin atender, las menciona. |
+| **5:30 p. m.** | Las citas de **mañana**, para recordárselas hoy a los clientes: «2 citas mañana · 1 por recordar». |
+
+«Por recordar» son las citas a las que aún no se les tocó el botón de WhatsApp. Si no hay citas, **no avisa**. Al tocar el aviso
+se abre la agenda.
+
+- **Activarlos:** campana del encabezado → «Activar avisos en este teléfono» (cada teléfono, una vez). Un punto ocre en la campana
+  indica que aún no están activados.
+- **iPhone:** solo funcionan con la app **instalada en la pantalla de inicio** (iOS 16.4 o posterior); el panel lo explica.
+  En Android basta con Chrome.
+- **Cómo funciona:** el teléfono se suscribe (Web Push, claves VAPID) y el servidor guarda la suscripción (`push_suscripciones`;
+  solo el servidor la lee, con la clave de servicio). Dos tareas programadas de Vercel (`vercel.json`, **en UTC**: 12:00 y 22:30)
+  llaman a `/api/cron/avisos?franja=dia|tarde`, protegida con `CRON_SECRET`. Cada envío se reserva por día y franja
+  (`push_envios`), así que un reintento no repite el aviso. Las suscripciones que el navegador ya no reconoce se borran solas.
+- **Lo que haga soporte no se nota:** el resumen **solo cuenta citas reales**; las de modo prueba nunca generan avisos. Soporte
+  tiene en el mismo panel «Enviar un aviso de prueba», que llega **solo a sus propios teléfonos**.
+- **Configuración (una vez):** las claves se generaron en `.env.push.local` (ignorado por git). Hay que copiar sus 4 variables
+  a Vercel (Settings → Environment Variables) y volver a desplegar; opcionalmente a `.env.local` para probar en local. Sin
+  ellas la campana queda oculta (salvo para soporte, que ve el motivo) y el programador responde «sin configurar».
+- **Límites:** la entrega no está garantizada al 100 % (algunos Android con ahorro de batería agresivo la retrasan). En el plan
+  gratuito de Vercel las tareas programadas están limitadas (según la documentación vigente: frecuencia y precisión de hora);
+  con el plan Pro, que ya se necesita para cobrar, son exactas. Verifica el plan antes de prometer la hora exacta.
+- **Pruebas:** el resumen, el envío (con `web-push` simulado), la ruta programada, las acciones y el service worker están
+  probados; la entrega real a un teléfono solo se comprueba con un iPhone y un Android de verdad.
+
 ## Fotos de repuestos
 
 Al tomar una foto de **repuesto retirado** o **instalado**, primero se elige de qué repuesto de la orden es. En la
@@ -155,7 +188,7 @@ orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, 
 - `src/proxy.ts` — refresca la sesión de Supabase y redirige a `/login` (en Next 16 reemplaza a `middleware.ts`).
 - `src/utils/supabase/` — clientes: navegador, servidor, público (anónimo) y admin (service role, solo servidor).
 - `src/lib/` — reglas puras (garantías, teléfonos, meses, cobros por medio, CSV, cotizaciones, plantillas de WhatsApp) y sus pruebas.
-- `src/lib/datos/` — capa de acceso a datos, una por área: `ordenes` (lista, detalle, comprobante), `inicio`, `caja` (gastos, cobros, balance, reporte), `vehiculos`, `garantias`, `cartera`, `inventario`, `cotizaciones`, `agenda`. Las páginas no hacen consultas: piden un modelo ya armado (con tipos propios, sin `as`), y lo independiente se consulta en paralelo. `mapeo.ts` tiene las transformaciones puras; se prueban con un Supabase simulado.
+- `src/lib/datos/` — capa de acceso a datos, una por área: `ordenes` (lista, detalle, comprobante), `inicio`, `caja` (gastos, cobros, balance, reporte), `vehiculos`, `garantias`, `cartera`, `inventario`, `cotizaciones`, `agenda`. Los avisos viven en `src/lib/push/` (texto del resumen, envío y tarea diaria). Las páginas no hacen consultas: piden un modelo ya armado (con tipos propios, sin `as`), y lo independiente se consulta en paralelo. `mapeo.ts` tiene las transformaciones puras; se prueban con un Supabase simulado.
 - `src/lib/offline/` — operaciones offline (validación), almacén IndexedDB, algoritmo de sincronización y búsqueda local.
 - `src/components/sync/` — `sync-provider.tsx` compone tres hooks: `use-red` (conexión efectiva), `use-snapshot` (datos de referencia locales) y `use-cola` (registrar, sincronizar, reintentar); además el proveedor de autoría y el panel de pendientes.
 - `public/sw.js` — service worker (lectura offline de páginas ya visitadas); `public/offline.html` — pantalla sin conexión.

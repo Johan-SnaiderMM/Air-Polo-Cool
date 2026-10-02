@@ -275,3 +275,37 @@ describe("agenda (citas)", () => {
     await db.exec(insertarCita());
   });
 });
+
+describe("avisos (push)", () => {
+  it("ningún usuario lee ni escribe las suscripciones ni los envíos: solo el servidor (service role)", async () => {
+    for (const usuario of ["polo", "soporte"] as const) {
+      await como(usuario);
+      for (const tabla of ["push_suscripciones", "push_envios"]) {
+        expect(await codigoDeError(db.exec(`select * from public.${tabla}`)), `${usuario} lee ${tabla}`).toBe("42501");
+      }
+      expect(
+        await codigoDeError(db.exec(`insert into public.push_suscripciones (user_id, endpoint, p256dh, auth) values ('${POLO}', 'https://x.example', 'k', 'a')`)),
+        `${usuario} escribe`
+      ).toBe("42501");
+      expect(await codigoDeError(db.exec(`insert into public.push_envios (fecha, franja) values (current_date, 'dia')`)), `${usuario} escribe envíos`).toBe("42501");
+    }
+  });
+
+  it("sin sesión (SQL Editor / service role) sí se pueden guardar; el endpoint es único y la franja válida", async () => {
+    await como("servicio");
+    await db.exec(`insert into public.push_suscripciones (user_id, endpoint, p256dh, auth) values ('${POLO}', 'https://push.example/a', 'k', 'a')`);
+    expect(await codigoDeError(db.exec(`insert into public.push_suscripciones (user_id, endpoint, p256dh, auth) values ('${SOPORTE}', 'https://push.example/a', 'k', 'a')`))).toBe("23505");
+    await db.exec(`insert into public.push_envios (fecha, franja) values ('2026-10-01', 'dia')`);
+    expect(await codigoDeError(db.exec(`insert into public.push_envios (fecha, franja) values ('2026-10-01', 'dia')`))).toBe("23505"); // un solo envío por día y franja
+    expect(await codigoDeError(db.exec(`insert into public.push_envios (fecha, franja) values ('2026-10-01', 'noche')`))).toBe("23514");
+  });
+
+  it("si se borra el usuario, sus suscripciones se van con él", async () => {
+    await como("servicio");
+    await db.exec(`insert into auth.users (id, email) values ('33333333-3333-4333-8333-333333333333', 'temporal@aircool.com')`);
+    await db.exec(`insert into public.push_suscripciones (user_id, endpoint, p256dh, auth) values ('33333333-3333-4333-8333-333333333333', 'https://push.example/b', 'k', 'a')`);
+    await db.exec(`delete from auth.users where id = '33333333-3333-4333-8333-333333333333'`);
+    const r = await db.query<{ n: number }>(`select count(*)::int as n from public.push_suscripciones where endpoint = 'https://push.example/b'`);
+    expect(r.rows[0].n).toBe(0);
+  });
+});

@@ -21,9 +21,12 @@ const esEndpoint = (v: unknown): v is string => {
 
 const clave = () => campo((v) => (typeof v === "string" && BASE64URL.test(v) ? v : undefined), MSG_SUSCRIPCION);
 
-export const suscripcionSchema = z.object({
-  endpoint: campo((v) => (esEndpoint(v) ? v : undefined), MSG_SUSCRIPCION),
-  keys: z.unknown().pipe(z.object({ p256dh: clave(), auth: clave() })),
-});
+export const suscripcionSchema = z.object(
+  {
+    endpoint: campo((v) => (esEndpoint(v) ? v : undefined), MSG_SUSCRIPCION),
+    keys: z.unknown().pipe(z.object({ p256dh: clave(), auth: clave() }, { error: MSG_SUSCRIPCION })),
+  },
+  { error: MSG_SUSCRIPCION }
+);
 
 export type SuscripcionPush = z.output<typeof suscripcionSchema>;
