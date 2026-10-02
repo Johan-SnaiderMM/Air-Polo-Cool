@@ -157,6 +157,20 @@ El botón de la luna/sol del encabezado alterna entre claro y oscuro y recuerda 
 - **Barra del navegador / estado:** `theme-color` tiene una versión clara y otra oscura según el sistema, y el botón del tema la
   ajusta cuando se elige a mano.
 
+## Legal y buscadores
+
+- **Páginas públicas** (sin sesión): `/legal/privacidad` (política de tratamiento de datos, Ley 1581 de 2012) y `/legal/aviso`
+  (aviso legal). Tienen enlace en el login, en el pie del portal del cliente y al final del inicio. El texto está en
+  `src/lib/legal.ts`.
+- **Es un borrador de partida**, escrito según cómo funciona la app hoy (datos que guarda, proveedores, el enlace de seguimiento,
+  cookies). Antes de darlo por definitivo debe revisarlo una persona con criterio legal; sobre todo si la app se va a usar en
+  otros talleres (cada taller es responsable de sus datos y necesita su propia política).
+- **Datos que faltan:** en `RESPONSABLE` (`src/lib/legal.ts`) están, sin completar, la razón social, el NIT, la dirección y el
+  correo para consultas de datos. Lo que no se complete se omite del texto; siempre queda el teléfono/WhatsApp del taller como canal.
+  Al cambiar el texto, actualiza `ACTUALIZADO_LEGAL`.
+- **Buscadores:** la app es privada. `robots.txt` bloquea todo (`src/app/robots.ts`) y todas las páginas llevan `noindex`.
+  Si algún día hay una página pública del taller, se permite solo esa ruta.
+
 ## Fotos de repuestos
 
 Al tomar una foto de **repuesto retirado** o **instalado**, primero se elige de qué repuesto de la orden es. En la

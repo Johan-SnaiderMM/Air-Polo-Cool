@@ -26,6 +26,7 @@ import {
 import { GaleriaPortal } from "@/components/portal/galeria-portal";
 import type { EstadoOrden, OrdenPublica, SemaforoGarantia } from "@/types/database";
 
+import { EnlacesLegales } from "@/components/legal/enlaces-legales";
 import { Dinero } from "@/components/ui/dinero";
 import { BUCKET_EVIDENCIAS, VIGENCIA_URL_PORTAL_SEGUNDOS } from "@/lib/almacenamiento";
 // Página pública: sin cookies ni sesión. Nunca cachear (URLs firmadas con caducidad).
@@ -381,6 +382,7 @@ export default async function PortalOrdenPage({
         <footer className="pt-2 text-center text-xs text-stone-500">
           <p className="font-semibold text-stone-600">Polo Air Cool</p>
           <p>Gracias por confiar en nosotros.</p>
+          <EnlacesLegales className="mt-2" />
         </footer>
       </main>
     </div>

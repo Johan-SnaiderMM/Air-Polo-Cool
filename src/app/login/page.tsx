@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { EnlacesLegales } from "@/components/legal/enlaces-legales";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Ingresar" };
@@ -19,6 +20,7 @@ export default async function LoginPage({
         <p className="text-[13px] text-stone-500">Acceso del taller</p>
       </div>
       <LoginForm next={next ?? "/"} />
+      <EnlacesLegales className="mt-8" />
     </main>
   );
 }

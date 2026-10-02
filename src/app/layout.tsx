@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   description:
     "Gestión de órdenes, inventario y caja menor del taller de aire acondicionado automotriz Polo Air Cool.",
   applicationName: "Polo Air Cool",
+  // Aplicación privada: ninguna página debe salir en buscadores (el robots.txt también lo bloquea).
+  robots: { index: false, follow: false },
   manifest: "/manifest.webmanifest",
   formatDetection: { telephone: false },
   appleWebApp: {
