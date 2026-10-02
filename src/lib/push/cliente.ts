@@ -34,3 +34,13 @@ export function disponibilidadAvisos({ agente, instalada, conPush }: EntornoAvis
   if (esIOS && !instalada) return "instalar_en_inicio";
   return conPush ? "disponible" : "no_soportado";
 }
+
+/** Texto claro para un fallo al activar los avisos (el del navegador, «push service error», no dice qué hacer). */
+export function mensajeErrorAvisos(error: unknown): string {
+  const nombre = error instanceof Error ? error.name : "";
+  const texto = error instanceof Error ? error.message : "";
+  if (nombre === "AbortError" || /push service/i.test(texto)) {
+    return "El teléfono no pudo registrarse con el servicio de avisos. Revisa la conexión (prueba con datos móviles) y que uses Chrome con los servicios de Google al día. Si ya habías dado el permiso de notificaciones a mano, quítalo en los ajustes del sitio y vuelve a activar los avisos desde aquí.";
+  }
+  return texto || "No se pudieron activar los avisos.";
+}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { guardarSuscripcion, quitarSuscripcion } from "@/app/(app)/avisos/actions";
-import { claveVapidABytes, disponibilidadAvisos } from "@/lib/push/cliente";
+import { claveVapidABytes, disponibilidadAvisos, mensajeErrorAvisos } from "@/lib/push/cliente";
 
 /** Cuánto se espera al service worker antes de dar los avisos por no disponibles (en desarrollo no se registra). */
 const ESPERA_SW_MS = 4000;
@@ -76,9 +76,14 @@ export function useAvisos() {
       }
       const registro = await registroListo();
       if (!registro) throw new Error("La app todavía no está lista para recibir avisos. Recarga e inténtalo de nuevo.");
+      const suscribir = () => registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveVapidABytes(CLAVE_PUBLICA) });
       const suscripcion =
         (await registro.pushManager.getSubscription()) ??
-        (await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveVapidABytes(CLAVE_PUBLICA) }));
+        // Un permiso dado a mano o una suscripción a medias pueden hacer fallar el primer intento: se reintenta una vez.
+        (await suscribir().catch(async () => {
+          await new Promise((r) => setTimeout(r, 800));
+          return suscribir();
+        }));
       const r = await guardarSuscripcion(suscripcion.toJSON(), navigator.userAgent);
       if (!r.ok) {
         await suscripcion.unsubscribe().catch(() => false);
@@ -86,7 +91,7 @@ export function useAvisos() {
       }
       setEstado("activo");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudieron activar los avisos.");
+      setError(mensajeErrorAvisos(e));
     } finally {
       setTrabajando(false);
     }

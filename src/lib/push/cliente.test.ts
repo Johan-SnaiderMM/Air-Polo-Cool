@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { claveVapidABytes, disponibilidadAvisos } from "@/lib/push/cliente";
+import { claveVapidABytes, disponibilidadAvisos, mensajeErrorAvisos } from "@/lib/push/cliente";
 
 describe("claveVapidABytes", () => {
   it("convierte la clave pública (base64url, sin relleno) a los bytes que pide el navegador", () => {
@@ -31,5 +31,19 @@ describe("disponibilidadAvisos", () => {
     expect(disponibilidadAvisos({ agente: android, instalada: false, conPush: true })).toBe("disponible");
     expect(disponibilidadAvisos({ agente: android, instalada: true, conPush: true })).toBe("disponible");
     expect(disponibilidadAvisos({ agente: android, instalada: false, conPush: false })).toBe("no_soportado");
+  });
+});
+
+describe("mensajeErrorAvisos", () => {
+  it("el «push service error» del navegador se traduce a qué hacer (conexión, Chrome, permiso dado a mano)", () => {
+    const abort = Object.assign(new Error("Registration failed - push service error"), { name: "AbortError" });
+    expect(mensajeErrorAvisos(abort)).toMatch(/datos móviles/);
+    expect(mensajeErrorAvisos(abort)).toMatch(/permiso de notificaciones a mano/);
+    expect(mensajeErrorAvisos(new Error("Registration failed - push service error"))).toMatch(/servicio de avisos/);
+  });
+
+  it("otros errores conservan su mensaje; sin mensaje, uno genérico", () => {
+    expect(mensajeErrorAvisos(new Error("Tu sesión expiró."))).toBe("Tu sesión expiró.");
+    expect(mensajeErrorAvisos("raro")).toBe("No se pudieron activar los avisos.");
   });
 });
