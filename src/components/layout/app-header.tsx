@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import { useCallback, useState } from "react";
-import { CloudOff, FlaskConical, Snowflake, LogOut, Wrench } from "lucide-react";
+import { Bell, CloudOff, FlaskConical, Snowflake, LogOut, Wrench } from "lucide-react";
 import { cerrarSesion } from "@/app/login/actions";
+import { PanelAvisos } from "@/components/avisos/panel-avisos";
+import { useAvisos } from "@/components/avisos/use-avisos";
 import { PendientesDrawer } from "@/components/sync/pendientes-drawer";
 import { PanelSoporte } from "@/components/soporte/panel-soporte";
 import { useSync } from "@/components/sync/sync-provider";
@@ -24,6 +26,12 @@ export function AppHeader({ soporte }: { soporte: EstadoSoporte }) {
   const [panelSoporte, setPanelSoporte] = useState(false);
   const cerrar = useCallback(() => setPanel(false), []);
   const cerrarSoporte = useCallback(() => setPanelSoporte(false), []);
+  const avisos = useAvisos();
+  const [panelAvisos, setPanelAvisos] = useState(false);
+  const cerrarAvisos = useCallback(() => setPanelAvisos(false), []);
+  // Sin las claves en el servidor, solo soporte ve la campana (para saber que falta configurarlos).
+  const verAvisos = avisos.configurado || soporte.esSoporte;
+  const avisosPorActivar = avisos.estado === "inactivo" || avisos.estado === "instalar_en_inicio";
 
   const hayAlerta = fallidas > 0 || sesionExpirada;
   const etiqueta = !online ? "Sin red" : pendientes > 0 ? `${pendientes}` : "";
@@ -80,6 +88,18 @@ export function AppHeader({ soporte }: { soporte: EstadoSoporte }) {
             {etiqueta}
           </button>
 
+          {verAvisos && (
+            <button
+              type="button"
+              onClick={() => setPanelAvisos(true)}
+              aria-label={avisosPorActivar ? "Avisos de la agenda: sin activar" : "Avisos de la agenda"}
+              className="relative flex size-10 items-center justify-center rounded-full text-stone-500 transition-colors active:bg-stone-200/60"
+            >
+              <Bell className="size-[18px]" strokeWidth={1.75} aria-hidden />
+              {avisosPorActivar && <span className="absolute top-2 right-2 size-2 rounded-full bg-ochre-500" aria-hidden />}
+            </button>
+          )}
+
           {soporte.esSoporte && (
             <button
               type="button"
@@ -118,6 +138,17 @@ export function AppHeader({ soporte }: { soporte: EstadoSoporte }) {
 
       {panel && <PendientesDrawer onClose={cerrar} />}
       {panelSoporte && <PanelSoporte estado={soporte} onClose={cerrarSoporte} />}
+      {panelAvisos && (
+        <PanelAvisos
+          estado={avisos.estado}
+          error={avisos.error}
+          trabajando={avisos.trabajando}
+          onActivar={() => void avisos.activar()}
+          onDesactivar={() => void avisos.desactivar()}
+          onClose={cerrarAvisos}
+          esSoporte={soporte.esSoporte}
+        />
+      )}
     </header>
   );
 }

@@ -52,7 +52,10 @@ export type EstadoCotizacion =
 export type TipoCita = "servicio" | "mantenimiento";
 export type EstadoCita = "pendiente" | "cumplida" | "cancelada";
 
-export type EstadoMantenimiento ="vencido" | "proximo" | "lejano";
+/** Aviso de la agenda: «dia» a las 7:00 a. m. (citas de hoy), «tarde» a las 5:30 p. m. (citas de mañana). */
+export type FranjaAviso = "dia" | "tarde";
+
+export type EstadoMantenimiento = "vencido" | "proximo" | "lejano";
 
 /** Checklist de pertenencias al ingreso (ordenes_servicio.pertenencias). */
 export type Pertenencias = {
@@ -654,6 +657,54 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      /** Fase 8: teléfonos suscritos a los avisos. Solo el servidor (service role) los lee y escribe. */
+      push_suscripciones: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          es_soporte: boolean;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          es_soporte?: boolean;
+          user_agent?: string | null;
+        };
+        Update: {
+          user_id?: string;
+          p256dh?: string;
+          auth?: string;
+          es_soporte?: boolean;
+          user_agent?: string | null;
+        };
+        Relationships: [];
+      };
+      /** Fase 8: resumen ya enviado por día y franja. */
+      push_envios: {
+        Row: {
+          fecha: string;
+          franja: FranjaAviso;
+          enviados: number;
+          created_at: string;
+        };
+        Insert: {
+          fecha: string;
+          franja: FranjaAviso;
+          enviados?: number;
+        };
+        Update: {
+          enviados?: number;
+        };
+        Relationships: [];
       };
       /** Fase 6: modo (real/prueba) de cada usuario de soporte. Se cambia con cambiar_modo_prueba(). */
       soporte_modo: {

@@ -13,6 +13,9 @@
  *  - No sustituye a IndexedDB: los registros nuevos hechos sin conexión viven en la cola local
  *    de la app (ver src/lib/offline/almacen.ts).
  *
+ * Avisos (notificaciones push): recibe el resumen de la agenda que manda el servidor y lo muestra aunque
+ * la app esté cerrada; al tocarlo abre (o enfoca) la app en la pantalla indicada.
+ *
  * Al cerrar sesión, la app borra todas estas cachés (contienen datos del taller).
  */
 const VERSION = "v1";
@@ -127,4 +130,53 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate" || esRsc) {
     event.respondWith(paginas(request, esRsc));
   }
+});
+
+// ---------------------------------------------------------------------
+// Avisos (push): resumen de la agenda
+// ---------------------------------------------------------------------
+self.addEventListener("push", (event) => {
+  let datos = {};
+  try {
+    datos = event.data ? event.data.json() : {};
+  } catch {
+    datos = {};
+  }
+  // Siempre se muestra algo: el navegador exige que cada aviso recibido se vea (userVisibleOnly).
+  event.waitUntil(
+    self.registration.showNotification(typeof datos.titulo === "string" && datos.titulo ? datos.titulo : "Polo Air Cool", {
+      body: typeof datos.cuerpo === "string" ? datos.cuerpo : "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      // Mismo tag = el aviso nuevo reemplaza al anterior en vez de apilarse.
+      tag: typeof datos.etiqueta === "string" && datos.etiqueta ? datos.etiqueta : "polo-aviso",
+      data: { url: typeof datos.url === "string" ? datos.url : "/agenda" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const pedida = event.notification.data && event.notification.data.url;
+  let destino;
+  try {
+    destino = new URL(typeof pedida === "string" ? pedida : "/agenda", self.location.origin);
+  } catch {
+    destino = new URL("/agenda", self.location.origin);
+  }
+  // Solo pantallas de la propia app: un aviso nunca abre otro sitio.
+  if (destino.origin !== self.location.origin) destino = new URL("/agenda", self.location.origin);
+
+  event.waitUntil(
+    (async () => {
+      const ventanas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const ventana of ventanas) {
+        if (!("focus" in ventana)) continue;
+        await ventana.focus();
+        if ("navigate" in ventana) await ventana.navigate(destino.href).catch(() => undefined);
+        return;
+      }
+      await self.clients.openWindow(destino.href);
+    })()
+  );
 });

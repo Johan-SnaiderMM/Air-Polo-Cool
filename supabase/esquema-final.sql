@@ -157,6 +157,18 @@ pagos_orden.notas text null default -
 pagos_orden.orden_id uuid not null default -
 pagos_orden.referencia text null default -
 pagos_orden.registrado_por uuid null default auth.uid()
+push_envios.created_at timestamp with time zone not null default now()
+push_envios.enviados integer not null default 0
+push_envios.fecha date not null default -
+push_envios.franja text not null default -
+push_suscripciones.auth text not null default -
+push_suscripciones.created_at timestamp with time zone not null default now()
+push_suscripciones.endpoint text not null default -
+push_suscripciones.es_soporte boolean not null default false
+push_suscripciones.id uuid not null default gen_random_uuid()
+push_suscripciones.p256dh text not null default -
+push_suscripciones.user_agent text null default -
+push_suscripciones.user_id uuid not null default -
 soporte_modo.prueba boolean not null default false
 soporte_modo.updated_at timestamp with time zone not null default now()
 soporte_modo.user_id uuid not null default -
@@ -350,6 +362,22 @@ pagos_orden: pagos_orden_orden_id_fkey FOREIGN KEY (orden_id) REFERENCES ordenes
 pagos_orden: pagos_orden_orden_id_not_null NOT NULL orden_id
 pagos_orden: pagos_orden_pkey PRIMARY KEY (id)
 pagos_orden: pagos_orden_registrado_por_fkey FOREIGN KEY (registrado_por) REFERENCES auth.users(id) ON DELETE SET NULL
+push_envios: push_envios_created_at_not_null NOT NULL created_at
+push_envios: push_envios_enviados_not_null NOT NULL enviados
+push_envios: push_envios_fecha_not_null NOT NULL fecha
+push_envios: push_envios_franja_check CHECK ((franja = ANY (ARRAY['dia'::text, 'tarde'::text])))
+push_envios: push_envios_franja_not_null NOT NULL franja
+push_envios: push_envios_pkey PRIMARY KEY (fecha, franja)
+push_suscripciones: push_suscripciones_auth_not_null NOT NULL auth
+push_suscripciones: push_suscripciones_created_at_not_null NOT NULL created_at
+push_suscripciones: push_suscripciones_endpoint_key UNIQUE (endpoint)
+push_suscripciones: push_suscripciones_endpoint_not_null NOT NULL endpoint
+push_suscripciones: push_suscripciones_es_soporte_not_null NOT NULL es_soporte
+push_suscripciones: push_suscripciones_id_not_null NOT NULL id
+push_suscripciones: push_suscripciones_p256dh_not_null NOT NULL p256dh
+push_suscripciones: push_suscripciones_pkey PRIMARY KEY (id)
+push_suscripciones: push_suscripciones_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+push_suscripciones: push_suscripciones_user_id_not_null NOT NULL user_id
 soporte_modo: soporte_modo_pkey PRIMARY KEY (user_id)
 soporte_modo: soporte_modo_prueba_not_null NOT NULL prueba
 soporte_modo: soporte_modo_updated_at_not_null NOT NULL updated_at
@@ -403,6 +431,7 @@ CREATE INDEX idx_ordenes_vehiculo ON public.ordenes_servicio USING btree (vehicu
 CREATE INDEX idx_pagos_fecha ON public.pagos_orden USING btree (fecha DESC) WHERE (NOT anulado)
 CREATE INDEX idx_pagos_orden ON public.pagos_orden USING btree (orden_id) WHERE (NOT anulado)
 CREATE INDEX idx_pagos_registrado_por ON public.pagos_orden USING btree (registrado_por)
+CREATE INDEX idx_push_suscripciones_usuario ON public.push_suscripciones USING btree (user_id)
 CREATE INDEX idx_vehiculos_cliente ON public.vehiculos USING btree (cliente_id)
 CREATE INDEX idx_vehiculos_placa_trgm ON public.vehiculos USING gin (placa extensions.gin_trgm_ops)
 CREATE UNIQUE INDEX inventario_pkey ON public.inventario USING btree (id)
@@ -411,6 +440,9 @@ CREATE UNIQUE INDEX orden_repuestos_pkey ON public.orden_repuestos USING btree (
 CREATE UNIQUE INDEX ordenes_servicio_pkey ON public.ordenes_servicio USING btree (id)
 CREATE UNIQUE INDEX ordenes_servicio_token_publico_key ON public.ordenes_servicio USING btree (token_publico)
 CREATE UNIQUE INDEX pagos_orden_pkey ON public.pagos_orden USING btree (id)
+CREATE UNIQUE INDEX push_envios_pkey ON public.push_envios USING btree (fecha, franja)
+CREATE UNIQUE INDEX push_suscripciones_endpoint_key ON public.push_suscripciones USING btree (endpoint)
+CREATE UNIQUE INDEX push_suscripciones_pkey ON public.push_suscripciones USING btree (id)
 CREATE UNIQUE INDEX soporte_modo_pkey ON public.soporte_modo USING btree (user_id)
 CREATE UNIQUE INDEX ux_cierre_fecha ON public.cierres_caja USING btree (fecha) WHERE (NOT anulado)
 CREATE UNIQUE INDEX ux_clientes_documento_modo ON public.clientes USING btree (documento, es_prueba) WHERE (documento IS NOT NULL)
@@ -519,6 +551,8 @@ mantenimiento t
 orden_repuestos t
 ordenes_servicio t
 pagos_orden t
+push_envios t
+push_suscripciones t
 soporte_modo t
 vehiculos t
 

@@ -79,13 +79,26 @@ function crearEntorno() {
     return red.respuestas.get(req.url) ?? respuesta(`red:${req.url}`);
   });
 
+  const avisos = { mostrados: [] as { titulo: string; opciones: Record<string, unknown> }[], abiertas: [] as string[], ventanas: [] as { focus: () => Promise<void>; navigate?: (u: string) => Promise<unknown> }[] };
+
   const self = {
     location: { origin: ORIGEN },
+    registration: {
+      showNotification: async (titulo: string, opciones: Record<string, unknown>) => {
+        avisos.mostrados.push({ titulo, opciones });
+      },
+    },
     addEventListener: (tipo: string, fn: (e: unknown) => void) => {
       manejadores[tipo] = fn;
     },
     skipWaiting: async () => undefined,
-    clients: { claim: async () => undefined },
+    clients: {
+      claim: async () => undefined,
+      matchAll: async () => avisos.ventanas,
+      openWindow: async (u: string) => {
+        avisos.abiertas.push(u);
+      },
+    },
   };
 
   new Function("self", "caches", "fetch", codigo)(self, caches, fetchFalso);
@@ -104,7 +117,7 @@ function crearEntorno() {
     return capturada.promesa ? await capturada.promesa : null;
   }
 
-  return { almacenes, red, pedir, manejadores, caches };
+  return { almacenes, red, pedir, manejadores, caches, avisos };
 }
 
 let e: ReturnType<typeof crearEntorno>;
@@ -192,5 +205,62 @@ describe("service worker: ciclo de vida", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(e.almacenes.has("pac-paginas-v0")).toBe(false);
     expect(e.almacenes.has("pac-estatico-v1")).toBe(true);
+  });
+});
+
+describe("service worker: avisos (push)", () => {
+  const recibir = async (datos: unknown, crudo = false) => {
+    const evento = { data: { json: () => (crudo ? JSON.parse(String(datos)) : datos) }, waitUntil: (p: Promise<unknown>) => p };
+    await e.manejadores.push(evento);
+  };
+  const tocar = async (data: unknown) => {
+    const cerrada = vi.fn();
+    await e.manejadores.notificationclick({ notification: { close: cerrada, data }, waitUntil: (p: Promise<unknown>) => p });
+    return cerrada;
+  };
+
+  it("muestra el resumen con su título, texto, etiqueta (reemplaza al anterior) y la pantalla a abrir", async () => {
+    await recibir({ titulo: "Agenda de hoy", cuerpo: "3 citas hoy · 2 por recordar", url: "/agenda", etiqueta: "agenda-dia" });
+    expect(e.avisos.mostrados).toHaveLength(1);
+    expect(e.avisos.mostrados[0].titulo).toBe("Agenda de hoy");
+    expect(e.avisos.mostrados[0].opciones).toMatchObject({
+      body: "3 citas hoy · 2 por recordar",
+      tag: "agenda-dia",
+      icon: "/icons/icon-192.png",
+      data: { url: "/agenda" },
+    });
+  });
+
+  it("siempre muestra algo, incluso si el aviso llega vacío o ilegible (el navegador lo exige)", async () => {
+    await e.manejadores.push({ data: null, waitUntil: (p: Promise<unknown>) => p });
+    await e.manejadores.push({ data: { json: () => { throw new Error("no es json"); } }, waitUntil: (p: Promise<unknown>) => p });
+    expect(e.avisos.mostrados.map((m) => m.titulo)).toEqual(["Polo Air Cool", "Polo Air Cool"]);
+    expect(e.avisos.mostrados[0].opciones).toMatchObject({ body: "", tag: "polo-aviso", data: { url: "/agenda" } });
+  });
+
+  it("al tocarlo sin la app abierta, abre la agenda", async () => {
+    const cerrada = await tocar({ url: "/agenda" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(cerrada).toHaveBeenCalled();
+    expect(e.avisos.abiertas).toEqual([`${ORIGEN}/agenda`]);
+  });
+
+  it("con la app ya abierta, la enfoca y la lleva a la agenda (sin abrir otra ventana)", async () => {
+    const focus = vi.fn(async () => undefined);
+    const navigate = vi.fn(async () => undefined);
+    e.avisos.ventanas.push({ focus, navigate });
+    await tocar({ url: "/agenda" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(focus).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(`${ORIGEN}/agenda`);
+    expect(e.avisos.abiertas).toEqual([]);
+  });
+
+  it("un aviso nunca abre otro sitio: una dirección externa o inválida cae a la agenda", async () => {
+    await tocar({ url: "https://malo.example/robo" });
+    await tocar({ url: "http://[" });
+    await tocar(undefined);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(e.avisos.abiertas).toEqual([`${ORIGEN}/agenda`, `${ORIGEN}/agenda`, `${ORIGEN}/agenda`]);
   });
 });
