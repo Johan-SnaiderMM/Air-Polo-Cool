@@ -323,4 +323,4 @@ describe("database.ts vs migraciones SQL", () => {
 });
 
 /** Funciones tipadas que existen pero cuya ejecución se revoca a `authenticated` a propósito. */
-const existeSinPermiso = new Set<string>(["fn_generar_token_publico"]);
+const existeSinPermiso = new Set<string>(["fn_generar_token_publico", "registrar_fallo_login", "login_bloqueado", "limpiar_login"]);

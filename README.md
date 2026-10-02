@@ -18,6 +18,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    6. `…06_fase6_soporte.sql` (usuario de soporte: modo prueba y mantenimiento; ver «Usuario de soporte»)
    7. `…07_fase7_agenda.sql` (agenda de citas; requiere la fase 6)
    8. `…08_fase8_avisos.sql` (suscripciones a los avisos de la agenda; requiere la fase 7)
+   9. `…09_fase9_login.sql` (límite de intentos de ingreso; ver «Seguridad»)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
@@ -282,6 +283,16 @@ icono de llave del encabezado (solo él lo ve):
 - El service role se usa únicamente para firmar URLs de fotos y está marcado `server-only`.
 - Permisos: el `operario` crea y edita; solo el `admin` borra (repuestos de una orden, fotos, gastos).
 - El envío automático de WhatsApp está **apagado** salvo `WHATSAPP_AUTO_ENVIO=true`.
+- **Límite de intentos de ingreso** (fase 9): tres contadores independientes que bloquean 15 minutos —**correo + IP: 5 fallos**,
+  correo (cualquier IP): 20, IP (cualquier correo): 40, todos en ventanas de 15 min—. Se consulta **antes** de preguntarle a Supabase
+  (quien está bloqueado no puede seguir probando, ni aunque acierte) y responde el mismo mensaje exista o no el correo. Un extraño
+  no puede dejar sin acceso al dueño equivocándose desde otra red (solo bloquea su propio «correo + IP»). Los contadores guardan
+  **huellas (HMAC)** del correo y la IP, nunca el dato en claro, y solo el servidor los toca. Un ingreso correcto borra los de
+  correo y par. **Si la migración no está o la base falla, el ingreso sigue funcionando** sin este límite (queda el de Supabase).
+  Para desbloquear a alguien al instante: `delete from public.login_intentos;` en el SQL Editor. Política en `src/lib/login-limite.ts`.
+- **Supabase Auth (ajustes del panel, no del código):** conviene tener **desactivado el registro abierto de usuarios** (Authentication →
+  Sign In / Providers → «Allow new users to sign up»): los usuarios los crea el dueño. Aunque alguien se registrara, sin el rol en
+  `app_metadata` (que el propio usuario no puede editar) el RLS no le da acceso a nada; pero evita cuentas basura y envío de correos.
 
 ## Pruebas
 

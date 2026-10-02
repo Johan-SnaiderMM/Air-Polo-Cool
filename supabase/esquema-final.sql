@@ -106,6 +106,10 @@ inventario.stock_actual numeric not null default 0
 inventario.stock_minimo numeric not null default 0
 inventario.tipo_unidad USER-DEFINED not null default 'unidad'::tipo_unidad
 inventario.updated_at timestamp with time zone not null default now()
+login_intentos.bloqueado_hasta timestamp with time zone null default -
+login_intentos.clave text not null default -
+login_intentos.desde timestamp with time zone not null default now()
+login_intentos.fallos integer not null default 0
 mantenimiento.activo boolean not null default false
 mantenimiento.actualizado_por uuid null default -
 mantenimiento.desde timestamp with time zone null default -
@@ -307,6 +311,10 @@ inventario: inventario_stock_minimo_check CHECK ((stock_minimo >= (0)::numeric))
 inventario: inventario_stock_minimo_not_null NOT NULL stock_minimo
 inventario: inventario_tipo_unidad_not_null NOT NULL tipo_unidad
 inventario: inventario_updated_at_not_null NOT NULL updated_at
+login_intentos: login_intentos_clave_not_null NOT NULL clave
+login_intentos: login_intentos_desde_not_null NOT NULL desde
+login_intentos: login_intentos_fallos_not_null NOT NULL fallos
+login_intentos: login_intentos_pkey PRIMARY KEY (clave)
 mantenimiento: mantenimiento_activo_not_null NOT NULL activo
 mantenimiento: mantenimiento_id_check CHECK (id)
 mantenimiento: mantenimiento_id_not_null NOT NULL id
@@ -435,6 +443,7 @@ CREATE INDEX idx_push_suscripciones_usuario ON public.push_suscripciones USING b
 CREATE INDEX idx_vehiculos_cliente ON public.vehiculos USING btree (cliente_id)
 CREATE INDEX idx_vehiculos_placa_trgm ON public.vehiculos USING gin (placa extensions.gin_trgm_ops)
 CREATE UNIQUE INDEX inventario_pkey ON public.inventario USING btree (id)
+CREATE UNIQUE INDEX login_intentos_pkey ON public.login_intentos USING btree (clave)
 CREATE UNIQUE INDEX mantenimiento_pkey ON public.mantenimiento USING btree (id)
 CREATE UNIQUE INDEX orden_repuestos_pkey ON public.orden_repuestos USING btree (id)
 CREATE UNIQUE INDEX ordenes_servicio_pkey ON public.ordenes_servicio USING btree (id)
@@ -547,6 +556,7 @@ cotizaciones t
 evidencias_fotograficas t
 gastos_caja_menor t
 inventario t
+login_intentos t
 mantenimiento t
 orden_repuestos t
 ordenes_servicio t
@@ -1146,6 +1156,27 @@ begin
   return new;
 end $function$
 
+CREATE OR REPLACE FUNCTION public.limpiar_login(p_clave text)
+ RETURNS void
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  delete from public.login_intentos where clave = p_clave;
+$function$
+
+CREATE OR REPLACE FUNCTION public.login_bloqueado(p_claves text[])
+ RETURNS timestamp with time zone
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  select max(bloqueado_hasta)
+    from public.login_intentos
+   where clave = any(p_claves)
+     and bloqueado_hasta > now();
+$function$
+
 CREATE OR REPLACE FUNCTION public.obtener_orden_publica(p_token text)
  RETURNS jsonb
  LANGUAGE sql
@@ -1211,6 +1242,43 @@ AS $function$
   limit 1;
 $function$
 
+CREATE OR REPLACE FUNCTION public.registrar_fallo_login(p_clave text, p_max integer, p_ventana_seg integer, p_bloqueo_seg integer)
+ RETURNS timestamp with time zone
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v public.login_intentos;
+begin
+  -- Limpieza oportunista de contadores viejos (la tabla es pequeña).
+  delete from public.login_intentos
+   where desde < now() - interval '1 day'
+     and (bloqueado_hasta is null or bloqueado_hasta < now());
+
+  insert into public.login_intentos as t (clave, fallos, desde)
+  values (p_clave, 1, now())
+  on conflict (clave) do update
+     set fallos = case
+           when t.desde < now() - make_interval(secs => p_ventana_seg)
+                and (t.bloqueado_hasta is null or t.bloqueado_hasta <= now())
+             then 1 else t.fallos + 1 end,
+         desde = case
+           when t.desde < now() - make_interval(secs => p_ventana_seg)
+                and (t.bloqueado_hasta is null or t.bloqueado_hasta <= now())
+             then now() else t.desde end
+  returning * into v;
+
+  if v.fallos >= p_max and (v.bloqueado_hasta is null or v.bloqueado_hasta <= now()) then
+    update public.login_intentos
+       set bloqueado_hasta = now() + make_interval(secs => p_bloqueo_seg)
+     where clave = p_clave
+     returning bloqueado_hasta into v.bloqueado_hasta;
+  end if;
+
+  return case when v.bloqueado_hasta > now() then v.bloqueado_hasta end;
+end $function$
+
 
 -- PERMISOS DE EJECUCION
 anular_cierre(p_id uuid, p_motivo text) anon=f authenticated=t service_role=t
@@ -1237,7 +1305,10 @@ fn_orden_before_write() anon=t authenticated=t service_role=t
 fn_orden_repuestos_stock() anon=f authenticated=f service_role=t
 fn_saldo_caja(p_hasta date) anon=f authenticated=t service_role=t
 fn_set_updated_at() anon=t authenticated=t service_role=t
+limpiar_login(p_clave text) anon=f authenticated=f service_role=t
+login_bloqueado(p_claves text[]) anon=f authenticated=f service_role=t
 obtener_orden_publica(p_token text) anon=t authenticated=t service_role=t
+registrar_fallo_login(p_clave text, p_max integer, p_ventana_seg integer, p_bloqueo_seg integer) anon=f authenticated=f service_role=t
 
 -- VISTAS
 v_balance_mensual (security_invoker=true)

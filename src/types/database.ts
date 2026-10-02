@@ -706,6 +706,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** Fase 9: intentos fallidos de ingreso por huella de correo / IP. Solo el servidor (service role). */
+      login_intentos: {
+        Row: {
+          clave: string;
+          fallos: number;
+          desde: string;
+          bloqueado_hasta: string | null;
+        };
+        Insert: {
+          clave: string;
+          fallos?: number;
+          desde?: string;
+          bloqueado_hasta?: string | null;
+        };
+        Update: {
+          fallos?: number;
+          desde?: string;
+          bloqueado_hasta?: string | null;
+        };
+        Relationships: [];
+      };
       /** Fase 6: modo (real/prueba) de cada usuario de soporte. Se cambia con cambiar_modo_prueba(). */
       soporte_modo: {
         Row: {
@@ -946,6 +967,21 @@ export type Database = {
       cambiar_mantenimiento: {
         Args: { p_activo: boolean; p_motivo?: string | null };
         Returns: boolean;
+      };
+      /** Fase 9 (solo service role): anota un intento fallido; devuelve el bloqueo vigente o null. */
+      registrar_fallo_login: {
+        Args: { p_clave: string; p_max: number; p_ventana_seg: number; p_bloqueo_seg: number };
+        Returns: string | null;
+      };
+      /** Fase 9 (solo service role): el bloqueo más largo vigente entre esas claves, o null. */
+      login_bloqueado: {
+        Args: { p_claves: string[] };
+        Returns: string | null;
+      };
+      /** Fase 9 (solo service role): borra el contador de esa clave (ingreso correcto). */
+      limpiar_login: {
+        Args: { p_clave: string };
+        Returns: undefined;
       };
       fn_generar_token_publico: {
         Args: Record<PropertyKey, never>;

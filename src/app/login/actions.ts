@@ -1,6 +1,16 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  ipDeCliente,
+  MENSAJE_CREDENCIALES,
+  MENSAJE_LIMITE_PROVEEDOR,
+  mensajeBloqueo,
+  normalizarCorreo,
+} from "@/lib/login-limite";
+import { bloqueoVigente, clavesLogin, limpiarAcierto, registrarFallo } from "@/lib/servidor/login-limite";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
 export type LoginState = { error?: string };
@@ -24,6 +34,17 @@ export async function iniciarSesion(
     return { error: "Ingresa tu correo y contraseña." };
   }
 
+  // Límite de intentos (fase 9): se consulta ANTES de preguntarle a Supabase, para que quien está bloqueado
+  // no pueda seguir probando contraseñas. Sin la clave de servicio no hay límite adicional (el de Supabase sigue).
+  const admin = createAdminClient();
+  const claves = admin
+    ? clavesLogin({ correo: normalizarCorreo(email), ip: ipDeCliente(await headers()) }, process.env.SUPABASE_SERVICE_ROLE_KEY ?? "")
+    : [];
+  if (admin) {
+    const bloqueo = await bloqueoVigente(admin, claves);
+    if (bloqueo) return { error: mensajeBloqueo(bloqueo) };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -31,7 +52,11 @@ export async function iniciarSesion(
   });
 
   if (error || !data.user) {
-    return { error: "Correo o contraseña incorrectos." };
+    // El límite propio de Supabase (429) no es una contraseña mala: se avisa distinto y no suma al contador.
+    if (error?.status === 429) return { error: MENSAJE_LIMITE_PROVEEDOR };
+    const bloqueo = admin ? await registrarFallo(admin, claves) : null;
+    // Mismo mensaje exista o no el correo: no se revela quién tiene cuenta.
+    return { error: bloqueo ? mensajeBloqueo(bloqueo) : MENSAJE_CREDENCIALES };
   }
 
   const rol = data.user.app_metadata?.rol;
@@ -43,6 +68,7 @@ export async function iniciarSesion(
     };
   }
 
+  if (admin) await limpiarAcierto(admin, claves);
   redirect(destinoSeguro(formData.get("next")));
 }
 
