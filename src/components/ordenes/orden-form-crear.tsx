@@ -12,9 +12,12 @@ import {
   MensajeForm,
   useValoresOrden,
 } from "@/components/ordenes/orden-campos";
+import { CitaDeLaOrden } from "@/components/agenda/cita-de-la-orden";
+import { useCitaDeLaOrden } from "@/components/agenda/use-cita-de-la-orden";
 import { VehiculoSelector, type SeleccionVehiculo } from "@/components/ordenes/vehiculo-selector";
 import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
+import { citaDeLaEleccion, faltaElegirCita } from "@/lib/agenda";
 import { VALORES_NUEVA, armarOrdenNueva } from "@/lib/orden-nueva";
 
 /**
@@ -42,11 +45,20 @@ export function OrdenFormCrear({
 
   const alElegirVehiculo = useCallback((s: SeleccionVehiculo | null) => setVehiculo(s), []);
 
+  // Si el vehículo ya está registrado, se revisa su agenda: la cita de hoy se cierra sola al guardar y
+  // por las de los próximos días se pregunta.
+  const agenda = useCitaDeLaOrden(vehiculo?.modo === "existente" ? vehiculo.vehiculo.id : null, citaId);
+
   function crear(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const r = armarOrdenNueva({ valores, vehiculo, autor, citaId });
+    if (agenda.cargando) return setError("Revisando la agenda de este vehículo… inténtalo de nuevo en un momento.");
+    if (faltaElegirCita(agenda.citas, agenda.eleccion)) return setError("Indica si este ingreso es de la cita programada.");
+
+    // Sin citas que ofrecer (p. ej. sin red) se conserva la de la que se llegó desde la agenda, si la hay.
+    const cita = agenda.citas.length > 0 ? citaDeLaEleccion(agenda.eleccion) : citaId;
+    const r = armarOrdenNueva({ valores, vehiculo, autor, citaId: cita });
     if (!r.ok) return setError(r.error);
 
     iniciar(async () => {
@@ -96,6 +108,8 @@ export function OrdenFormCrear({
         <legend className={LEYENDA}>Vehículo</legend>
         <VehiculoSelector inicial={vehiculoInicial ?? null} onChange={alElegirVehiculo} />
       </fieldset>
+
+      {agenda.citas.length > 0 && <CitaDeLaOrden citas={agenda.citas} eleccion={agenda.eleccion} onElegir={agenda.elegir} />}
 
       <CamposOrden valores={valores} onCambio={cambiar} fechaEntrega={null} />
 

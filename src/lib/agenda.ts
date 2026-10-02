@@ -108,3 +108,44 @@ export function agruparCitas<T extends { fechaHora: string }>(
   }
   return { atrasadas, dias };
 }
+
+// ---------------------------------------------------------------------
+// Citas del vehículo al crear una orden
+// ---------------------------------------------------------------------
+
+/** Cuántos días hacia adelante se pregunta, al crear una orden, si el ingreso es de una cita programada. */
+export const DIAS_AVISO_CITA = 7;
+
+/** Valor de la elección cuando el ingreso NO es de ninguna de las citas ofrecidas. */
+export const ELECCION_APARTE = "aparte";
+
+/** Una cita pendiente del vehículo que se está recibiendo (hoy o en los próximos días). */
+export type CitaDeVehiculo = {
+  id: string;
+  /** Instante ISO (UTC). */
+  fechaHora: string;
+  tipo: TipoCita;
+  /** Si es hoy: se propone como la cita de este ingreso sin preguntar. */
+  esHoy: boolean;
+  /** "Hoy", "Mañana" o "Domingo 4 de octubre". */
+  etiquetaDia: string;
+  /** "9:30 a. m." */
+  horaTexto: string;
+};
+
+/**
+ * Elección inicial: la cita desde la que se llegó (si viene de la agenda) o la de HOY; las de los
+ * próximos días no se asumen, hay que preguntar (`undefined` = sin elegir todavía).
+ */
+export function eleccionPorDefecto(citas: CitaDeVehiculo[], citaInicial: string | null): string | undefined {
+  if (citaInicial && citas.some((c) => c.id === citaInicial)) return citaInicial;
+  return citas.find((c) => c.esHoy)?.id;
+}
+
+/** La cita que la orden debe cerrar al guardarse (null si es un ingreso aparte o no hay elección). */
+export const citaDeLaEleccion = (eleccion: string | undefined): string | null =>
+  eleccion && eleccion !== ELECCION_APARTE ? eleccion : null;
+
+/** Hay citas por las que preguntar y todavía no se respondió. */
+export const faltaElegirCita = (citas: CitaDeVehiculo[], eleccion: string | undefined): boolean =>
+  citas.length > 0 && eleccion === undefined;

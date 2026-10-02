@@ -2,7 +2,8 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { instanteBogota } from "@/lib/agenda";
+import { instanteBogota, type CitaDeVehiculo } from "@/lib/agenda";
+import { citasDelVehiculo as consultarCitasDelVehiculo } from "@/lib/datos/agenda";
 import { citaFormSchema } from "@/lib/esquemas/cita";
 import { validar } from "@/lib/esquemas/comunes";
 import { seleccionVehiculoSchema } from "@/lib/esquemas/cotizacion";
@@ -134,4 +135,23 @@ export async function marcarRecordatorio(datos: { id: string }): Promise<AccionC
 
   revalidatePath("/agenda");
   return { ok: true };
+}
+
+/**
+ * Citas pendientes de un vehículo (hoy y próximos 7 días) para la pantalla de «Nueva orden»: si hay
+ * alguna, el formulario propone la de hoy y pregunta por las de los próximos días. `incluirId` es la
+ * cita desde la que se llegó, si viene de la agenda.
+ */
+export async function citasDelVehiculo(datos: {
+  vehiculoId: string;
+  incluirId?: string | null;
+}): Promise<{ ok: true; citas: CitaDeVehiculo[] } | { ok: false; error: string }> {
+  if (!esUuid(datos.vehiculoId)) return { ok: false, error: "Vehículo inválido." };
+  const incluirId = datos.incluirId && esUuid(datos.incluirId) ? datos.incluirId : null;
+
+  const { supabase, user } = await obtenerSesion();
+  if (!user) return SESION_EXPIRADA;
+
+  const r = await consultarCitasDelVehiculo(supabase, datos.vehiculoId, incluirId);
+  return r.error ? { ok: false, error: r.error } : { ok: true, citas: r.citas };
 }

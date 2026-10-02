@@ -7,10 +7,13 @@ import {
   agruparCitas,
   cuandoCita,
   DIAS_ATRASADAS,
+  DIAS_AVISO_CITA,
+  etiquetaDiaAgenda,
   horaLegible,
   instanteBogota,
   partesBogota,
   sumarDias,
+  type CitaDeVehiculo,
   type GrupoDia,
 } from "@/lib/agenda";
 import { hoyBogota } from "@/lib/caja";
@@ -184,4 +187,56 @@ export async function contarAgendaInicio(
   const [a, b] = await Promise.all([contar(d0), contar(d1)]);
   if (a.error || b.error) return null;
   return { hoy: a.count ?? 0, manana: b.count ?? 0 };
+}
+
+/**
+ * Citas pendientes de un vehículo para hoy y los próximos 7 días (para decidir, al recibirlo, si el
+ * ingreso es de una cita). `incluirId` fuerza a incluir esa cita (la de la que se viene desde la agenda)
+ * aunque caiga más lejos. Sin la tabla (migración pendiente) devuelve la lista vacía y el error.
+ */
+export async function citasDelVehiculo(
+  supabase: ClienteServidor,
+  vehiculoId: string,
+  incluirId: string | null = null,
+  hoy = hoyBogota()
+): Promise<{ citas: CitaDeVehiculo[]; error: string | null }> {
+  const desde = instanteBogota(hoy, "00:00");
+  const hasta = instanteBogota(sumarDias(hoy, DIAS_AVISO_CITA + 1), "00:00");
+  const { data, error } = await supabase
+    .from("citas")
+    .select("id, fecha_hora, tipo")
+    .eq("vehiculo_id", vehiculoId)
+    .eq("estado", "pendiente")
+    .gte("fecha_hora", desde)
+    .lt("fecha_hora", hasta)
+    .order("fecha_hora", { ascending: true })
+    .limit(10);
+  if (error) return { citas: [], error: mensajeDeError(error) };
+
+  let filas = data ?? [];
+  if (incluirId && !filas.some((f) => f.id === incluirId)) {
+    const { data: una } = await supabase
+      .from("citas")
+      .select("id, fecha_hora, tipo")
+      .eq("id", incluirId)
+      .eq("vehiculo_id", vehiculoId)
+      .eq("estado", "pendiente")
+      .maybeSingle();
+    if (una) filas = [...filas, una].sort((a, b) => a.fecha_hora.localeCompare(b.fecha_hora));
+  }
+
+  return {
+    citas: filas.map((f) => {
+      const { fecha } = partesBogota(f.fecha_hora);
+      return {
+        id: f.id,
+        fechaHora: f.fecha_hora,
+        tipo: f.tipo,
+        esHoy: fecha === hoy,
+        etiquetaDia: etiquetaDiaAgenda(fecha, hoy),
+        horaTexto: horaLegible(f.fecha_hora),
+      };
+    }),
+    error: null,
+  };
 }
