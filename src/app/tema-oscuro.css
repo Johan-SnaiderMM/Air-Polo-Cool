@@ -1,0 +1,127 @@
+/*
+ * MODO OSCURO · Polo Air Cool
+ *
+ * Se activa con <html data-tema="dark"> (ver src/lib/tema.ts y el botón del encabezado). La interfaz
+ * clara NO cambia: todo esto vive bajo ese atributo y se desactiva al imprimir (los comprobantes
+ * siempre salen claros).
+ *
+ * Cómo funciona: los colores del sistema de diseño son variables (--color-*), así que casi todo se
+ * invierte redefiniéndolas aquí (grises, fondos tintados de los estados, papel, tinta). Donde un
+ * mismo color hace dos oficios distintos (p. ej. «ink» es el color del texto Y el relleno de los
+ * botones principales; «sage-700» es texto de una insignia Y fondo de un botón) se ajusta la clase
+ * concreta más abajo. Estas reglas van sin capa, así que ganan a las utilidades de Tailwind.
+ */
+@media not print {
+  :root[data-tema="dark"] {
+    color-scheme: dark; /* controles nativos (fecha, hora, listas, barras de desplazamiento) en oscuro */
+
+    --color-paper: #0b1220; /* fondo de la página */
+    --color-ink: #eaf0fb; /* texto principal */
+    --color-ink-soft: #3a5cb8; /* botón principal al pulsarlo */
+
+    /* Tarjetas, paneles y campos (lo que en claro es «bg-white»). */
+    --superficie: #121b2e;
+    /* Relleno de lo que en claro es «bg-ink»: botones principales, selección y tarjetas destacadas. */
+    --relleno-ink: #2f4ea0;
+    --relleno-ink-activo: #3a5cb8;
+
+    /* Grises: la escala se invierte (50 = casi superficie, 900 = casi blanco). */
+    --color-stone-50: #18233a;
+    --color-stone-100: #1d2942;
+    --color-stone-200: #263350;
+    --color-stone-300: #33425f;
+    --color-stone-400: #6f7f99;
+    --color-stone-500: #94a3bb;
+    --color-stone-600: #aebbd0;
+    --color-stone-700: #c6d0e0;
+    --color-stone-800: #dbe3ef;
+    --color-stone-900: #edf1f8;
+
+    /* Azul de marca: solo cambian los fondos suaves. */
+    --color-accent-50: #14234a;
+    --color-accent-100: #1b2d57;
+
+    /* Estados: fondos tintados oscuros y bordes apagados (el texto se ajusta abajo). */
+    --color-sage-50: #14231b;
+    --color-sage-100: #1a2e22;
+    --color-sage-300: #3d5c49;
+    --color-ochre-50: #261f10;
+    --color-ochre-100: #312714;
+    --color-ochre-300: #6b5628;
+    --color-brick-50: #2a1713;
+    --color-brick-100: #38201a;
+    --color-brick-300: #7a4034;
+    --color-dusk-100: #1a2733;
+  }
+
+  /* Superficies */
+  :root[data-tema="dark"] .bg-white,
+  :root[data-tema="dark"] .focus-within\:bg-white:focus-within {
+    background-color: var(--superficie);
+  }
+  :root[data-tema="dark"] .bg-white\/70 {
+    background-color: rgb(18 27 46 / 0.7);
+  }
+
+  /* «ink» como relleno / borde (botones principales, chips elegidos, tarjetas destacadas) */
+  :root[data-tema="dark"] .bg-ink {
+    background-color: var(--relleno-ink);
+  }
+  :root[data-tema="dark"] .active\:bg-ink:active {
+    background-color: var(--relleno-ink-activo);
+  }
+  :root[data-tema="dark"] .border-ink {
+    border-color: var(--relleno-ink);
+  }
+  :root[data-tema="dark"] .ring-ink {
+    --tw-ring-color: var(--relleno-ink);
+  }
+  /* Texto claro sobre esas tarjetas destacadas (en claro es «paper», que ahora es oscuro). */
+  :root[data-tema="dark"] .text-paper {
+    color: #e8eefc;
+  }
+  :root[data-tema="dark"] .backdrop\:bg-ink\/45::backdrop {
+    background-color: rgb(0 0 0 / 0.55);
+  }
+
+  /* Los grises de texto dentro de esas tarjetas (en claro, grises claros sobre azul marino) siguen
+     siendo claros: sin esto, con la escala invertida quedarían apagados sobre el relleno azul. */
+  :root[data-tema="dark"] .bg-ink .text-stone-300 {
+    color: #d3dcf0;
+  }
+  :root[data-tema="dark"] .bg-ink .text-stone-400 {
+    color: #b4c2e0;
+  }
+  :root[data-tema="dark"] .bg-ink .text-stone-500 {
+    color: #9fb0d4;
+  }
+
+  /* Texto de las insignias y avisos de estado: tonos claros del mismo matiz. */
+  :root[data-tema="dark"] .text-sage-700,
+  :root[data-tema="dark"] .text-sage-800 {
+    color: #9ccbad;
+  }
+  :root[data-tema="dark"] .text-ochre-700,
+  :root[data-tema="dark"] .text-ochre-800 {
+    color: #e3c46e;
+  }
+  :root[data-tema="dark"] .text-brick-600,
+  :root[data-tema="dark"] .text-brick-700,
+  :root[data-tema="dark"] .text-brick-800 {
+    color: #f0a090;
+  }
+  :root[data-tema="dark"] .text-brick-300 {
+    color: #f0a999;
+  }
+  :root[data-tema="dark"] .text-dusk-800 {
+    color: #9fc0d6;
+  }
+  :root[data-tema="dark"] .text-accent-700 {
+    color: #8fb4ff;
+  }
+
+  /* Esqueleto de carga: el brillo blanco pasa a ser un brillo suave sobre fondo oscuro. */
+  :root[data-tema="dark"] .esqueleto {
+    background-image: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.08) 50%, transparent 70%);
+  }
+}

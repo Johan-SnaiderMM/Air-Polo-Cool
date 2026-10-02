@@ -131,6 +131,29 @@ se abre la agenda.
 - **Pruebas:** el resumen, el envío (con `web-push` simulado), la ruta programada, las acciones y el service worker están
   probados; la entrega real a un teléfono solo se comprueba con un iPhone y un Android de verdad.
 
+## Modo oscuro
+
+El botón de la luna/sol del encabezado alterna entre claro y oscuro y recuerda la elección **en ese teléfono**
+(`localStorage`, clave `polo:tema`). Mientras no se toque, se sigue la preferencia del sistema.
+
+- **Cómo se aplica:** un script en `<head>` (`src/lib/tema.ts`) pone `data-tema="dark"` en `<html>` **antes de pintar**, así no hay
+  un destello claro al abrir. Todo el tema está en `src/app/tema-oscuro.css`: redefine las variables de color del sistema de
+  diseño (grises invertidos, fondos tintados de los estados, papel y tinta) y ajusta las pocas clases donde un mismo color hace dos
+  oficios (p. ej. `ink` es el texto y también el relleno de los botones). El modo claro no cambia.
+- **El portal del cliente (`/orden/…`) siempre se ve claro**, aunque el teléfono sea oscuro: es un documento de la marca para quien
+  no tiene la app. Los comprobantes impresos o en PDF también salen claros.
+- **Al añadir colores nuevos:** usa las variables/clases del sistema (`bg-white`, `text-ink`, `stone-*`, `sage/ochre/brick-*`). Si usas un
+  color fijo (hexadecimal), no cambiará con el tema.
+
+## Iconos
+
+- **Aviso (notificación):** `public/icons/badge-96.png` es un copo blanco sobre transparente; Android lo pinta como silueta de un
+  solo color en la barra de estado.
+- **Pantalla de carga del teléfono:** Android la arma con el icono `maskable`, que ahora es el logo sobre el **color de fondo de
+  la app** (`#f4f7fb`) en vez de un cuadrado azul marino, así se ve solo el logo, sin marco. En un teléfono donde la app ya estaba
+  instalada, el cambio llega cuando Chrome actualiza la app instalada (puede tardar un día); reinstalarla lo aplica al instante.
+  La pantalla de carga no puede ser oscura según el tema: el manifiesto tiene un único color de fondo.
+
 ## Fotos de repuestos
 
 Al tomar una foto de **repuesto retirado** o **instalado**, primero se elige de qué repuesto de la orden es. En la

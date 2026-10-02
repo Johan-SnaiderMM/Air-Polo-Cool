@@ -337,7 +337,7 @@ export function PagosOrden({ ordenId, estadoOrden, totalCobrado, pagos }: Props)
             type="checkbox"
             checked={devolucion}
             onChange={(e) => setDevolucion(e.target.checked)}
-            className="size-4 accent-[#0b1633]"
+            className="size-4 accent-ink"
           />
           Es una devolución de dinero al cliente
         </label>

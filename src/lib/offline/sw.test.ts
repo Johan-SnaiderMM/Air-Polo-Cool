@@ -227,6 +227,7 @@ describe("service worker: avisos (push)", () => {
       body: "3 citas hoy · 2 por recordar",
       tag: "agenda-dia",
       icon: "/icons/icon-192.png",
+      badge: "/icons/badge-96.png", // silueta blanca: el logo a color se vería como un círculo liso en la barra de Android
       data: { url: "/agenda" },
     });
   });

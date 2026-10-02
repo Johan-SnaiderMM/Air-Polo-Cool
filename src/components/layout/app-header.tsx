@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { Bell, CloudOff, FlaskConical, Snowflake, LogOut, Wrench } from "lucide-react";
 import { cerrarSesion } from "@/app/login/actions";
 import { PanelAvisos } from "@/components/avisos/panel-avisos";
+import { BotonTema } from "@/components/layout/boton-tema";
 import { useAvisos } from "@/components/avisos/use-avisos";
 import { PendientesDrawer } from "@/components/sync/pendientes-drawer";
 import { PanelSoporte } from "@/components/soporte/panel-soporte";
@@ -99,6 +100,8 @@ export function AppHeader({ soporte }: { soporte: EstadoSoporte }) {
               {avisosPorActivar && <span className="absolute top-2 right-2 size-2 rounded-full bg-ochre-500" aria-hidden />}
             </button>
           )}
+
+          <BotonTema />
 
           {soporte.esSoporte && (
             <button

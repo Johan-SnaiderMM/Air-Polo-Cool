@@ -32,7 +32,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_ESTATICO)
-      .then((cache) => cache.addAll([OFFLINE_URL, "/logo.png", "/icons/icon-192.png"]))
+      .then((cache) => cache.addAll([OFFLINE_URL, "/logo.png", "/icons/icon-192.png", "/icons/badge-96.png"]))
       .then(() => self.skipWaiting())
   );
 });
@@ -147,7 +147,8 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(typeof datos.titulo === "string" && datos.titulo ? datos.titulo : "Polo Air Cool", {
       body: typeof datos.cuerpo === "string" ? datos.cuerpo : "",
       icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      // Icono pequeño de la barra de estado: Android lo pinta como silueta, así que es un copo blanco sobre transparente.
+      badge: "/icons/badge-96.png",
       // Mismo tag = el aviso nuevo reemplaza al anterior en vez de apilarse.
       tag: typeof datos.etiqueta === "string" && datos.etiqueta ? datos.etiqueta : "polo-aviso",
       data: { url: typeof datos.url === "string" ? datos.url : "/agenda" },

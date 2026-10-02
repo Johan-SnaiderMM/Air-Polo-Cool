@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { RegistrarServiceWorker } from "@/components/sync/registrar-sw";
+import { SCRIPT_TEMA } from "@/lib/tema";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -51,10 +52,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
+    // suppressHydrationWarning: el script de <head> pone data-tema en <html> antes de que React hidrate.
     <html
       lang="es"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+      </head>
       <body className="flex min-h-full flex-col bg-paper text-ink">
         {children}
         <RegistrarServiceWorker />

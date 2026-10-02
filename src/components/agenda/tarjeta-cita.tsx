@@ -83,7 +83,7 @@ export function TarjetaCita({ cita, atrasada = false }: { cita: CitaVista; atras
 
       <div className="flex items-center justify-between text-[13px]">
         <button type="button" onClick={() => setEditando(true)} className="min-h-10 px-1 font-medium text-stone-600 underline underline-offset-2">
-          {atrasada ? "Reprogramar" : "Cambiar día u hora"}
+          Reprogramar
         </button>
         <Link href={`/vehiculos/${cita.vehiculoId}`} className="flex min-h-10 items-center px-1 font-medium text-stone-600 underline underline-offset-2">
           Datos del vehículo
