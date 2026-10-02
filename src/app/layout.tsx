@@ -45,7 +45,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#f4f7fb",
+  // Barra del navegador / estado del teléfono: sigue al sistema desde el primer momento; al elegir un tema a mano,
+  // el botón del encabezado la ajusta (src/components/layout/boton-tema.tsx).
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
+  ],
 };
 
 export default function RootLayout({

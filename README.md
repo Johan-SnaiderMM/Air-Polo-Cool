@@ -149,10 +149,13 @@ El botón de la luna/sol del encabezado alterna entre claro y oscuro y recuerda 
 
 - **Aviso (notificación):** `public/icons/badge-96.png` es un copo blanco sobre transparente; Android lo pinta como silueta de un
   solo color en la barra de estado.
-- **Pantalla de carga del teléfono:** Android la arma con el icono `maskable`, que ahora es el logo sobre el **color de fondo de
-  la app** (`#f4f7fb`) en vez de un cuadrado azul marino, así se ve solo el logo, sin marco. En un teléfono donde la app ya estaba
-  instalada, el cambio llega cuando Chrome actualiza la app instalada (puede tardar un día); reinstalarla lo aplica al instante.
-  La pantalla de carga no puede ser oscura según el tema: el manifiesto tiene un único color de fondo.
+- **Pantalla de carga del teléfono:** Android la arma con el icono `maskable` (logo sobre azul marino `#0b1633`) puesto sobre el
+  `background_color` del manifiesto, que es **ese mismo azul marino**: así el marco del icono no se ve y queda solo el logo sobre
+  un fondo liso. El manifiesto no puede cambiar con el tema (claro/oscuro), por eso se eligió un color que se ve bien en ambos.
+  Android guarda ese icono y color **dentro de la app instalada**: en un teléfono donde ya estaba instalada, el cambio solo llega
+  cuando Chrome actualiza la app (puede tardar días) o si se **desinstala y se vuelve a instalar**.
+- **Barra del navegador / estado:** `theme-color` tiene una versión clara y otra oscura según el sistema, y el botón del tema la
+  ajusta cuando se elige a mano.
 
 ## Fotos de repuestos
 

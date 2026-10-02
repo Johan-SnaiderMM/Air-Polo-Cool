@@ -20,7 +20,10 @@ export function BotonTema() {
   const oscuro = useSyncExternalStore(suscribir, hayOscuro, () => false);
 
   useEffect(() => {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", COLOR_BARRA[oscuro ? "oscuro" : "claro"]);
+    // Hay una etiqueta por tema (con media query); al conocer el tema real se ponen todas del mismo color.
+    document
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((m) => m.setAttribute("content", COLOR_BARRA[oscuro ? "oscuro" : "claro"]));
   }, [oscuro]);
 
   function alternar() {

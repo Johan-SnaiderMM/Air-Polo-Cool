@@ -10,7 +10,10 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     lang: "es",
-    background_color: "#f4f7fb",
+    // La pantalla de carga de Android pinta el logo (icono «maskable», fondo azul marino) sobre este color. Debe ser
+    // EL MISMO azul marino del icono: así el marco del icono no se ve y queda solo el logo. El manifiesto no puede
+    // cambiar con el tema (claro/oscuro), así que se elige un color que se ve bien en ambos.
+    background_color: "#0b1633",
     theme_color: "#f4f7fb",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
