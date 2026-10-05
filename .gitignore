@@ -52,6 +52,7 @@ next-env.d.ts
 # contexto comercial (precios, planes): solo local, no se sube
 CONTEXTO.md
 ROADMAP-RESTAURANTES.md
+PROMPT-DEMO-RESTAURANTES.md
 
 # credenciales sueltas: nunca se suben
 *password*.txt
