@@ -502,6 +502,7 @@ CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.cotizaciones FOR EACH
 CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.gastos_caja_menor FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
 CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
 CREATE TRIGGER trg_10_sellar_autor BEFORE INSERT ON public.pagos_orden FOR EACH ROW EXECUTE FUNCTION fn_sellar_autor()
+CREATE TRIGGER trg_20_orden_total_por_defecto BEFORE INSERT OR UPDATE OF total_cobrado, mano_obra ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_orden_total_por_defecto()
 CREATE TRIGGER trg_citas_updated_at BEFORE UPDATE ON public.citas FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_clientes_updated_at BEFORE UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_cot_items_bloqueo BEFORE INSERT OR DELETE OR UPDATE ON public.cotizacion_items FOR EACH ROW EXECUTE FUNCTION fn_cotizacion_items_bloqueo()
@@ -1243,6 +1244,34 @@ begin
   return null;
 end $function$
 
+CREATE OR REPLACE FUNCTION public.fn_orden_total_por_defecto()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_repuestos numeric;
+begin
+  select coalesce(sum(cantidad_usada * precio_unitario), 0) into v_repuestos
+    from public.orden_repuestos where orden_id = new.id;
+
+  -- 1. Total en 0 con mano de obra: se cobra el trabajo.
+  if coalesce(new.total_cobrado, 0) = 0 and coalesce(new.mano_obra, 0) > 0 then
+    new.total_cobrado := round(new.mano_obra + v_repuestos, 2);
+    return new;
+  end if;
+
+  -- 2. Solo cambió la mano de obra y el total estaba al día: lo sigue.
+  if tg_op = 'UPDATE'
+     and new.mano_obra is distinct from old.mano_obra
+     and new.total_cobrado is not distinct from old.total_cobrado
+     and round(old.total_cobrado, 2) = round(old.mano_obra + v_repuestos, 2) then
+    new.total_cobrado := round(new.mano_obra + v_repuestos, 2);
+  end if;
+
+  return new;
+end $function$
+
 CREATE OR REPLACE FUNCTION public.fn_saldo_caja(p_hasta date DEFAULT NULL::date)
  RETURNS numeric
  LANGUAGE sql
@@ -1443,6 +1472,7 @@ fn_normalizar_placa() anon=t authenticated=t service_role=t
 fn_orden_before_write() anon=t authenticated=t service_role=t
 fn_orden_repuestos_stock() anon=f authenticated=f service_role=t
 fn_orden_repuestos_total() anon=f authenticated=f service_role=t
+fn_orden_total_por_defecto() anon=f authenticated=f service_role=t
 fn_saldo_caja(p_hasta date) anon=f authenticated=t service_role=t
 fn_sellar_autor() anon=f authenticated=f service_role=t
 fn_set_updated_at() anon=t authenticated=t service_role=t

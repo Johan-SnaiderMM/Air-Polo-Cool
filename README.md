@@ -22,6 +22,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    10. `…10_fase10_equipo.sql` (perfiles por persona y autoría real; ver «Equipo y perfiles»)
    11. `…11_fase11_repuesto_costo.sql` (categoría de gasto «repuesto»; ver «Fotos de repuestos»)
    12. `…12_fase12_repuesto_externo.sql` (repuesto sin inventario con costo y precio; el total sigue a los repuestos)
+   13. `…13_fase13_total_orden.sql` (el total no se queda en $0 con solo mano de obra y sigue a la mano de obra)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
