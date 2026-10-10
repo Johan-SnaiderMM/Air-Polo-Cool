@@ -16,32 +16,34 @@ describe("pideCostoRepuesto", () => {
 });
 
 describe("validarCostoRepuesto", () => {
-  it("acepta un repuesto de la orden con su costo", () => {
-    expect(validarCostoRepuesto({ yaEnOrden: true, nombre: "", monto: 180000, sinCosto: false })).toEqual({
-      ok: true,
-      valor: { nombre: "", monto: 180000 },
-    });
+  const base = { yaEnOrden: false, nombre: "Compresor", costo: 480000, precio: null, sinCosto: false };
+
+  it("sin tocar el precio, se le cobra al cliente el costo (el repuesto no se «regala»)", () => {
+    expect(validarCostoRepuesto(base)).toEqual({ ok: true, valor: { nombre: "Compresor", costo: 480000, precio: 480000 } });
   });
 
-  it("un repuesto fuera de la orden necesita nombre", () => {
-    const r = validarCostoRepuesto({ yaEnOrden: false, nombre: " a ", monto: 5000, sinCosto: false });
-    expect(r).toMatchObject({ ok: false, error: expect.stringContaining("qué repuesto es") });
-    expect(validarCostoRepuesto({ yaEnOrden: false, nombre: "  Válvula   de expansión ", monto: 5000.4, sinCosto: false })).toEqual({
-      ok: true,
-      valor: { nombre: "Válvula de expansión", monto: 5000 },
-    });
+  it("acepta un precio propio (con ganancia) y también 0 (ya incluido en el total acordado)", () => {
+    expect(validarCostoRepuesto({ ...base, precio: 600000 })).toMatchObject({ ok: true, valor: { costo: 480000, precio: 600000 } });
+    expect(validarCostoRepuesto({ ...base, precio: 0 })).toMatchObject({ ok: true, valor: { precio: 0 } });
+    expect(validarCostoRepuesto({ ...base, precio: -1 })).toMatchObject({ ok: false, error: expect.stringContaining("negativo") });
   });
 
-  it("el costo es obligatorio salvo «sin costo», y entonces no genera egreso (monto 0)", () => {
-    for (const monto of [0, -5, NaN]) {
-      expect(validarCostoRepuesto({ yaEnOrden: true, nombre: "", monto, sinCosto: false }), String(monto)).toMatchObject({
-        ok: false,
-        error: expect.stringContaining("cuánto costó"),
-      });
+  it("un repuesto fuera de la orden necesita nombre; uno de la orden no", () => {
+    expect(validarCostoRepuesto({ ...base, nombre: " a " })).toMatchObject({ ok: false, error: expect.stringContaining("qué repuesto es") });
+    expect(validarCostoRepuesto({ ...base, nombre: "  Válvula   de expansión " })).toMatchObject({
+      ok: true,
+      valor: { nombre: "Válvula de expansión" },
+    });
+    expect(validarCostoRepuesto({ ...base, yaEnOrden: true, nombre: "" })).toMatchObject({ ok: true });
+  });
+
+  it("el costo es obligatorio salvo «sin costo», y entonces no hay línea (todo en 0)", () => {
+    for (const costo of [0, -5, NaN]) {
+      expect(validarCostoRepuesto({ ...base, costo }), String(costo)).toMatchObject({ ok: false, error: expect.stringContaining("cuánto costó") });
     }
-    expect(validarCostoRepuesto({ yaEnOrden: true, nombre: "", monto: 99999, sinCosto: true })).toEqual({
+    expect(validarCostoRepuesto({ ...base, costo: 99999, precio: 5, sinCosto: true })).toEqual({
       ok: true,
-      valor: { nombre: "", monto: 0 },
+      valor: { nombre: "Compresor", costo: 0, precio: 0 },
     });
   });
 });

@@ -63,6 +63,13 @@ export async function procesarOperacion(formData: FormData): Promise<ResultadoOp
       case "evidencia.subir":
         revalidatePath(`/ordenes/${op.datos.orden_id}`);
         break;
+      case "repuesto.externo":
+        // Cambia el total de la orden (y con él, el saldo por cobrar).
+        revalidatePath(`/ordenes/${op.datos.orden_id}`);
+        revalidatePath("/ordenes");
+        revalidatePath("/cartera");
+        revalidatePath("/");
+        break;
       case "orden.crear":
         revalidatePath("/ordenes");
         revalidatePath("/");

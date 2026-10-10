@@ -33,6 +33,8 @@ const REPETIDAS_A_PROPOSITO: Record<string, string> = {
   "function:anular_gasto": "Igual que editar_gasto (autor = perfil de la sesión).",
   "function:cerrar_caja": "Igual que editar_gasto (autor = perfil de la sesión).",
   "function:convertir_cotizacion": "Igual que editar_gasto (autor = perfil de la sesión).",
+  "function:fn_orden_repuestos_stock": "La fase 12 la amplía: una línea de repuesto puede no tener inventario (no mueve stock).",
+  "function:obtener_orden_publica": "La fase 12 la redefine para listar también los repuestos sin inventario (la fase 5 ya la había ampliado).",
 };
 
 /** Quita comentarios SQL de línea para no contar definiciones que solo se mencionan en texto. */

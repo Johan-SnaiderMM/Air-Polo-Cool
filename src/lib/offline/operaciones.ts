@@ -17,6 +17,7 @@ import {
   type DatosGasto,
   type DatosOrden,
   type DatosPago,
+  type DatosRepuestoExterno,
   type DatosVehiculoOrden,
   type Operacion,
   type TipoOperacion,
@@ -25,7 +26,7 @@ import { pertenenciasONull } from "@/lib/esquemas/orden";
 import type { Validacion } from "@/lib/esquemas/comunes";
 
 export { MEDIOS_PAGO, pertenenciasONull, validarOperacion };
-export type { DatosEvidencia, DatosGasto, DatosOrden, DatosPago, DatosVehiculoOrden, Operacion, TipoOperacion, Validacion };
+export type { DatosEvidencia, DatosGasto, DatosOrden, DatosPago, DatosRepuestoExterno, DatosVehiculoOrden, Operacion, TipoOperacion, Validacion };
 
 export function nuevoId(): string {
   return crypto.randomUUID();
@@ -49,6 +50,8 @@ export function describirOperacion(op: Operacion): string {
         : "Orden nueva";
     case "evidencia.subir":
       return `Foto (${op.datos.tipo.replace("_", " ")})`;
+    case "repuesto.externo":
+      return `Repuesto ${op.datos.nombre} · costo ${moneda.format(op.datos.costo)}`;
   }
 }
 

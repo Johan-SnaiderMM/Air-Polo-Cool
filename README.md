@@ -21,6 +21,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    9. `…09_fase9_login.sql` (límite de intentos de ingreso; ver «Seguridad»)
    10. `…10_fase10_equipo.sql` (perfiles por persona y autoría real; ver «Equipo y perfiles»)
    11. `…11_fase11_repuesto_costo.sql` (categoría de gasto «repuesto»; ver «Fotos de repuestos»)
+   12. `…12_fase12_repuesto_externo.sql` (repuesto sin inventario con costo y precio; el total sigue a los repuestos)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
@@ -200,14 +201,24 @@ bitácora las fotos se agrupan «Por repuesto» (retirado | instalado) y el clie
 anteriores a la fase 5 quedan «sin asignar» y se ligan con el selector «Asignar a…». Si se quita un repuesto de la
 orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, solo sin el vínculo.
 
-**Costo de compra al subir la foto del repuesto instalado** (fase 11). Si el repuesto no está en la orden («Otro») o su
-línea no tiene costo cargado, antes de la cámara la app pide **qué repuesto es** y **cuánto costó** (o «Sin costo: el
-cliente trajo la pieza»). Después de subir la foto registra ese valor como un **egreso ligado a la orden** (gasto de
-categoría «Repuesto»; funciona sin conexión por la misma cola): baja el margen de la orden («Repuestos comprados aparte»),
-la rentabilidad por orden y la utilidad del balance, **sin pasar por el inventario**. Si el repuesto ya tiene costo cargado
-en la orden no se vuelve a pedir (no se cuenta dos veces). Anular el egreso (con motivo) lo saca de las cuentas.
-Con la foto subida aparece **«Avisar por WhatsApp»**: un mensaje con el enlace de seguimiento, donde el cliente ve el
-avance y la foto de la pieza instalada. El portal nunca muestra costos de compra ni egresos (lo comprueba una prueba).
+**Costo y cobro al subir la foto del repuesto instalado** (fases 11 y 12). Si el repuesto no está en la orden
+(«Otro») o su línea no tiene costo cargado, antes de la cámara la app pide **qué repuesto es**, **cuánto costó** y **cuánto se le
+cobra al cliente** (por defecto, el costo; se puede subir para ganarle, o dejar en $0 si ya está incluido en lo acordado; o marcar
+«Sin costo: el cliente trajo la pieza», que solo sube la foto). Con eso agrega a la orden un **repuesto sin inventario** (funciona
+sin conexión por la misma cola): su **costo** baja el margen de la orden y la utilidad del balance, y su **precio se suma al total
+que se le cobra al cliente** (y al saldo por cobrar) sin que Polo toque el total. No mueve stock. Si el repuesto ya tiene costo
+cargado en la orden no se vuelve a pedir. El portal del cliente lo muestra con su precio de venta, nunca el costo.
+
+**El total sigue a los repuestos.** Al agregar, cambiar o quitar una línea de repuesto (de inventario o sin inventario), el total
+de la orden pasa a ser «mano de obra + repuestos a precio de venta» **solo si antes estaba al día con ese cálculo**. Un descuento,
+un total pactado o una cotización convertida (total distinto) **no se pisa**: queda el aviso «el total no coincide» con el botón
+para actualizarlo. Una orden entregada no admite repuestos nuevos.
+
+La fase 11 añadió la categoría de gasto «Repuesto» (para egresos manuales ligados a una orden); aparecen en la orden como
+«Repuestos comprados aparte» y también bajan el margen.
+
+Con la foto subida aparece **«Avisar por WhatsApp»**: un mensaje con el enlace de seguimiento, donde el cliente ve el avance y la
+foto de la pieza instalada (sin costos; lo comprueba una prueba).
 
 ## Por cobrar (los que deben)
 

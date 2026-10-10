@@ -168,17 +168,17 @@ export default async function VehiculoPage({
 
                   {o.orden_repuestos.length > 0 && (
                     <ul className="flex flex-wrap gap-1.5">
-                      {o.orden_repuestos.map((r, i) =>
-                        r.inventario ? (
+                      {o.orden_repuestos.map((r, i) => {
+                        const nombre = r.inventario?.nombre ?? r.nombre;
+                        return nombre ? (
                           <li
                             key={i}
                             className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-700"
                           >
-                            {r.inventario.nombre} ·{" "}
-                            {formatearCantidad(r.cantidad_usada, r.inventario.tipo_unidad)}
+                            {nombre} · {formatearCantidad(r.cantidad_usada, r.inventario?.tipo_unidad ?? "unidad")}
                           </li>
-                        ) : null
-                      )}
+                        ) : null;
+                      })}
                     </ul>
                   )}
 

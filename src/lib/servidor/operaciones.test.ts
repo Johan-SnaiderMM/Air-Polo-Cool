@@ -161,6 +161,33 @@ describe("evidencia.subir", () => {
   });
 });
 
+describe("repuesto.externo", () => {
+  const repuesto = (): Operacion => ({
+    tipo: "repuesto.externo",
+    datos: { id: LINEA, orden_id: ORDEN, nombre: "Compresor", costo: 480000, precio: 480000 },
+  });
+
+  it("agrega a la orden una línea sin inventario con su costo y su precio (1 unidad); el total lo ajusta la base", async () => {
+    const { r, f } = await ejecutar(repuesto(), null);
+    expect(r).toEqual({ ok: true });
+    expect(f.de("insert", "orden_repuestos")[0].payload).toEqual({
+      id: LINEA, orden_id: ORDEN, nombre: "Compresor", cantidad_usada: 1, costo_unitario: 480000, precio_unitario: 480000,
+    });
+    expect(f.de("update")).toHaveLength(0); // no toca el total a mano: lo hace el trigger
+  });
+
+  it("duplicado = éxito; orden inexistente = permanente; una orden cerrada explica por qué", async () => {
+    const dup = await ejecutar(repuesto(), null, (l) => (l.op === "insert" ? { error: { code: "23505", message: "d" } } : undefined));
+    expect(dup.r).toEqual({ ok: true, duplicado: true });
+    const fk = await ejecutar(repuesto(), null, (l) => (l.op === "insert" ? { error: { code: "23503", message: "fk" } } : undefined));
+    expect(fk.r).toMatchObject({ ok: false, permanente: true, error: expect.stringContaining("ya no existe") });
+    const cerrada = await ejecutar(repuesto(), null, (l) =>
+      l.op === "insert" ? { error: { code: "23514", message: "La orden está entregado y no admite cambios de repuestos" } } : undefined
+    );
+    expect(cerrada.r).toMatchObject({ ok: false, error: expect.stringContaining("no admite cambios de repuestos") });
+  });
+});
+
 describe("orden.crear", () => {
   const orden = (vehiculo: Extract<Operacion, { tipo: "orden.crear" }>["datos"]["vehiculo"], citaId: string | null = null): Operacion => ({
     tipo: "orden.crear",

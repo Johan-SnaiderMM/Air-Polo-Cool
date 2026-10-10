@@ -120,7 +120,8 @@ orden_repuestos.costo_unitario numeric not null default -
 orden_repuestos.created_at timestamp with time zone not null default now()
 orden_repuestos.es_prueba boolean not null default en_modo_prueba()
 orden_repuestos.id uuid not null default gen_random_uuid()
-orden_repuestos.inventario_id uuid not null default -
+orden_repuestos.inventario_id uuid null default -
+orden_repuestos.nombre text null default -
 orden_repuestos.orden_id uuid not null default -
 orden_repuestos.precio_unitario numeric not null default -
 ordenes_servicio.autor text null default -
@@ -328,6 +329,7 @@ mantenimiento: mantenimiento_activo_not_null NOT NULL activo
 mantenimiento: mantenimiento_id_check CHECK (id)
 mantenimiento: mantenimiento_id_not_null NOT NULL id
 mantenimiento: mantenimiento_pkey PRIMARY KEY (id)
+orden_repuestos: chk_repuesto_origen CHECK (((inventario_id IS NOT NULL) OR ((char_length(btrim(COALESCE(nombre, ''::text))) >= 1) AND (char_length(btrim(COALESCE(nombre, ''::text))) <= 80))))
 orden_repuestos: orden_repuestos_cantidad_usada_check CHECK ((cantidad_usada > (0)::numeric))
 orden_repuestos: orden_repuestos_cantidad_usada_not_null NOT NULL cantidad_usada
 orden_repuestos: orden_repuestos_costo_unitario_check CHECK ((costo_unitario >= (0)::numeric))
@@ -336,7 +338,6 @@ orden_repuestos: orden_repuestos_created_at_not_null NOT NULL created_at
 orden_repuestos: orden_repuestos_es_prueba_not_null NOT NULL es_prueba
 orden_repuestos: orden_repuestos_id_not_null NOT NULL id
 orden_repuestos: orden_repuestos_inventario_id_fkey FOREIGN KEY (inventario_id) REFERENCES inventario(id) ON DELETE RESTRICT
-orden_repuestos: orden_repuestos_inventario_id_not_null NOT NULL inventario_id
 orden_repuestos: orden_repuestos_orden_id_fkey FOREIGN KEY (orden_id) REFERENCES ordenes_servicio(id) ON DELETE CASCADE
 orden_repuestos: orden_repuestos_orden_id_not_null NOT NULL orden_id
 orden_repuestos: orden_repuestos_pkey PRIMARY KEY (id)
@@ -509,6 +510,7 @@ CREATE TRIGGER trg_evidencia_repuesto_coherente BEFORE INSERT OR UPDATE OF orden
 CREATE TRIGGER trg_inventario_updated_at BEFORE UPDATE ON public.inventario FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_orden_before_write BEFORE INSERT OR UPDATE ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_orden_before_write()
 CREATE TRIGGER trg_orden_repuestos_stock BEFORE INSERT OR DELETE OR UPDATE ON public.orden_repuestos FOR EACH ROW EXECUTE FUNCTION fn_orden_repuestos_stock()
+CREATE TRIGGER trg_orden_repuestos_total AFTER INSERT OR DELETE OR UPDATE ON public.orden_repuestos FOR EACH ROW EXECUTE FUNCTION fn_orden_repuestos_total()
 CREATE TRIGGER trg_ordenes_updated_at BEFORE UPDATE ON public.ordenes_servicio FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()
 CREATE TRIGGER trg_vehiculos_placa BEFORE INSERT OR UPDATE OF placa ON public.vehiculos FOR EACH ROW EXECUTE FUNCTION fn_normalizar_placa()
 
@@ -1156,7 +1158,9 @@ declare
   v_inv    public.inventario;
 begin
   if tg_op = 'DELETE' then
-    perform public.fn_mover_stock(old.inventario_id, old.cantidad_usada);
+    if old.inventario_id is not null then
+      perform public.fn_mover_stock(old.inventario_id, old.cantidad_usada);
+    end if;
     return old;
   end if;
 
@@ -1167,9 +1171,11 @@ begin
   end if;
 
   if tg_op = 'INSERT' then
-    v_inv := public.fn_mover_stock(new.inventario_id, -new.cantidad_usada);
-    new.costo_unitario  := coalesce(new.costo_unitario,  v_inv.costo_compra);
-    new.precio_unitario := coalesce(new.precio_unitario, v_inv.precio_venta);
+    if new.inventario_id is not null then
+      v_inv := public.fn_mover_stock(new.inventario_id, -new.cantidad_usada);
+      new.costo_unitario  := coalesce(new.costo_unitario,  v_inv.costo_compra);
+      new.precio_unitario := coalesce(new.precio_unitario, v_inv.precio_venta);
+    end if;
 
   else -- UPDATE
     if new.orden_id <> old.orden_id then
@@ -1177,19 +1183,64 @@ begin
         using errcode = 'check_violation';
     end if;
 
-    if new.inventario_id = old.inventario_id then
-      if new.cantidad_usada <> old.cantidad_usada then
+    if new.inventario_id is not distinct from old.inventario_id then
+      if new.inventario_id is not null and new.cantidad_usada <> old.cantidad_usada then
         perform public.fn_mover_stock(new.inventario_id, old.cantidad_usada - new.cantidad_usada);
       end if;
     else
-      perform public.fn_mover_stock(old.inventario_id,  old.cantidad_usada);
-      v_inv := public.fn_mover_stock(new.inventario_id, -new.cantidad_usada);
-      new.costo_unitario  := coalesce(new.costo_unitario,  v_inv.costo_compra);
-      new.precio_unitario := coalesce(new.precio_unitario, v_inv.precio_venta);
+      if old.inventario_id is not null then
+        perform public.fn_mover_stock(old.inventario_id, old.cantidad_usada);
+      end if;
+      if new.inventario_id is not null then
+        v_inv := public.fn_mover_stock(new.inventario_id, -new.cantidad_usada);
+        new.costo_unitario  := coalesce(new.costo_unitario,  v_inv.costo_compra);
+        new.precio_unitario := coalesce(new.precio_unitario, v_inv.precio_venta);
+      end if;
     end if;
   end if;
 
   return new;
+end $function$
+
+CREATE OR REPLACE FUNCTION public.fn_orden_repuestos_total()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_orden  uuid := coalesce(new.orden_id, old.orden_id);
+  o        public.ordenes_servicio;
+  v_nuevo  numeric;
+  v_delta  numeric := 0;
+  v_antes  numeric;
+begin
+  -- La orden pudo borrarse (los repuestos caen en cascada): no hay nada que ajustar.
+  select * into o from public.ordenes_servicio where id = v_orden for update;
+  if not found then
+    return null;
+  end if;
+
+  select coalesce(sum(cantidad_usada * precio_unitario), 0) into v_nuevo
+    from public.orden_repuestos where orden_id = v_orden;
+
+  if tg_op in ('INSERT', 'UPDATE') then
+    v_delta := v_delta + new.cantidad_usada * new.precio_unitario;
+  end if;
+  if tg_op in ('UPDATE', 'DELETE') then
+    v_delta := v_delta - old.cantidad_usada * old.precio_unitario;
+  end if;
+  v_antes := v_nuevo - v_delta;
+
+  -- Solo se sigue a los repuestos si el total estaba al día con «mano de obra + repuestos» ANTES de este cambio.
+  if round(o.total_cobrado, 2) = round(o.mano_obra + v_antes, 2)
+     and round(o.total_cobrado, 2) <> round(o.mano_obra + v_nuevo, 2) then
+    update public.ordenes_servicio
+       set total_cobrado = round(o.mano_obra + v_nuevo, 2)
+     where id = v_orden;
+  end if;
+
+  return null;
 end $function$
 
 CREATE OR REPLACE FUNCTION public.fn_saldo_caja(p_hasta date DEFAULT NULL::date)
@@ -1294,13 +1345,13 @@ AS $function$
     'repuestos', coalesce((
       select jsonb_agg(jsonb_build_object(
                'id',              r.id,
-               'nombre',          i.nombre,
+               'nombre',          coalesce(i.nombre, r.nombre),
                'cantidad',        r.cantidad_usada,
-               'unidad',          i.tipo_unidad,
+               'unidad',          coalesce(i.tipo_unidad::text, 'unidad'),
                'precio_unitario', r.precio_unitario
              ) order by r.created_at)
       from public.orden_repuestos r
-      join public.inventario i on i.id = r.inventario_id
+      left join public.inventario i on i.id = r.inventario_id
       where r.orden_id = o.id
     ), '[]'::jsonb),
     'evidencias', coalesce((
@@ -1391,6 +1442,7 @@ fn_mover_stock(p_inventario_id uuid, p_delta numeric) anon=f authenticated=f ser
 fn_normalizar_placa() anon=t authenticated=t service_role=t
 fn_orden_before_write() anon=t authenticated=t service_role=t
 fn_orden_repuestos_stock() anon=f authenticated=f service_role=t
+fn_orden_repuestos_total() anon=f authenticated=f service_role=t
 fn_saldo_caja(p_hasta date) anon=f authenticated=t service_role=t
 fn_sellar_autor() anon=f authenticated=f service_role=t
 fn_set_updated_at() anon=t authenticated=t service_role=t

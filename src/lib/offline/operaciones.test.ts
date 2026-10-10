@@ -157,3 +157,21 @@ describe("búsqueda local (snapshot offline)", () => {
     expect(buscarOrdenesLocal(snapshot, "nadie")).toHaveLength(0);
   });
 });
+
+describe("validarOperacion: repuesto.externo", () => {
+  const datos = { id: "123e4567-e89b-12d3-a456-426614174000", orden_id: "223e4567-e89b-12d3-a456-426614174000", nombre: "  Compresor ", costo: 480000, precio: 480000 };
+  it("normaliza el nombre y conserva costo y precio", () => {
+    const r = validarOperacion({ tipo: "repuesto.externo", datos });
+    expect(r).toMatchObject({ ok: true, valor: { tipo: "repuesto.externo", datos: { nombre: "Compresor", costo: 480000, precio: 480000 } } });
+  });
+  it("el precio puede ser 0 (ya incluido en el total) pero no negativo; el costo debe ser mayor a 0", () => {
+    expect(validarOperacion({ tipo: "repuesto.externo", datos: { ...datos, precio: 0 } }).ok).toBe(true);
+    expect(validarOperacion({ tipo: "repuesto.externo", datos: { ...datos, precio: -1 } })).toMatchObject({ ok: false, error: expect.stringContaining("negativo") });
+    expect(validarOperacion({ tipo: "repuesto.externo", datos: { ...datos, costo: 0 } })).toMatchObject({ ok: false, error: expect.stringContaining("mayor a 0") });
+  });
+  it("rechaza ids, nombre o importes inválidos (mueven dinero)", () => {
+    for (const malo of [{ id: "x" }, { orden_id: "x" }, { nombre: "a" }, { nombre: "" }, { costo: "480000" }, { precio: "1" }, { precio: null }]) {
+      expect(validarOperacion({ tipo: "repuesto.externo", datos: { ...datos, ...malo } }).ok, JSON.stringify(malo)).toBe(false);
+    }
+  });
+});

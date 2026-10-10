@@ -383,7 +383,10 @@ export type Database = {
         Row: {
           id: string;
           orden_id: string;
-          inventario_id: string;
+          /** Fase 12: null = repuesto sin inventario (lleva su `nombre`). */
+          inventario_id: string | null;
+          /** Fase 12: nombre del repuesto sin inventario. */
+          nombre: string | null;
           cantidad_usada: number;
           costo_unitario: number;
           precio_unitario: number;
@@ -394,7 +397,8 @@ export type Database = {
         Insert: {
           id?: string;
           orden_id: string;
-          inventario_id: string;
+          inventario_id?: string | null;
+          nombre?: string | null;
           cantidad_usada: number;
           /** Si se omite, el trigger toma el costo vigente del inventario. */
           costo_unitario?: number;
@@ -406,7 +410,8 @@ export type Database = {
         Update: {
           id?: string;
           orden_id?: string;
-          inventario_id?: string;
+          inventario_id?: string | null;
+          nombre?: string | null;
           cantidad_usada?: number;
           costo_unitario?: number;
           precio_unitario?: number;

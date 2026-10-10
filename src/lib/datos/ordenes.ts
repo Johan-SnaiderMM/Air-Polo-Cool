@@ -139,7 +139,7 @@ async function consultarEvidencias(supabase: ClienteServidor, id: string) {
 async function consultarRepuestos(supabase: ClienteServidor, id: string) {
   const { data } = await supabase
     .from("orden_repuestos")
-    .select("id, cantidad_usada, costo_unitario, precio_unitario, inventario(nombre, codigo, tipo_unidad)")
+    .select("id, nombre, cantidad_usada, costo_unitario, precio_unitario, inventario(nombre, codigo, tipo_unidad)")
     .eq("orden_id", id)
     .order("created_at", { ascending: true });
   return data ?? [];
@@ -270,7 +270,7 @@ export async function cargarComprobanteOrden(supabase: ClienteServidor, id: stri
     consultarOrdenComprobante(supabase, id),
     supabase
       .from("orden_repuestos")
-      .select("cantidad_usada, precio_unitario, inventario(nombre, tipo_unidad)")
+      .select("nombre, cantidad_usada, precio_unitario, inventario(nombre, tipo_unidad)")
       .eq("orden_id", id)
       .order("created_at"),
     supabase.from("pagos_orden").select("monto, es_devolucion").eq("orden_id", id).eq("anulado", false),

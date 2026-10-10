@@ -12,11 +12,9 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
 import { PosMonto } from "@/components/ui/pos-monto";
-import { hoyBogota } from "@/lib/caja";
-import { pideCostoRepuesto, validarCostoRepuesto } from "@/lib/costo-repuesto";
+import { pideCostoRepuesto, validarCostoRepuesto, type CostoRepuesto } from "@/lib/costo-repuesto";
 import { nuevoId } from "@/lib/offline/operaciones";
 import { comprimirImagen } from "@/lib/imagen";
 import { formatearMoneda, TIPO_EVIDENCIA_LABEL } from "@/lib/ordenes";
@@ -54,9 +52,6 @@ export type ClienteAviso = {
 const ES_DE_REPUESTO: TipoEvidencia[] = ["repuesto_viejo", "repuesto_nuevo"];
 const SIN_REPUESTO = "ninguno";
 
-/** Lo que el panel de costo deja listo para registrar junto con la foto del repuesto instalado. */
-type CostoPendiente = { nombre: string; monto: number };
-
 export function CapturaFotos({
   ordenId,
   repuestos,
@@ -67,20 +62,21 @@ export function CapturaFotos({
   aviso?: ClienteAviso | null;
 }) {
   const { registrar } = useSync();
-  const { autor } = useAutor();
   const inputRef = useRef<HTMLInputElement>(null);
   const tipoActivo = useRef<TipoEvidencia>("ingreso");
-  const costoRef = useRef<CostoPendiente | null>(null);
+  const costoRef = useRef<CostoRepuesto | null>(null);
   const [subiendo, setSubiendo] = useState<TipoEvidencia | null>(null);
   const [mensaje, setMensaje] = useState<Mensaje | null>(null);
   // "" = aún no elige; SIN_REPUESTO = foto de algo que no está en la lista.
   const [repuestoId, setRepuestoId] = useState("");
   const elegido = repuestos.find((r) => r.id === repuestoId);
 
-  // Panel que pide el costo de compra antes de la foto del repuesto instalado.
+  // Panel que pide el costo y el precio antes de la foto del repuesto instalado.
   const [pidiendoCosto, setPidiendoCosto] = useState(false);
   const [nombreOtro, setNombreOtro] = useState("");
   const [digitosCosto, setDigitosCosto] = useState("");
+  // null = no lo tocó: se cobra al costo. Una vez tocado, vacío significa 0.
+  const [digitosPrecio, setDigitosPrecio] = useState<string | null>(null);
   const [sinCosto, setSinCosto] = useState(false);
   const [errorCosto, setErrorCosto] = useState<string | null>(null);
 
@@ -88,6 +84,8 @@ export function CapturaFotos({
   const [sugerencia, setSugerencia] = useState<{ repuesto: string | null } | null>(null);
 
   const nombreRepuesto = elegido?.nombre ?? nombreOtro.trim();
+  const costoNumero = Number(digitosCosto || "0");
+  const precioNumero = digitosPrecio === null ? costoNumero : Number(digitosPrecio || "0");
 
   function abrirSelector(tipo: TipoEvidencia) {
     tipoActivo.current = tipo;
@@ -117,7 +115,8 @@ export function CapturaFotos({
     const r = validarCostoRepuesto({
       yaEnOrden: !!elegido,
       nombre: nombreRepuesto,
-      monto: Number(digitosCosto || "0"),
+      costo: costoNumero,
+      precio: digitosPrecio === null ? null : precioNumero,
       sinCosto,
     });
     if (!r.ok) {
@@ -136,6 +135,13 @@ export function CapturaFotos({
     costoRef.current = null;
   }
 
+  function limpiarPanel() {
+    setNombreOtro("");
+    setDigitosCosto("");
+    setDigitosPrecio(null);
+    setSinCosto(false);
+  }
+
   async function alSeleccionar(e: React.ChangeEvent<HTMLInputElement>) {
     const archivo = e.target.files?.[0];
     e.target.value = ""; // permite volver a elegir la misma foto
@@ -148,8 +154,28 @@ export function CapturaFotos({
     setMensaje(null);
 
     try {
+      // Un repuesto comprado para el trabajo (no está en la orden) se AGREGA a la orden con su costo y su
+      // precio: el costo baja el margen y el precio se suma a lo que se le cobra al cliente, sin que Polo
+      // tenga que tocar el total. Va primero: la foto queda ligada a esa línea.
+      let lineaNuevaId: string | null = null;
+      if (costo && costo.costo > 0) {
+        const id = nuevoId();
+        const g = await registrar(
+          {
+            tipo: "repuesto.externo",
+            datos: { id, orden_id: ordenId, nombre: costo.nombre, costo: costo.costo, precio: costo.precio },
+          },
+          null
+        );
+        if (g.estado === "error") {
+          setMensaje({ tipo: "error", texto: `No se pudo agregar el repuesto a la orden: ${g.error}` });
+          return;
+        }
+        lineaNuevaId = id;
+      }
+
       const { blob, extension } = await comprimirImagen(archivo);
-      // Va por la cola de sincronización: sin red se guarda en el teléfono y sube después.
+      // Va por la cola de sincronización: sin red se guarda en el teléfono y sube después (en orden).
       const r = await registrar(
         {
           tipo: "evidencia.subir",
@@ -159,15 +185,20 @@ export function CapturaFotos({
             orden_id: ordenId,
             tipo,
             extension,
-            // Un repuesto que no está en la orden lleva su nombre como leyenda de la foto.
-            notas: costo && !elegido ? costo.nombre : null,
-            orden_repuesto_id: ES_DE_REPUESTO.includes(tipo) && elegido ? elegido.id : null,
+            // Sin línea de repuesto (p. ej. «sin costo»), el nombre queda como leyenda de la foto.
+            notas: costo && !lineaNuevaId && !elegido && costo.nombre ? costo.nombre : null,
+            orden_repuesto_id: lineaNuevaId ?? (ES_DE_REPUESTO.includes(tipo) && elegido ? elegido.id : null),
           },
         },
         blob
       );
       if (r.estado === "error") {
-        setMensaje({ tipo: "error", texto: r.error });
+        setMensaje({
+          tipo: "error",
+          texto: lineaNuevaId
+            ? `El repuesto ya quedó en la orden, pero la foto no se pudo subir: ${r.error} Súbela eligiendo ese repuesto en la lista.`
+            : r.error,
+        });
         return;
       }
 
@@ -175,39 +206,14 @@ export function CapturaFotos({
         r.estado === "sincronizado"
           ? `${TIPO_EVIDENCIA_LABEL[tipo]}${elegido && ES_DE_REPUESTO.includes(tipo) ? ` · ${elegido.nombre}` : ""} guardada (${Math.round(blob.size / 1024)} KB).`
           : `${TIPO_EVIDENCIA_LABEL[tipo]} guardada en el teléfono; se subirá al volver la conexión.`;
+      const agregado = lineaNuevaId
+        ? ` «${costo!.nombre}» agregado a la orden: costo ${formatearMoneda(costo!.costo)}, se le cobra al cliente ${formatearMoneda(costo!.precio)}.`
+        : "";
 
-      // El costo de compra se registra DESPUÉS de la foto (así un reintento de la foto no lo duplica) como un
-      // egreso ligado a la orden: baja el margen de la orden y el balance sin pasar por el inventario.
-      let textoCosto = "";
-      if (costo && costo.monto > 0) {
-        const g = await registrar(
-          {
-            tipo: "gasto.crear",
-            conArchivo: false,
-            datos: {
-              id: nuevoId(),
-              fecha: hoyBogota(),
-              monto: costo.monto,
-              categoria: "repuesto",
-              orden_id: ordenId,
-              descripcion: `Repuesto instalado: ${costo.nombre}`,
-              autor,
-            },
-          },
-          null
-        );
-        textoCosto =
-          g.estado === "error"
-            ? ` No se pudo registrar el costo (${g.error}): regístralo en Caja menor como «Repuesto» de esta orden.`
-            : ` Costo de ${formatearMoneda(costo.monto)} registrado como egreso de la orden.`;
-      }
-
-      setMensaje({ tipo: "ok", texto: guardada + textoCosto });
-      if (tipo === "repuesto_nuevo" && aviso) setSugerencia({ repuesto: elegido?.nombre ?? (costo?.nombre || null) });
+      setMensaje({ tipo: "ok", texto: guardada + agregado });
       if (tipo === "repuesto_nuevo") {
-        setNombreOtro("");
-        setDigitosCosto("");
-        setSinCosto(false);
+        if (aviso) setSugerencia({ repuesto: elegido?.nombre ?? (costo?.nombre || null) });
+        limpiarPanel();
       }
     } catch (err) {
       setMensaje({
@@ -268,12 +274,11 @@ export function CapturaFotos({
         <section aria-label="Costo del repuesto" className="space-y-3 rounded-2xl border border-stone-300 bg-stone-100 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[15px] font-semibold">Costo de compra del repuesto</p>
+              <p className="text-[15px] font-semibold">Costo y cobro del repuesto</p>
               <p className="text-[13px] text-stone-600">
-                {elegido
-                  ? `«${elegido.nombre}» no tiene costo cargado.`
-                  : "Este repuesto no está en la orden."}{" "}
-                Lo que pagaste por la pieza queda como egreso de esta orden y baja su margen. El cliente no lo ve.
+                {elegido ? `«${elegido.nombre}» no tiene costo cargado.` : "Este repuesto no está en la orden."} Se agrega
+                a la orden: lo que pagaste baja el margen y lo que le cobras se suma al total del cliente. El cliente
+                no ve el costo.
               </p>
             </div>
             <button
@@ -301,7 +306,23 @@ export function CapturaFotos({
           )}
 
           {!sinCosto && (
-            <PosMonto id="costo-repuesto" etiqueta="¿Cuánto costó?" digitos={digitosCosto} onChange={setDigitosCosto} tamano="normal" />
+            <>
+              <PosMonto id="costo-repuesto" etiqueta="¿Cuánto costó?" digitos={digitosCosto} onChange={setDigitosCosto} tamano="normal" />
+              <PosMonto
+                id="precio-repuesto"
+                etiqueta="¿Cuánto se le cobra al cliente?"
+                digitos={digitosPrecio ?? digitosCosto}
+                onChange={setDigitosPrecio}
+                tamano="normal"
+              />
+              <p className="text-[12px] text-stone-500">
+                {precioNumero === 0 && digitosPrecio !== null
+                  ? "Con $0 no se suma al total (úsalo si ya está incluido en lo que acordaste)."
+                  : precioNumero > 0 && precioNumero < costoNumero
+                    ? "Estás cobrando menos de lo que costó: Polo pierde la diferencia."
+                    : "Por defecto se cobra al costo; súbelo si quieres ganarle."}
+              </p>
+            </>
           )}
 
           <label className="flex items-center gap-2 text-[13px] text-stone-600">

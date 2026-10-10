@@ -15,7 +15,9 @@ import {
   fechaIso,
   idUuid,
   idUuidOpcional,
+  MAX_MONTO,
   montoPositivo,
+  textoONull,
   textoOpcional,
   type Validacion,
   validar,
@@ -107,6 +109,30 @@ const evidenciaSchema = z.object({
 });
 
 // ---------------------------------------------------------------------
+// Repuesto sin inventario (comprado para el trabajo): costo y precio al cliente
+// ---------------------------------------------------------------------
+const datosRepuestoExternoSchema = z.object({
+  id: idUuid("Repuesto inválido (id u orden)."),
+  orden_id: idUuid("Repuesto inválido (id u orden)."),
+  nombre: campo((v) => {
+    const t = textoONull(v, 80);
+    return t !== null && t.length >= 2 ? t : undefined;
+  }, "Escribe qué repuesto es."),
+  costo: montoPositivo("El costo del repuesto debe ser mayor a 0."),
+  /** Lo que se le cobra al cliente: puede ser 0 (ya incluido en el total), nunca negativo. */
+  precio: campo(
+    (v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= MAX_MONTO ? Math.round(v * 100) / 100 : undefined),
+    "El precio al cliente no puede ser negativo."
+  ),
+});
+export type DatosRepuestoExterno = z.output<typeof datosRepuestoExternoSchema>;
+
+const repuestoExternoSchema = z.object({
+  tipo: z.literal("repuesto.externo"),
+  datos: z.unknown().pipe(datosRepuestoExternoSchema),
+});
+
+// ---------------------------------------------------------------------
 // Orden nueva
 // ---------------------------------------------------------------------
 const datosOrdenSchema = z.object({
@@ -151,6 +177,7 @@ export type Operacion =
   | ConAdjuntoOpcional<z.output<typeof gastoSchema>>
   | ConAdjuntoOpcional<z.output<typeof pagoSchema>>
   | z.output<typeof evidenciaSchema>
+  | z.output<typeof repuestoExternoSchema>
   | z.output<typeof ordenSchema>;
 
 export type TipoOperacion = Operacion["tipo"];
@@ -159,6 +186,7 @@ const ESQUEMAS = {
   "gasto.crear": gastoSchema,
   "pago.crear": pagoSchema,
   "evidencia.subir": evidenciaSchema,
+  "repuesto.externo": repuestoExternoSchema,
   "orden.crear": ordenSchema,
 } as const;
 

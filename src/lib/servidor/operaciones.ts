@@ -226,6 +226,26 @@ export async function ejecutarOperacion(
       return { ok: true };
     }
 
+    case "repuesto.externo": {
+      // Repuesto comprado para el trabajo, fuera del inventario: no mueve stock; su costo entra al balance y su
+      // precio al total de la orden (lo hace la base). Idempotente por id.
+      const d = op.datos;
+      const { error } = await supabase.from("orden_repuestos").insert({
+        id: d.id,
+        orden_id: d.orden_id,
+        nombre: d.nombre,
+        cantidad_usada: 1,
+        costo_unitario: d.costo,
+        precio_unitario: d.precio,
+      });
+      if (error) {
+        if (error.code === "23505") return { ok: true, duplicado: true };
+        if (error.code === "23503") return fallo("La orden de este repuesto ya no existe.");
+        return falloDb(error);
+      }
+      return { ok: true };
+    }
+
     case "orden.crear": {
       const d = op.datos;
       const { data: ya } = await supabase.from("ordenes_servicio").select("id, vehiculo_id").eq("id", d.id).maybeSingle();

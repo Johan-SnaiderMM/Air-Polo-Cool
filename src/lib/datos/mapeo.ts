@@ -71,6 +71,8 @@ export function saldoPendiente(
 
 type RepuestoFila = {
   id: string;
+  /** Repuesto sin inventario (fase 12): lleva su propio nombre. */
+  nombre?: string | null;
   cantidad_usada: number;
   costo_unitario: number;
   precio_unitario: number;
@@ -78,21 +80,21 @@ type RepuestoFila = {
 };
 
 export function armarLineas(filas: RepuestoFila[]): LineaRepuesto[] {
-  return filas.flatMap((r) =>
-    r.inventario
-      ? [
-          {
-            id: r.id,
-            nombre: r.inventario.nombre,
-            codigo: r.inventario.codigo,
-            tipo_unidad: r.inventario.tipo_unidad,
-            cantidad_usada: r.cantidad_usada,
-            precio_unitario: r.precio_unitario,
-            costo_unitario: r.costo_unitario,
-          },
-        ]
-      : []
-  );
+  return filas.flatMap((r) => {
+    const nombre = r.inventario?.nombre ?? r.nombre;
+    if (!nombre) return [];
+    return [
+      {
+        id: r.id,
+        nombre,
+        codigo: r.inventario?.codigo ?? "",
+        tipo_unidad: r.inventario?.tipo_unidad ?? ("unidad" as const),
+        cantidad_usada: r.cantidad_usada,
+        precio_unitario: r.precio_unitario,
+        costo_unitario: r.costo_unitario,
+      },
+    ];
+  });
 }
 
 /** Totales de repuestos de una orden: lo que se cobra (precio) y lo que costó (costo). */
@@ -168,22 +170,27 @@ export type LineaComprobante = {
  */
 export function armarComprobante(
   orden: { total_cobrado: number; mano_obra: number },
-  repuestos: { cantidad_usada: number; precio_unitario: number; inventario: { nombre: string; tipo_unidad: TipoUnidad } | null }[],
+  repuestos: {
+    cantidad_usada: number;
+    precio_unitario: number;
+    nombre?: string | null;
+    inventario: { nombre: string; tipo_unidad: TipoUnidad } | null;
+  }[],
   pagos: { monto: number; es_devolucion: boolean }[]
 ) {
-  const lineas: LineaComprobante[] = repuestos.flatMap((r) =>
-    r.inventario
-      ? [
-          {
-            nombre: r.inventario.nombre,
-            cantidad: r.cantidad_usada,
-            unidad: r.inventario.tipo_unidad,
-            precio: r.precio_unitario,
-            subtotal: redondearDinero(r.cantidad_usada * r.precio_unitario),
-          },
-        ]
-      : []
-  );
+  const lineas: LineaComprobante[] = repuestos.flatMap((r) => {
+    const nombre = r.inventario?.nombre ?? r.nombre;
+    if (!nombre) return [];
+    return [
+      {
+        nombre,
+        cantidad: r.cantidad_usada,
+        unidad: r.inventario?.tipo_unidad ?? ("unidad" as const),
+        precio: r.precio_unitario,
+        subtotal: redondearDinero(r.cantidad_usada * r.precio_unitario),
+      },
+    ];
+  });
   const totalRepuestos = redondearDinero(lineas.reduce((s, l) => s + l.subtotal, 0));
   const pagado = redondearDinero(pagos.reduce((s, p) => s + (p.es_devolucion ? -p.monto : p.monto), 0));
   return {
