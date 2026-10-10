@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agruparPorRepuesto } from "@/lib/fotos-repuesto";
+import { agruparPorRepuesto, textoPrecioRepuesto } from "@/lib/fotos-repuesto";
 
 const R = (id: string, nombre: string) => ({ id, nombre });
 const F = (n: number, tipo: string, rep?: string | null) => ({ n, tipo, orden_repuesto_id: rep });
@@ -41,5 +41,16 @@ describe("agruparPorRepuesto", () => {
     );
     expect(grupos[0].retirado).toHaveLength(2);
     expect(sueltas).toEqual([]);
+  });
+});
+
+describe("textoPrecioRepuesto", () => {
+  it("una unidad: el valor; varias: cantidad × precio = total", () => {
+    expect(textoPrecioRepuesto({ cantidad: 1, precioUnitario: 480000 })).toMatch(/480.000/);
+    const t = textoPrecioRepuesto({ cantidad: 2, precioUnitario: 35000, unidad: "unidad" });
+    expect(t).toMatch(/2.*35.000.*70.000/);
+  });
+  it("con precio 0 dice que está incluido en el total", () => {
+    expect(textoPrecioRepuesto({ cantidad: 1, precioUnitario: 0 })).toBe("Incluido en el total");
   });
 });

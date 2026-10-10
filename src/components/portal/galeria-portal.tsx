@@ -14,6 +14,8 @@ export type ColumnaGaleria = {
   /** Estilo del encabezado de la columna. */
   tono: "neutro" | "rojo" | "verde";
   fotos: FotoPortal[];
+  /** Texto bajo las fotos de la columna (p. ej. lo que se cobra por el repuesto instalado). */
+  pie?: string;
 };
 
 export type SeccionGaleria = {
@@ -98,6 +100,11 @@ export function GaleriaPortal({ secciones }: { secciones: SeccionGaleria[] }) {
                         );
                       })}
                     </ul>
+                  )}
+                  {c.pie && (
+                    <p className="mt-2 rounded-lg bg-stone-100 px-2 py-1.5 text-center text-[13px] font-semibold text-ink">
+                      {c.pie}
+                    </p>
                   )}
                 </div>
               ))}

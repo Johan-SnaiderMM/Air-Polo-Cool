@@ -167,7 +167,13 @@ export default async function OrdenPage({
         />
         <GaleriaEvidencias
           evidencias={evidencias}
-          repuestos={lineas.map((l) => ({ id: l.id, nombre: l.nombre }))}
+          repuestos={lineas.map((l) => ({
+            id: l.id,
+            nombre: l.nombre,
+            cantidad: l.cantidad_usada,
+            precioUnitario: l.precio_unitario,
+            unidad: l.tipo_unidad,
+          }))}
           ordenId={orden.id}
           puedeEliminar={esAdmin}
         />

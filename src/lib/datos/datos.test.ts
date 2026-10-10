@@ -102,6 +102,21 @@ describe("armarSeccionesPortal", () => {
     expect(comp.columnas[0].fotos[0].alt).toBe("Retirado: Compresor · ABC123");
   });
 
+  it("bajo la foto del repuesto instalado va lo que se COBRA (precio de venta), no el costo", () => {
+    const conPrecio: OrdenPublica["repuestos"] = [
+      { id: "r1", nombre: "Compresor", cantidad: 1, unidad: "unidad", precio_unitario: 480000 },
+      { id: "r2", nombre: "Filtro", cantidad: 2, unidad: "unidad", precio_unitario: 35000 },
+    ];
+    const s = armarSeccionesPortal(
+      [ev("v1", "repuesto_viejo", "r1"), ev("n1", "repuesto_nuevo", "r1"), ev("n2", "repuesto_nuevo", "r2")],
+      conPrecio, new Map([["v1", "u/v1"], ["n1", "u/n1"], ["n2", "u/n2"]]), "ABC123"
+    );
+    const instalado = (i: number) => s[i].columnas.find((c) => c.titulo === "Instalado")!;
+    expect(instalado(0).pie).toMatch(/480.000/);
+    expect(instalado(1).pie).toMatch(/2.*35.000.*70.000/);
+    expect(s[0].columnas.find((c) => c.titulo === "Retirado")!.pie).toBeUndefined();
+  });
+
   it("sin vínculos (antes de la fase 5) usa «Antes y después»; y omite fotos sin URL firmada", () => {
     const s = armarSeccionesPortal([ev("vs", "repuesto_viejo"), ev("rota", "repuesto_nuevo")], [], urls, "ABC123");
     expect(s.map((x) => x.titulo)).toEqual(["Antes y después"]);

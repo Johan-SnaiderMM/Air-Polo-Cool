@@ -1,3 +1,7 @@
+import { formatearCantidad, redondearDinero } from "@/lib/inventario";
+import { formatearMoneda } from "@/lib/ordenes";
+import type { TipoUnidad } from "@/types/database";
+
 /**
  * Agrupa las fotos de "repuesto retirado" / "repuesto instalado" por el repuesto al que
  * pertenecen (fase 5). Lo comparten la bitácora interna y el portal del cliente.
@@ -32,4 +36,16 @@ export function agruparPorRepuesto<F extends FotoLigable, R extends { id?: strin
 
   const grupos = [...porId.values()].filter((g) => g.retirado.length + g.instalado.length > 0);
   return { grupos, sueltas };
+}
+
+/**
+ * Lo que se le COBRA al cliente por un repuesto (precio de venta, nunca el costo de compra), para mostrarlo
+ * bajo la foto del repuesto instalado: «$480.000», o «2 × $35.000 = $70.000» si son varias unidades.
+ * Con precio 0 (ya incluido en el total acordado) dice «Incluido en el total».
+ */
+export function textoPrecioRepuesto(d: { cantidad: number; precioUnitario: number; unidad?: TipoUnidad }): string {
+  const total = redondearDinero(d.cantidad * d.precioUnitario);
+  if (total <= 0) return "Incluido en el total";
+  if (d.cantidad === 1) return formatearMoneda(total);
+  return `${formatearCantidad(d.cantidad, d.unidad ?? "unidad")} × ${formatearMoneda(d.precioUnitario)} = ${formatearMoneda(total)}`;
 }

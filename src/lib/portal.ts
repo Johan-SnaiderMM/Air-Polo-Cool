@@ -3,7 +3,7 @@
  * devolvió la RPC `obtener_orden_publica`, las URLs ya firmadas y arma las secciones a mostrar.
  */
 import type { FotoPortal, SeccionGaleria } from "@/components/portal/galeria-portal";
-import { agruparPorRepuesto } from "@/lib/fotos-repuesto";
+import { agruparPorRepuesto, textoPrecioRepuesto } from "@/lib/fotos-repuesto";
 import type { OrdenPublica, TipoEvidencia } from "@/types/database";
 
 type EvidenciaPublica = OrdenPublica["evidencias"][number];
@@ -54,7 +54,13 @@ export function armarSeccionesPortal(
       descripcion: i === 0 ? "Cada repuesto: el que retiramos y el nuevo que instalamos." : undefined,
       columnas: [
         { titulo: "Retirado", tono: "rojo", fotos: retirado.flatMap((e) => aFoto(e, `Retirado: ${repuesto.nombre}`)) },
-        { titulo: "Instalado", tono: "verde", fotos: instalado.flatMap((e) => aFoto(e, `Instalado: ${repuesto.nombre}`)) },
+        {
+          titulo: "Instalado",
+          tono: "verde",
+          fotos: instalado.flatMap((e) => aFoto(e, `Instalado: ${repuesto.nombre}`)),
+          // Lo que se cobra por esta pieza (precio de venta; el costo de compra nunca sale de la base).
+          pie: textoPrecioRepuesto({ cantidad: repuesto.cantidad, precioUnitario: repuesto.precio_unitario, unidad: repuesto.unidad }),
+        },
       ],
     });
   });

@@ -1,9 +1,9 @@
 import { AsignarRepuestoFoto } from "@/components/ordenes/asignar-repuesto-foto";
 import { BotonEliminarFoto } from "@/components/ordenes/boton-eliminar-foto";
-import { agruparPorRepuesto } from "@/lib/fotos-repuesto";
+import { agruparPorRepuesto, textoPrecioRepuesto } from "@/lib/fotos-repuesto";
 import { TIPOS_EVIDENCIA, TIPO_EVIDENCIA_LABEL } from "@/lib/ordenes";
 import { formatearFecha } from "@/lib/ordenes";
-import type { TipoEvidencia } from "@/types/database";
+import type { TipoEvidencia, TipoUnidad } from "@/types/database";
 
 export type EvidenciaVista = {
   id: string;
@@ -18,7 +18,8 @@ export type EvidenciaVista = {
 
 type Props = {
   evidencias: EvidenciaVista[];
-  repuestos: { id: string; nombre: string }[];
+  /** `cantidad` y `precioUnitario` (precio de VENTA) alimentan el «se cobra» bajo la foto del instalado. */
+  repuestos: { id: string; nombre: string; cantidad?: number; precioUnitario?: number; unidad?: TipoUnidad }[];
   ordenId: string;
   puedeEliminar: boolean;
 };
@@ -108,6 +109,16 @@ export function GaleriaEvidencias({ evidencias, repuestos, ordenId, puedeElimina
                           <Miniatura key={f.id} foto={f} asignable={false} {...comun} />
                         ))}
                       </ul>
+                    )}
+                    {col.titulo === "Instalado" && repuesto.precioUnitario !== undefined && (
+                      <p className="mt-2 rounded-lg bg-stone-100 px-2 py-1.5 text-center text-[13px] font-semibold text-ink">
+                        <span className="block text-[11px] font-medium text-stone-500">Se cobra al cliente</span>
+                        {textoPrecioRepuesto({
+                          cantidad: repuesto.cantidad ?? 1,
+                          precioUnitario: repuesto.precioUnitario,
+                          unidad: repuesto.unidad,
+                        })}
+                      </p>
                     )}
                   </div>
                 ))}
