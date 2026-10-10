@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AlertTriangle, CloudOff, Snowflake, RefreshCw, Trash2 } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
+import { useConfirmar } from "@/components/ui/confirmar";
 import { useSync } from "@/components/sync/sync-provider";
 import { describirOperacion } from "@/lib/offline/operaciones";
 
@@ -18,6 +19,7 @@ function haceCuanto(ms: number): string {
 export function PendientesDrawer({ onClose }: { onClose: () => void }) {
   const { online, cola, sincronizando, sesionExpirada, snapshot, sincronizar, reintentarFallida, descartar } =
     useSync();
+  const confirmar = useConfirmar();
 
   return (
     <Drawer titulo="Sincronización" onClose={onClose}>
@@ -92,10 +94,14 @@ export function PendientesDrawer({ onClose }: { onClose: () => void }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm("¿Descartar este registro? No se subirá y se perderá.")) {
-                          void descartar(item.seq);
-                        }
+                      onClick={async () => {
+                        const seguro = await confirmar({
+                          titulo: "¿Descartar este registro?",
+                          mensaje: "No se subirá y se perderá.",
+                          confirmar: "Descartar",
+                          tono: "peligro",
+                        });
+                        if (seguro) void descartar(item.seq);
                       }}
                       className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-stone-500 active:bg-stone-100"
                     >

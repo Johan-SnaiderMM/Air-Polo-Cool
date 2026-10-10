@@ -9,6 +9,7 @@ import { PanelAvisos } from "@/components/avisos/panel-avisos";
 import { BotonTema } from "@/components/layout/boton-tema";
 import { useAvisos } from "@/components/avisos/use-avisos";
 import { PendientesDrawer } from "@/components/sync/pendientes-drawer";
+import { useConfirmar } from "@/components/ui/confirmar";
 import { PanelSoporte } from "@/components/soporte/panel-soporte";
 import { useSync } from "@/components/sync/sync-provider";
 import { limpiarCacheReferencia } from "@/lib/offline/almacen";
@@ -45,19 +46,29 @@ export function AppHeader({ soporte }: { soporte: EstadoSoporte }) {
         ? `${pendientes} pendientes de sincronizar`
         : "En línea";
 
-  function alCerrarSesion(e: React.FormEvent<HTMLFormElement>) {
-    if (
-      pendientes + fallidas > 0 &&
-      !window.confirm(
-        `Hay ${pendientes + fallidas} registro(s) sin sincronizar. Se conservan en el teléfono y se subirán cuando vuelvas a ingresar. ¿Cerrar sesión?`
-      )
-    ) {
-      e.preventDefault();
-      return;
-    }
+  const confirmar = useConfirmar();
+
+  function limpiarYSalir(formulario: HTMLFormElement) {
     // La sesión termina: se borran las páginas guardadas y los datos de referencia (no la cola).
     void limpiarCacheReferencia();
     if ("caches" in window) void caches.keys().then((ks) => ks.forEach((k) => void caches.delete(k)));
+    formulario.submit();
+  }
+
+  /** El envío se frena siempre; si hay registros sin subir se pregunta antes de enviar de verdad. */
+  async function alCerrarSesion(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formulario = e.currentTarget;
+    const sinSubir = pendientes + fallidas;
+    if (sinSubir > 0) {
+      const seguro = await confirmar({
+        titulo: "¿Cerrar sesión?",
+        mensaje: `Hay ${sinSubir} ${sinSubir === 1 ? "registro" : "registros"} sin sincronizar. Se conservan en el teléfono y se subirán cuando vuelvas a ingresar.`,
+        confirmar: "Cerrar sesión",
+      });
+      if (!seguro) return;
+    }
+    limpiarYSalir(formulario);
   }
 
   return (

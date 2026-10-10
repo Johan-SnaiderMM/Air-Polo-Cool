@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarClock, Check, MessageCircle, Wrench } from "lucide-react";
 import { cambiarEstadoCita, marcarRecordatorio } from "@/app/(app)/agenda/actions";
 import { FormularioCita } from "@/components/agenda/formulario-cita";
+import { useConfirmar } from "@/components/ui/confirmar";
 import { TIPO_CITA_LABEL } from "@/lib/agenda";
 import type { CitaVista } from "@/lib/datos/agenda";
 
@@ -18,9 +19,16 @@ export function TarjetaCita({ cita, atrasada = false }: { cita: CitaVista; atras
   const [error, setError] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const cerrar = useCallback(() => setEditando(false), []);
+  const confirmar = useConfirmar();
 
-  function cancelar() {
-    if (!window.confirm(`¿Cancelar la cita de ${cita.placa}?`)) return;
+  async function cancelar() {
+    const seguro = await confirmar({
+      titulo: `¿Cancelar la cita de ${cita.placa}?`,
+      mensaje: "La cita deja de aparecer en la agenda. El cliente no recibe ningún aviso.",
+      confirmar: "Cancelar la cita",
+      tono: "peligro",
+    });
+    if (!seguro) return;
     setError(null);
     iniciar(async () => {
       const r = await cambiarEstadoCita({ id: cita.id, estado: "cancelada" });

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Snowflake, Trash2 } from "lucide-react";
 import { eliminarOrden } from "@/app/(app)/ordenes/actions";
+import { useConfirmar } from "@/components/ui/confirmar";
 
 /**
  * Elimina una orden que sigue en «Recibido» (ingreso creado por error). Pide confirmación y, al
@@ -13,15 +14,16 @@ export function BotonEliminarOrden({ ordenId, placa }: { ordenId: string; placa:
   const router = useRouter();
   const [pendiente, iniciar] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const confirmar = useConfirmar();
 
-  function borrar() {
-    if (
-      !window.confirm(
-        `¿Eliminar la orden de ${placa}? Se borran también sus fotos y los repuestos asignados (el stock vuelve al inventario). No se puede deshacer.`
-      )
-    ) {
-      return;
-    }
+  async function borrar() {
+    const seguro = await confirmar({
+      titulo: `¿Eliminar la orden de ${placa}?`,
+      mensaje: "Se borran también sus fotos y los repuestos asignados (el stock vuelve al inventario). No se puede deshacer.",
+      confirmar: "Eliminar orden",
+      tono: "peligro",
+    });
+    if (!seguro) return;
     setError(null);
     iniciar(async () => {
       const r = await eliminarOrden({ ordenId });

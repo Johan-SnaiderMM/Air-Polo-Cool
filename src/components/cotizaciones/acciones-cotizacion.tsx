@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, ClipboardCheck, Snowflake, Pencil, Printer, Send, X } from "lucide-react";
 import { cambiarEstadoCotizacion, convertirCotizacion } from "@/app/(app)/cotizaciones/actions";
 import { useAutor } from "@/components/sync/autor-provider";
+import { useConfirmar } from "@/components/ui/confirmar";
 import type { EstadoCotizacion } from "@/types/database";
 
 type Props = {
@@ -22,6 +23,7 @@ export function AccionesCotizacion({ id, estado, ordenId, whatsappHref }: Props)
   const { autor } = useAutor();
   const [error, setError] = useState<string | null>(null);
   const [pendiente, iniciar] = useTransition();
+  const confirmar = useConfirmar();
 
   function cambiar(nuevo: EstadoCotizacion) {
     setError(null);
@@ -32,10 +34,13 @@ export function AccionesCotizacion({ id, estado, ordenId, whatsappHref }: Props)
     });
   }
 
-  function convertir() {
-    if (!window.confirm("Se creará una orden de trabajo con la mano de obra y el total de esta cotización. ¿Continuar?")) {
-      return;
-    }
+  async function convertir() {
+    const seguro = await confirmar({
+      titulo: "¿Crear la orden de trabajo?",
+      mensaje: "Se crea con la mano de obra y el total de esta cotización. Los repuestos se cargan después, al usarlos.",
+      confirmar: "Crear orden",
+    });
+    if (!seguro) return;
     setError(null);
     iniciar(async () => {
       const r = await convertirCotizacion({ id, autor });

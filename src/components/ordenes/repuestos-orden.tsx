@@ -9,6 +9,7 @@ import {
   type ItemBuscado,
 } from "@/app/(app)/ordenes/repuestos-actions";
 import { admiteDecimales, formatearCantidad, redondearDinero } from "@/lib/inventario";
+import { useConfirmar } from "@/components/ui/confirmar";
 import type { TipoUnidad } from "@/types/database";
 
 import { Dinero } from "@/components/ui/dinero";
@@ -43,6 +44,7 @@ export function RepuestosOrden({ ordenId, lineas, bloqueada, puedeEliminar }: Pr
   const [error, setError] = useState<string | null>(null);
   const [pendiente, iniciar] = useTransition();
   const secuencia = useRef(0);
+  const confirmar = useConfirmar();
 
   useEffect(() => {
     const q = consulta.trim();
@@ -95,8 +97,14 @@ export function RepuestosOrden({ ordenId, lineas, bloqueada, puedeEliminar }: Pr
     });
   }
 
-  function quitar(linea: LineaRepuesto) {
-    if (!window.confirm(`¿Quitar "${linea.nombre}" de la orden? El stock se devolverá.`)) return;
+  async function quitar(linea: LineaRepuesto) {
+    const seguro = await confirmar({
+      titulo: `¿Quitar «${linea.nombre}» de la orden?`,
+      mensaje: "Si es de inventario, el stock se devuelve. El total de la orden se ajusta si estaba al día.",
+      confirmar: "Quitar",
+      tono: "peligro",
+    });
+    if (!seguro) return;
     setError(null);
     iniciar(async () => {
       const r = await eliminarRepuesto({ ordenId, lineaId: linea.id });

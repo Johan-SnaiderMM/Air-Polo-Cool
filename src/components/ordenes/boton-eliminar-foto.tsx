@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Snowflake, Trash2 } from "lucide-react";
 import { eliminarEvidencia } from "@/app/(app)/ordenes/actions";
+import { useConfirmar } from "@/components/ui/confirmar";
 
 export function BotonEliminarFoto({
   ordenId,
@@ -13,9 +14,16 @@ export function BotonEliminarFoto({
 }) {
   const [pendiente, iniciar] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const confirmar = useConfirmar();
 
-  function borrar() {
-    if (!window.confirm("¿Eliminar esta foto? No se puede deshacer.")) return;
+  async function borrar() {
+    const seguro = await confirmar({
+      titulo: "¿Eliminar esta foto?",
+      mensaje: "No se puede deshacer.",
+      confirmar: "Eliminar",
+      tono: "peligro",
+    });
+    if (!seguro) return;
     setError(null);
     iniciar(async () => {
       const r = await eliminarEvidencia({ ordenId, evidenciaId });

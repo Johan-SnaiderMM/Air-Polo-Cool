@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, Copy, KeyRound, UserCheck, UserPlus, UserX } from "lucide-react";
 import { cambiarEstadoAyudante, crearAyudante, restablecerContrasenaAyudante } from "@/app/(app)/equipo/actions";
 import { instruccionesDeIngreso } from "@/lib/equipo";
+import { useConfirmar } from "@/components/ui/confirmar";
 import type { MiembroEquipo } from "@/lib/datos/equipo";
 
 type Credenciales = { nombre: string; correo: string; contrasena: string };
@@ -114,10 +115,21 @@ function FilaMiembro({ m, onCredenciales }: { m: MiembroEquipo; onCredenciales: 
   const [error, setError] = useState<string | null>(null);
   const [trabajando, iniciar] = useTransition();
   const gestionable = m.rol === "operario" && !m.esSoporte;
+  const confirmar = useConfirmar();
 
-  function cambiarEstado() {
+  async function cambiarEstado() {
     const activo = !m.activo;
-    if (!activo && !window.confirm(`${m.nombre} dejará de poder entrar. Su historial se conserva. ¿Desactivar?`)) return;
+    if (
+      !activo &&
+      !(await confirmar({
+        titulo: `¿Desactivar a ${m.nombre}?`,
+        mensaje: "Dejará de poder entrar a la app. Su historial se conserva y lo puedes reactivar cuando quieras.",
+        confirmar: "Desactivar",
+        tono: "peligro",
+      }))
+    ) {
+      return;
+    }
     setError(null);
     iniciar(async () => {
       const r = await cambiarEstadoAyudante({ id: m.id, activo });
@@ -125,8 +137,13 @@ function FilaMiembro({ m, onCredenciales }: { m: MiembroEquipo; onCredenciales: 
     });
   }
 
-  function nuevaContrasena() {
-    if (!window.confirm(`Se generará una contraseña nueva para ${m.nombre} y la anterior dejará de servir. ¿Continuar?`)) return;
+  async function nuevaContrasena() {
+    const seguro = await confirmar({
+      titulo: `¿Nueva contraseña para ${m.nombre}?`,
+      mensaje: "Se genera una contraseña nueva y la anterior deja de servir.",
+      confirmar: "Generar contraseña",
+    });
+    if (!seguro) return;
     setError(null);
     iniciar(async () => {
       const r = await restablecerContrasenaAyudante({ id: m.id });
