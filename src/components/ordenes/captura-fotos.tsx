@@ -163,7 +163,7 @@ export function CapturaFotos({
         const g = await registrar(
           {
             tipo: "repuesto.externo",
-            datos: { id, orden_id: ordenId, nombre: costo.nombre, costo: costo.costo, precio: costo.precio },
+            datos: { id, orden_id: ordenId, tipo: "repuesto", nombre: costo.nombre, costo: costo.costo, precio: costo.precio },
           },
           null
         );

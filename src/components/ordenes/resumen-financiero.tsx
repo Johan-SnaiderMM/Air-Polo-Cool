@@ -16,6 +16,9 @@ type Props = {
   repuestosCosto: number;
   /** Repuestos comprados aparte para esta orden (egresos «repuesto», fuera del inventario). */
   repuestosAparte?: number;
+  /** Otros cargos al cliente (gasolina, flete…): lo que se cobra y lo que costaron. */
+  cargosPrecio?: number;
+  cargosCosto?: number;
   totalCobrado: number;
 };
 
@@ -42,14 +45,16 @@ export function ResumenFinanciero({
   repuestosPrecio,
   repuestosCosto,
   repuestosAparte = 0,
+  cargosPrecio = 0,
+  cargosCosto = 0,
   totalCobrado,
 }: Props) {
   const [pendiente, iniciar] = useTransition();
   const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null);
 
-  const totalSugerido = redondearDinero(manoObra + repuestosPrecio);
+  const totalSugerido = redondearDinero(manoObra + repuestosPrecio + cargosPrecio);
   const sincronizado = redondearDinero(totalCobrado) === totalSugerido;
-  const margen = redondearDinero(totalCobrado - repuestosCosto - repuestosAparte);
+  const margen = redondearDinero(totalCobrado - repuestosCosto - cargosCosto - repuestosAparte);
 
   function actualizar() {
     setMensaje(null);
@@ -68,6 +73,7 @@ export function ResumenFinanciero({
       <dl className="space-y-2">
         <Fila etiqueta="Mano de obra" valor={formatearMoneda(manoObra)} />
         <Fila etiqueta="+ Repuestos e insumos" valor={formatearMoneda(repuestosPrecio)} />
+        {cargosPrecio > 0 && <Fila etiqueta="+ Otros cargos" valor={formatearMoneda(cargosPrecio)} />}
         <div className="border-t border-stone-200/70 pt-2">
           <Fila etiqueta="= Total de la orden" valor={formatearMoneda(totalSugerido)} fuerte />
         </div>
@@ -76,6 +82,7 @@ export function ResumenFinanciero({
       <dl className="space-y-2 rounded-xl bg-stone-50 p-3 text-sm">
         <Fila etiqueta="Total cobrado (registrado)" valor={formatearMoneda(totalCobrado)} />
         <Fila etiqueta="Costo real de repuestos" valor={formatearMoneda(repuestosCosto)} />
+        {cargosCosto > 0 && <Fila etiqueta="Gastos de otros cargos" valor={formatearMoneda(cargosCosto)} />}
         {repuestosAparte > 0 && (
           <Fila etiqueta="Repuestos comprados aparte" valor={formatearMoneda(repuestosAparte)} />
         )}

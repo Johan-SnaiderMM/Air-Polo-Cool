@@ -73,6 +73,8 @@ type RepuestoFila = {
   id: string;
   /** Repuesto sin inventario (fase 12): lleva su propio nombre. */
   nombre?: string | null;
+  /** Fase 14: «cargo» = otro cargo al cliente. Ausente = repuesto. */
+  tipo?: "repuesto" | "cargo";
   cantidad_usada: number;
   costo_unitario: number;
   precio_unitario: number;
@@ -87,6 +89,7 @@ export function armarLineas(filas: RepuestoFila[]): LineaRepuesto[] {
       {
         id: r.id,
         nombre,
+        tipo: r.tipo ?? ("repuesto" as const),
         codigo: r.inventario?.codigo ?? "",
         tipo_unidad: r.inventario?.tipo_unidad ?? ("unidad" as const),
         cantidad_usada: r.cantidad_usada,

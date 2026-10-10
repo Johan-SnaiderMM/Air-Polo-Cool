@@ -13,6 +13,7 @@ import { OrdenFormEditar } from "@/components/ordenes/orden-form-editar";
 import { Colapsable } from "@/components/ui/colapsable";
 import { CapturaFotos } from "@/components/ordenes/captura-fotos";
 import { GaleriaEvidencias } from "@/components/ordenes/galeria-evidencias";
+import { CargosOrden } from "@/components/ordenes/cargos-orden";
 import { RepuestosOrden } from "@/components/ordenes/repuestos-orden";
 import { ResumenFinanciero } from "@/components/ordenes/resumen-financiero";
 import {
@@ -40,7 +41,7 @@ export default async function OrdenPage({
   const detalle = await cargarDetalleOrden(supabase, id);
   if (!detalle) notFound();
 
-  const { orden, lineas, repuestosPrecio, repuestosCosto, repuestosAparte, pagos, saldoPendiente, historial, evidencias, esAdmin, bloqueada, contexto } =
+  const { orden, lineas, cargos, cargosPrecio, cargosCosto, repuestosPrecio, repuestosCosto, repuestosAparte, pagos, saldoPendiente, historial, evidencias, esAdmin, bloqueada, contexto } =
     detalle;
   const v = orden.vehiculos;
 
@@ -190,6 +191,21 @@ export default async function OrdenPage({
       </div>
 
       <div className="space-y-3">
+        <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Otros cargos al cliente</h3>
+        <CargosOrden
+          ordenId={orden.id}
+          cargos={cargos.map((c) => ({
+            id: c.id,
+            nombre: c.nombre,
+            precio: redondearDinero(c.cantidad_usada * c.precio_unitario),
+            costo: redondearDinero(c.cantidad_usada * c.costo_unitario),
+          }))}
+          bloqueada={bloqueada}
+          puedeEliminar={esAdmin}
+        />
+      </div>
+
+      <div className="space-y-3">
         <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Resumen financiero</h3>
         <ResumenFinanciero
           ordenId={orden.id}
@@ -197,6 +213,8 @@ export default async function OrdenPage({
           repuestosPrecio={repuestosPrecio}
           repuestosCosto={repuestosCosto}
           repuestosAparte={repuestosAparte}
+          cargosPrecio={cargosPrecio}
+          cargosCosto={cargosCosto}
           totalCobrado={orden.total_cobrado}
         />
       </div>

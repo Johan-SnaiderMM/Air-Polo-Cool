@@ -51,7 +51,9 @@ export function describirOperacion(op: Operacion): string {
     case "evidencia.subir":
       return `Foto (${op.datos.tipo.replace("_", " ")})`;
     case "repuesto.externo":
-      return `Repuesto ${op.datos.nombre} · costo ${moneda.format(op.datos.costo)}`;
+      return op.datos.tipo === "cargo"
+        ? `Cargo ${op.datos.nombre} · ${moneda.format(op.datos.precio)}`
+        : `Repuesto ${op.datos.nombre} · costo ${moneda.format(op.datos.costo)}`;
   }
 }
 

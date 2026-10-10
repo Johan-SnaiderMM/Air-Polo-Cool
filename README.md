@@ -23,6 +23,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    11. `…11_fase11_repuesto_costo.sql` (categoría de gasto «repuesto»; ver «Fotos de repuestos»)
    12. `…12_fase12_repuesto_externo.sql` (repuesto sin inventario con costo y precio; el total sigue a los repuestos)
    13. `…13_fase13_total_orden.sql` (el total no se queda en $0 con solo mano de obra y sigue a la mano de obra)
+   14. `…14_fase14_otros_cargos.sql` (otros cargos al cliente: gasolina, flete, parqueadero…)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
@@ -220,6 +221,16 @@ La fase 11 añadió la categoría de gasto «Repuesto» (para egresos manuales l
 
 Con la foto subida aparece **«Avisar por WhatsApp»**: un mensaje con el enlace de seguimiento, donde el cliente ve el avance y la
 foto de la pieza instalada (sin costos; lo comprueba una prueba).
+
+## Otros cargos (gasolina, flete, parqueadero…)
+
+Lo que se gasta POR el trabajo y se le cobra al cliente, pero no es repuesto ni mano de obra, va en **«Otros cargos al
+cliente»** de la orden (atajos: Gasolina, Parqueadero, Flete, Peaje, Lavado). Se registra el concepto, lo que se gastó
+(opcional) y lo que se le cobra (por defecto, lo gastado). El cobro **se suma al total y al saldo por cobrar** sin tocar el
+total a mano (misma regla que los repuestos: solo si el total estaba al día), lo gastado **baja el margen y el balance**, y el
+cliente lo ve en su enlace en «Otros cargos» con su valor (nunca lo gastado). Funciona sin conexión. Una orden entregada no
+admite cargos nuevos; quitar un cargo lo hace solo el administrador. Un gasto que NO se le cobra al cliente sigue yendo a
+Caja menor (ligado a la orden si es de un trabajo).
 
 ## Por cobrar (los que deben)
 

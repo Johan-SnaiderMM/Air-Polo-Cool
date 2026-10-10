@@ -45,7 +45,7 @@ async function consultarServicios(supabase: ClienteServidor, vehiculoId: string)
   const { data } = await supabase
     .from("ordenes_servicio")
     .select(
-      "id, estado, fecha_ingreso, kilometraje, total_cobrado, dias_garantia, fecha_fin_garantia, trabajos_a_realizar, orden_repuestos(nombre, cantidad_usada, inventario(nombre, tipo_unidad))"
+      "id, estado, fecha_ingreso, kilometraje, total_cobrado, dias_garantia, fecha_fin_garantia, trabajos_a_realizar, orden_repuestos(nombre, tipo, cantidad_usada, inventario(nombre, tipo_unidad))"
     )
     .eq("vehiculo_id", vehiculoId)
     .order("fecha_ingreso", { ascending: false });

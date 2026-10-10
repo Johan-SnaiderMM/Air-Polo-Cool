@@ -104,6 +104,8 @@ export type OrdenPublica = {
   repuestos: {
     /** Fase 5 (migración de fotos por repuesto): id de la línea; ausente si aún no se ejecutó. */
     id?: string;
+    /** Fase 14: «cargo» = otro cargo al cliente (gasolina, flete…). Ausente = repuesto. */
+    tipo?: "repuesto" | "cargo";
     nombre: string;
     cantidad: number;
     unidad: TipoUnidad;
@@ -387,6 +389,8 @@ export type Database = {
           inventario_id: string | null;
           /** Fase 12: nombre del repuesto sin inventario. */
           nombre: string | null;
+          /** Fase 14: «cargo» = gasolina, flete… que se cobra al cliente (sin inventario). */
+          tipo: "repuesto" | "cargo";
           cantidad_usada: number;
           costo_unitario: number;
           precio_unitario: number;
@@ -399,6 +403,7 @@ export type Database = {
           orden_id: string;
           inventario_id?: string | null;
           nombre?: string | null;
+          tipo?: "repuesto" | "cargo";
           cantidad_usada: number;
           /** Si se omite, el trigger toma el costo vigente del inventario. */
           costo_unitario?: number;
@@ -412,6 +417,7 @@ export type Database = {
           orden_id?: string;
           inventario_id?: string | null;
           nombre?: string | null;
+          tipo?: "repuesto" | "cargo";
           cantidad_usada?: number;
           costo_unitario?: number;
           precio_unitario?: number;

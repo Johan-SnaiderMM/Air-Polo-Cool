@@ -164,14 +164,14 @@ describe("evidencia.subir", () => {
 describe("repuesto.externo", () => {
   const repuesto = (): Operacion => ({
     tipo: "repuesto.externo",
-    datos: { id: LINEA, orden_id: ORDEN, nombre: "Compresor", costo: 480000, precio: 480000 },
+    datos: { id: LINEA, orden_id: ORDEN, tipo: "repuesto", nombre: "Compresor", costo: 480000, precio: 480000 },
   });
 
   it("agrega a la orden una línea sin inventario con su costo y su precio (1 unidad); el total lo ajusta la base", async () => {
     const { r, f } = await ejecutar(repuesto(), null);
     expect(r).toEqual({ ok: true });
     expect(f.de("insert", "orden_repuestos")[0].payload).toEqual({
-      id: LINEA, orden_id: ORDEN, nombre: "Compresor", cantidad_usada: 1, costo_unitario: 480000, precio_unitario: 480000,
+      id: LINEA, orden_id: ORDEN, nombre: "Compresor", tipo: "repuesto", cantidad_usada: 1, costo_unitario: 480000, precio_unitario: 480000,
     });
     expect(f.de("update")).toHaveLength(0); // no toca el total a mano: lo hace el trigger
   });

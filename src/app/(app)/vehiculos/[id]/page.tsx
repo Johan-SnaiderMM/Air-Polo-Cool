@@ -169,7 +169,7 @@ export default async function VehiculoPage({
                   {o.orden_repuestos.length > 0 && (
                     <ul className="flex flex-wrap gap-1.5">
                       {o.orden_repuestos.map((r, i) => {
-                        const nombre = r.inventario?.nombre ?? r.nombre;
+                        const nombre = r.tipo === "cargo" ? null : (r.inventario?.nombre ?? r.nombre);
                         return nombre ? (
                           <li
                             key={i}

@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Wrench,
+  Receipt,
 } from "lucide-react";
 import { ImprimirPortal } from "@/components/print/imprimir-portal";
 import { createPublicClient } from "@/utils/supabase/public";
@@ -128,10 +129,11 @@ export default async function PortalOrdenPage({
   const semaforo = orden.garantia_semaforo;
 
   // ---------- Pago ----------
-  const totalRepuestos = redondearDinero(
-    repuestos.reduce((s, r) => s + r.cantidad * r.precio_unitario, 0)
-  );
-  const ajuste = redondearDinero(orden.total_cobrado - orden.mano_obra - totalRepuestos);
+  const soloRepuestos = repuestos.filter((r) => r.tipo !== "cargo");
+  const cargos = repuestos.filter((r) => r.tipo === "cargo");
+  const totalRepuestos = redondearDinero(soloRepuestos.reduce((s, r) => s + r.cantidad * r.precio_unitario, 0));
+  const totalCargos = redondearDinero(cargos.reduce((s, r) => s + r.cantidad * r.precio_unitario, 0));
+  const ajuste = redondearDinero(orden.total_cobrado - orden.mano_obra - totalRepuestos - totalCargos);
   const entregado = orden.estado === "entregado";
 
   const pasoActual = PASOS.indexOf(orden.estado);
@@ -310,11 +312,11 @@ export default async function PortalOrdenPage({
           <h2 className="mb-3 flex items-center gap-2 font-serif text-xl font-medium tracking-tight">
             <Wrench className="size-5" aria-hidden /> Repuestos e insumos
           </h2>
-          {repuestos.length === 0 ? (
+          {soloRepuestos.length === 0 ? (
             <p className="text-sm text-stone-500">Aún no se han registrado repuestos.</p>
           ) : (
             <ul className="divide-y divide-stone-200/70">
-              {repuestos.map((r, i) => (
+              {soloRepuestos.map((r, i) => (
                 <li key={`${r.nombre}-${i}`} className="flex items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="font-medium">{r.nombre}</p>
@@ -332,6 +334,25 @@ export default async function PortalOrdenPage({
           )}
         </section>
 
+        {/* ---------- Otros cargos (gasolina, flete…) ---------- */}
+        {cargos.length > 0 && (
+          <section className="rounded-2xl bg-white p-5 shadow-soft">
+            <h2 className="mb-3 flex items-center gap-2 font-serif text-xl font-medium tracking-tight">
+              <Receipt className="size-5" aria-hidden /> Otros cargos
+            </h2>
+            <ul className="divide-y divide-stone-200/70">
+              {cargos.map((c, i) => (
+                <li key={`${c.nombre}-${i}`} className="flex items-center justify-between gap-3 py-3">
+                  <p className="min-w-0 font-medium">{c.nombre}</p>
+                  <p className="shrink-0 font-semibold">
+                    <Dinero valor={redondearDinero(c.cantidad * c.precio_unitario)} />
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* ---------- Resumen de pago ---------- */}
         <section className="rounded-2xl bg-white p-5 shadow-soft">
           <h2 className="mb-3 font-serif text-xl font-medium tracking-tight">Resumen de pago</h2>
@@ -344,9 +365,15 @@ export default async function PortalOrdenPage({
               <dt className="text-stone-600">+ Repuestos e insumos</dt>
               <dd className="font-semibold"><Dinero valor={totalRepuestos} /></dd>
             </div>
+            {totalCargos > 0 && (
+              <div className="flex justify-between">
+                <dt className="text-stone-600">+ Otros cargos</dt>
+                <dd className="font-semibold"><Dinero valor={totalCargos} /></dd>
+              </div>
+            )}
             {ajuste !== 0 && (
               <div className="flex justify-between">
-                <dt className="text-stone-600">{ajuste > 0 ? "+ Otros cargos" : "− Descuento"}</dt>
+                <dt className="text-stone-600">{ajuste > 0 ? (totalCargos > 0 ? "+ Ajuste" : "+ Otros cargos") : "− Descuento"}</dt>
                 <dd className="font-semibold"><Dinero valor={Math.abs(ajuste)} /></dd>
               </div>
             )}

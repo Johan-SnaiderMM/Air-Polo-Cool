@@ -139,7 +139,7 @@ async function consultarEvidencias(supabase: ClienteServidor, id: string) {
 async function consultarRepuestos(supabase: ClienteServidor, id: string) {
   const { data } = await supabase
     .from("orden_repuestos")
-    .select("id, nombre, cantidad_usada, costo_unitario, precio_unitario, inventario(nombre, codigo, tipo_unidad)")
+    .select("id, nombre, tipo, cantidad_usada, costo_unitario, precio_unitario, inventario(nombre, codigo, tipo_unidad)")
     .eq("orden_id", id)
     .order("created_at", { ascending: true });
   return data ?? [];
@@ -175,9 +175,15 @@ export type OrdenDetalle = NonNullable<Awaited<ReturnType<typeof consultarOrden>
 
 export type DetalleOrden = {
   orden: OrdenDetalle;
+  /** Solo repuestos (los «otros cargos» van en `cargos`). */
   lineas: LineaRepuesto[];
+  /** Otros cargos al cliente: gasolina, flete, parqueadero… */
+  cargos: LineaRepuesto[];
   repuestosPrecio: number;
   repuestosCosto: number;
+  /** Lo que se cobra y lo que costaron los otros cargos. */
+  cargosPrecio: number;
+  cargosCosto: number;
   /** Egresos de «repuesto» comprados aparte para esta orden (no están en el inventario). */
   repuestosAparte: number;
   pagos: PagoVista[];
@@ -230,12 +236,17 @@ export async function cargarDetalleOrden(
     ),
   ]);
 
-  const repuestos = totalesRepuestos(filasRepuestos);
+  const filasDe = (tipo: "repuesto" | "cargo") => filasRepuestos.filter((f) => (f.tipo ?? "repuesto") === tipo);
+  const repuestos = totalesRepuestos(filasDe("repuesto"));
+  const cargos = totalesRepuestos(filasDe("cargo"));
   return {
     orden,
-    lineas: armarLineas(filasRepuestos),
+    lineas: armarLineas(filasDe("repuesto")),
+    cargos: armarLineas(filasDe("cargo")),
     repuestosPrecio: repuestos.precio,
     repuestosCosto: repuestos.costo,
+    cargosPrecio: cargos.precio,
+    cargosCosto: cargos.costo,
     repuestosAparte,
     pagos: armarPagos(filasPagos, urlsPagos),
     saldoPendiente: saldoPendiente(orden.total_cobrado, filasPagos),

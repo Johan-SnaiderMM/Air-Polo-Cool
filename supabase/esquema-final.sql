@@ -124,6 +124,7 @@ orden_repuestos.inventario_id uuid null default -
 orden_repuestos.nombre text null default -
 orden_repuestos.orden_id uuid not null default -
 orden_repuestos.precio_unitario numeric not null default -
+orden_repuestos.tipo text not null default 'repuesto'::text
 ordenes_servicio.autor text null default -
 ordenes_servicio.created_at timestamp with time zone not null default now()
 ordenes_servicio.diagnostico_inicial text null default -
@@ -329,6 +330,8 @@ mantenimiento: mantenimiento_activo_not_null NOT NULL activo
 mantenimiento: mantenimiento_id_check CHECK (id)
 mantenimiento: mantenimiento_id_not_null NOT NULL id
 mantenimiento: mantenimiento_pkey PRIMARY KEY (id)
+orden_repuestos: chk_cargo_sin_inventario CHECK (((tipo <> 'cargo'::text) OR (inventario_id IS NULL)))
+orden_repuestos: chk_orden_repuestos_tipo CHECK ((tipo = ANY (ARRAY['repuesto'::text, 'cargo'::text])))
 orden_repuestos: chk_repuesto_origen CHECK (((inventario_id IS NOT NULL) OR ((char_length(btrim(COALESCE(nombre, ''::text))) >= 1) AND (char_length(btrim(COALESCE(nombre, ''::text))) <= 80))))
 orden_repuestos: orden_repuestos_cantidad_usada_check CHECK ((cantidad_usada > (0)::numeric))
 orden_repuestos: orden_repuestos_cantidad_usada_not_null NOT NULL cantidad_usada
@@ -343,6 +346,7 @@ orden_repuestos: orden_repuestos_orden_id_not_null NOT NULL orden_id
 orden_repuestos: orden_repuestos_pkey PRIMARY KEY (id)
 orden_repuestos: orden_repuestos_precio_unitario_check CHECK ((precio_unitario >= (0)::numeric))
 orden_repuestos: orden_repuestos_precio_unitario_not_null NOT NULL precio_unitario
+orden_repuestos: orden_repuestos_tipo_not_null NOT NULL tipo
 ordenes_servicio: chk_entrega_posterior CHECK (((fecha_entrega IS NULL) OR (fecha_entrega >= fecha_ingreso)))
 ordenes_servicio: chk_mantenimiento_meses CHECK (((mantenimiento_meses IS NULL) OR (mantenimiento_meses = ANY (ARRAY[3, 6, 12]))))
 ordenes_servicio: chk_ordenes_autor CHECK (((autor IS NULL) OR ((char_length(btrim(autor)) >= 1) AND (char_length(btrim(autor)) <= 40))))
@@ -1374,6 +1378,7 @@ AS $function$
     'repuestos', coalesce((
       select jsonb_agg(jsonb_build_object(
                'id',              r.id,
+               'tipo',            r.tipo,
                'nombre',          coalesce(i.nombre, r.nombre),
                'cantidad',        r.cantidad_usada,
                'unidad',          coalesce(i.tipo_unidad::text, 'unidad'),

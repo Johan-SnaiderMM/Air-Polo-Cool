@@ -19,6 +19,8 @@ const INPUT =
 export type LineaRepuesto = {
   id: string;
   nombre: string;
+  /** «cargo» = otro cargo al cliente (gasolina, flete…): va en su propio apartado. */
+  tipo: "repuesto" | "cargo";
   codigo: string;
   tipo_unidad: TipoUnidad;
   cantidad_usada: number;

@@ -244,6 +244,23 @@ describe("cargarDetalleOrden", () => {
     expect(d!.orden.id).toBe("o1");
   });
 
+  it("separa los otros cargos (gasolina…) de los repuestos y suma cada grupo", async () => {
+    const { cliente } = crearFalso((t, s) =>
+      t === "orden_repuestos"
+        ? {
+            data: [
+              { id: "lin1", tipo: "repuesto", cantidad_usada: 1, costo_unitario: 100, precio_unitario: 200, inventario: { nombre: "Compresor", codigo: "C1", tipo_unidad: "unidad" } },
+              { id: "car1", tipo: "cargo", nombre: "Gasolina", cantidad_usada: 1, costo_unitario: 40000, precio_unitario: 50000, inventario: null },
+            ],
+          }
+        : datosDetalle(t, s)
+    );
+    const d = await cargarDetalleOrden(cliente, "o1", async () => null);
+    expect(d!.lineas.map((l) => l.nombre)).toEqual(["Compresor"]);
+    expect(d!.cargos).toEqual([expect.objectContaining({ id: "car1", nombre: "Gasolina", tipo: "cargo" })]);
+    expect([d!.repuestosPrecio, d!.repuestosCosto, d!.cargosPrecio, d!.cargosCosto]).toEqual([200, 100, 50000, 40000]);
+  });
+
   it("devuelve null si la orden no existe", async () => {
     const { cliente } = crearFalso((t, s) => (t === "ordenes_servicio" ? { data: [] } : datosDetalle(t, s)));
     expect(await cargarDetalleOrden(cliente, "no-existe", async () => null)).toBeNull();

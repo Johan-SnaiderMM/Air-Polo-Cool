@@ -111,20 +111,32 @@ const evidenciaSchema = z.object({
 // ---------------------------------------------------------------------
 // Repuesto sin inventario (comprado para el trabajo): costo y precio al cliente
 // ---------------------------------------------------------------------
-const datosRepuestoExternoSchema = z.object({
+const datosRepuestoExternoSchema = z
+  .object({
   id: idUuid("Repuesto inválido (id u orden)."),
   orden_id: idUuid("Repuesto inválido (id u orden)."),
+  /** «cargo» = gasolina, flete… (fase 14). Sin tipo, es un repuesto. */
+  tipo: campo<"repuesto" | "cargo">(
+    (v) => (v === undefined || v === null || v === "repuesto" ? "repuesto" : v === "cargo" ? "cargo" : undefined),
+    "Tipo de línea inválido."
+  ),
   nombre: campo((v) => {
     const t = textoONull(v, 80);
     return t !== null && t.length >= 2 ? t : undefined;
   }, "Escribe qué repuesto es."),
-  costo: montoPositivo("El costo del repuesto debe ser mayor a 0."),
+  // El costo de un repuesto debe ser > 0; el de un cargo puede ser 0 (lo comprobamos abajo).
+  costo: campo(
+    (v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= MAX_MONTO ? Math.round(v * 100) / 100 : undefined),
+    "El costo no es válido."
+  ),
   /** Lo que se le cobra al cliente: puede ser 0 (ya incluido en el total), nunca negativo. */
   precio: campo(
     (v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= MAX_MONTO ? Math.round(v * 100) / 100 : undefined),
     "El precio al cliente no puede ser negativo."
   ),
-});
+  })
+  .refine((d) => d.tipo === "cargo" || d.costo > 0, { error: "El costo del repuesto debe ser mayor a 0.", path: ["costo"] })
+  .refine((d) => d.tipo !== "cargo" || d.precio > 0, { error: "Escribe cuánto se le cobra al cliente.", path: ["precio"] });
 export type DatosRepuestoExterno = z.output<typeof datosRepuestoExternoSchema>;
 
 const repuestoExternoSchema = z.object({

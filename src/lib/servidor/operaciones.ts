@@ -234,6 +234,7 @@ export async function ejecutarOperacion(
         id: d.id,
         orden_id: d.orden_id,
         nombre: d.nombre,
+        tipo: d.tipo,
         cantidad_usada: 1,
         costo_unitario: d.costo,
         precio_unitario: d.precio,

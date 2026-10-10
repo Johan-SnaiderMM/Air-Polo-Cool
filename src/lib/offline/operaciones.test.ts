@@ -175,3 +175,18 @@ describe("validarOperacion: repuesto.externo", () => {
     }
   });
 });
+
+describe("validarOperacion: repuesto.externo como cargo", () => {
+  const datos = { id: "123e4567-e89b-12d3-a456-426614174000", orden_id: "223e4567-e89b-12d3-a456-426614174000", tipo: "cargo", nombre: "Gasolina", costo: 0, precio: 50000 };
+  it("un cargo puede no tener costo propio, pero sí hay que cobrar algo", () => {
+    expect(validarOperacion({ tipo: "repuesto.externo", datos })).toMatchObject({ ok: true, valor: { datos: { tipo: "cargo", costo: 0, precio: 50000 } } });
+    expect(validarOperacion({ tipo: "repuesto.externo", datos: { ...datos, precio: 0 } })).toMatchObject({ ok: false, error: expect.stringContaining("cuánto se le cobra") });
+  });
+  it("sin tipo es un repuesto (costo obligatorio); un tipo desconocido se rechaza", () => {
+    const { tipo: _t, ...sinTipo } = datos;
+    void _t;
+    expect(validarOperacion({ tipo: "repuesto.externo", datos: { ...sinTipo, costo: 100 } })).toMatchObject({ ok: true, valor: { datos: { tipo: "repuesto" } } });
+    expect(validarOperacion({ tipo: "repuesto.externo", datos: sinTipo })).toMatchObject({ ok: false, error: expect.stringContaining("mayor a 0") });
+    expect(validarOperacion({ tipo: "repuesto.externo", datos: { ...datos, tipo: "regalo" } }).ok).toBe(false);
+  });
+});
