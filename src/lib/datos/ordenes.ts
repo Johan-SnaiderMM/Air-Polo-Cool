@@ -9,6 +9,7 @@ import type { PagoVista } from "@/components/ordenes/pagos-orden";
 import type { LineaRepuesto } from "@/components/ordenes/repuestos-orden";
 import { BUCKET_EVIDENCIAS, BUCKET_FACTURAS, VIGENCIA_URL_INTERNA_SEGUNDOS } from "@/lib/almacenamiento";
 import { filtroVehiculos } from "@/lib/consultas";
+import { redondearDinero } from "@/lib/inventario";
 import {
   armarComprobante,
   armarEvidencias,
@@ -35,15 +36,33 @@ export type ListaOrdenes = {
   ordenes: OrdenResumen[];
   /** Saldo por cobrar de cada orden que aún debe algo (id → saldo). */
   saldoDe: Map<string, number>;
+  /** Con el filtro «Deben»: suma de lo que deben las órdenes listadas (0 sin ese filtro). */
+  totalDeben: number;
   error: string | null;
 };
 
+/** Con «Deben»: tope de órdenes con saldo que se piden (sus ids viajan en la URL de la consulta siguiente). */
+export const LIMITE_DEBEN = 100;
+
 export async function listarOrdenes(
   supabase: ClienteServidor,
-  filtros: { q: string; estado?: EstadoOrden; limite: number }
+  filtros: { q: string; estado?: EstadoOrden; limite: number; soloDeben?: boolean }
 ): Promise<ListaOrdenes> {
   // Los saldos no dependen de la búsqueda: se piden a la vez que la lista.
   const saldosPendientes = supabase.from("v_saldo_ordenes").select("orden_id, saldo").gt("saldo", 0).limit(1000);
+
+  // «Deben»: solo las órdenes con saldo por cobrar (la misma definición de la pantalla Por cobrar: no
+  // canceladas, con total y saldo > 0). Las más antiguas primero, que son las que hay que cobrar ya.
+  let idsConSaldo: string[] | null = null;
+  if (filtros.soloDeben) {
+    const { data: cartera, error: errorCartera } = await supabase
+      .from("v_cartera")
+      .select("orden_id")
+      .order("fecha_entrega", { ascending: true, nullsFirst: false })
+      .limit(LIMITE_DEBEN);
+    if (errorCartera) return { ordenes: [], saldoDe: new Map(), totalDeben: 0, error: errorCartera.message };
+    idsConSaldo = (cartera ?? []).flatMap((c) => (c.orden_id ? [c.orden_id] : []));
+  }
 
   let ids: string[] | null = null; // null = sin filtro de texto
   if (filtros.q) {
@@ -62,14 +81,16 @@ export async function listarOrdenes(
 
   let ordenes: OrdenResumen[] = [];
   let error: string | null = null;
-  if (ids === null || ids.length > 0) {
+  const hayCandidatas = (ids === null || ids.length > 0) && (idsConSaldo === null || idsConSaldo.length > 0);
+  if (hayCandidatas) {
     let consulta = supabase
       .from("ordenes_servicio")
       .select(SELECT_ORDEN_RESUMEN)
-      .order("fecha_ingreso", { ascending: false })
+      .order("fecha_ingreso", { ascending: !!idsConSaldo })
       .limit(filtros.limite);
     if (filtros.estado) consulta = consulta.eq("estado", filtros.estado);
     if (ids) consulta = consulta.in("vehiculo_id", ids);
+    if (idsConSaldo) consulta = consulta.in("id", idsConSaldo);
     const { data, error: errorConsulta } = await consulta;
     if (errorConsulta) error = errorConsulta.message;
     ordenes = data ?? [];
@@ -80,7 +101,8 @@ export async function listarOrdenes(
     (saldos ?? []).flatMap((x) => (x.orden_id && x.saldo !== null ? [[x.orden_id, x.saldo] as const] : []))
   );
 
-  return { ordenes, saldoDe, error };
+  const totalDeben = filtros.soloDeben ? ordenes.reduce((s, o) => s + (saldoDe.get(o.id) ?? 0), 0) : 0;
+  return { ordenes, saldoDe, totalDeben, error };
 }
 
 // ---------------------------------------------------------------------
@@ -123,6 +145,22 @@ async function consultarRepuestos(supabase: ClienteServidor, id: string) {
   return data ?? [];
 }
 
+/**
+ * Repuestos comprados aparte para esta orden: los egresos de categoría «repuesto» que se registran al subir
+ * la foto del repuesto instalado. Si la fase 11 aún no está ejecutada la categoría no existe y la consulta
+ * falla: se cuenta como 0 en vez de romper la pantalla.
+ */
+async function consultarRepuestosAparte(supabase: ClienteServidor, id: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("gastos_caja_menor")
+    .select("monto")
+    .eq("orden_id", id)
+    .eq("categoria", "repuesto")
+    .eq("anulado", false);
+  if (error) return 0;
+  return redondearDinero((data ?? []).reduce((s, g) => s + g.monto, 0));
+}
+
 async function consultarPagos(supabase: ClienteServidor, id: string) {
   const { data } = await supabase
     .from("pagos_orden")
@@ -140,6 +178,8 @@ export type DetalleOrden = {
   lineas: LineaRepuesto[];
   repuestosPrecio: number;
   repuestosCosto: number;
+  /** Egresos de «repuesto» comprados aparte para esta orden (no están en el inventario). */
+  repuestosAparte: number;
   pagos: PagoVista[];
   saldoPendiente: number;
   /** Bitácora de cambios de estado, la más reciente primero. */
@@ -163,11 +203,12 @@ export async function cargarDetalleOrden(
   /** Inyectable para pruebas (usa headers() de Next para armar el enlace público). */
   cargarContexto: (s: ClienteServidor, ordenId: string) => Promise<ContextoOrden | null> = cargarContextoOrden
 ): Promise<DetalleOrden | null> {
-  const [orden, filasEvidencias, filasRepuestos, filasPagos, sesion, contexto] = await Promise.all([
+  const [orden, filasEvidencias, filasRepuestos, filasPagos, repuestosAparte, sesion, contexto] = await Promise.all([
     consultarOrden(supabase, id),
     consultarEvidencias(supabase, id),
     consultarRepuestos(supabase, id),
     consultarPagos(supabase, id),
+    consultarRepuestosAparte(supabase, id),
     supabase.auth.getUser(),
     cargarContexto(supabase, id),
   ]);
@@ -195,6 +236,7 @@ export async function cargarDetalleOrden(
     lineas: armarLineas(filasRepuestos),
     repuestosPrecio: repuestos.precio,
     repuestosCosto: repuestos.costo,
+    repuestosAparte,
     pagos: armarPagos(filasPagos, urlsPagos),
     saldoPendiente: saldoPendiente(orden.total_cobrado, filasPagos),
     historial: lineasHistorial(orden.notas),

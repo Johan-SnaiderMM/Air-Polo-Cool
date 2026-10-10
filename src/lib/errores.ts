@@ -31,6 +31,10 @@ export function mensajeDeError(error: ErrorSupabase): string {
   if (/diagnostico_inicial|trabajos_a_realizar/.test(error.message)) {
     return "Falta ejecutar la migración de la fase 2 (supabase/migrations) en Supabase: columnas de diagnóstico y trabajos.";
   }
+  // La categoría «repuesto» de los gastos la añade la fase 11.
+  if (/invalid input value for enum categoria_gasto/.test(error.message)) {
+    return "Falta ejecutar la migración de la fase 11 (supabase/migrations) en Supabase para registrar el costo de un repuesto.";
+  }
   if (esErrorDeMigracion(error)) {
     return "Falta ejecutar las migraciones más recientes (supabase/migrations) en Supabase: tablas, columnas o funciones nuevas.";
   }

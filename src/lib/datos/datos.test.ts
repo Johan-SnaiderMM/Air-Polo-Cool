@@ -207,6 +207,28 @@ describe("cargarDetalleOrden", () => {
     expect(d!.contexto?.telefono).toBe("+573001234567");
   });
 
+  it("suma los repuestos comprados aparte (egresos «repuesto» no anulados de la orden) y expone el costo de cada línea", async () => {
+    const { cliente } = crearFalso((t, s) =>
+      t === "gastos_caja_menor" ? { data: [{ monto: 80000 }, { monto: 12500.5 }] } : datosDetalle(t, s)
+    );
+    const d = await cargarDetalleOrden(cliente, "o1", async () => null);
+    expect(d!.repuestosAparte).toBe(92500.5);
+    expect(d!.lineas[0]).toMatchObject({ nombre: "Compresor", costo_unitario: 100 });
+  });
+
+  it("sin repuestos aparte, o si la categoría aún no existe en la base (fase 11 sin ejecutar), cuenta 0 y no rompe", async () => {
+    const sin = await cargarDetalleOrden(crearFalso(datosDetalle).cliente, "o1", async () => null);
+    expect(sin!.repuestosAparte).toBe(0);
+    const { cliente } = crearFalso((t, s) =>
+      t === "gastos_caja_menor"
+        ? { error: { code: "22P02", message: 'invalid input value for enum categoria_gasto: "repuesto"' } }
+        : datosDetalle(t, s)
+    );
+    const d = await cargarDetalleOrden(cliente, "o1", async () => null);
+    expect(d!.repuestosAparte).toBe(0);
+    expect(d!.orden.id).toBe("o1");
+  });
+
   it("devuelve null si la orden no existe", async () => {
     const { cliente } = crearFalso((t, s) => (t === "ordenes_servicio" ? { data: [] } : datosDetalle(t, s)));
     expect(await cargarDetalleOrden(cliente, "no-existe", async () => null)).toBeNull();
@@ -252,6 +274,38 @@ describe("listarOrdenes", () => {
     expect(r.error).toBeNull();
     expect(r.ordenes).toHaveLength(1);
     expect([...r.saldoDe]).toEqual([["o1", 250000]]);
+  });
+
+  it("«Deben»: pide las órdenes con saldo a la cartera y suma lo que deben", async () => {
+    const { cliente } = crearFalso((t) =>
+      t === "v_cartera"
+        ? { data: [{ orden_id: "o1" }, { orden_id: null }] }
+        : t === "ordenes_servicio"
+          ? { data: [{ ...FILA_ORDEN, fecha_ingreso: "2026-09-28T15:00:00Z" }] }
+          : t === "v_saldo_ordenes"
+            ? { data: [{ orden_id: "o1", saldo: 250000 }] }
+            : { data: [] }
+    );
+    const r = await listarOrdenes(cliente, { q: "", limite: 100, soloDeben: true });
+    expect(r.error).toBeNull();
+    expect(r.ordenes.map((o) => o.id)).toEqual(["o1"]);
+    expect(r.totalDeben).toBe(250000);
+  });
+
+  it("«Deben» sin nadie con saldo: lista vacía sin consultar órdenes; sin el filtro, totalDeben es 0", async () => {
+    const { cliente, eventos } = crearFalso((t) => (t === "v_cartera" ? { data: [] } : { data: [{ ...FILA_ORDEN, fecha_ingreso: "x" }] }));
+    const r = await listarOrdenes(cliente, { q: "", limite: 100, soloDeben: true });
+    expect(r.ordenes).toEqual([]);
+    expect(r.totalDeben).toBe(0);
+    expect(eventos).not.toContain("consulta:ordenes_servicio");
+    const todas = await listarOrdenes(crearFalso(() => ({ data: [] })).cliente, { q: "", limite: 50 });
+    expect(todas.totalDeben).toBe(0);
+  });
+
+  it("«Deben»: si falla la cartera propaga el error", async () => {
+    const { cliente } = crearFalso((t) => (t === "v_cartera" ? { error: { message: "sin vista" } } : { data: [] }));
+    const r = await listarOrdenes(cliente, { q: "", limite: 100, soloDeben: true });
+    expect(r).toMatchObject({ error: "sin vista", ordenes: [] });
   });
 
   it("propaga el mensaje de error de la consulta", async () => {

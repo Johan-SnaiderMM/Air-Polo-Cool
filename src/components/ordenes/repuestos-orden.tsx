@@ -22,6 +22,8 @@ export type LineaRepuesto = {
   tipo_unidad: TipoUnidad;
   cantidad_usada: number;
   precio_unitario: number;
+  /** Costo de compra congelado al cargarlo (interno: el cliente nunca lo ve). */
+  costo_unitario: number;
 };
 
 type Props = {

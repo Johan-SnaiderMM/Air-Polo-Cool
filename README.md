@@ -20,6 +20,7 @@ Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Post
    8. `…08_fase8_avisos.sql` (suscripciones a los avisos de la agenda; requiere la fase 7)
    9. `…09_fase9_login.sql` (límite de intentos de ingreso; ver «Seguridad»)
    10. `…10_fase10_equipo.sql` (perfiles por persona y autoría real; ver «Equipo y perfiles»)
+   11. `…11_fase11_repuesto_costo.sql` (categoría de gasto «repuesto»; ver «Fotos de repuestos»)
    Si tu base ya tenía las fases 1 a 5 ejecutadas con los archivos anteriores (`polo_air_cool_faseN.sql`), **no hay que
    volver a ejecutar nada**: los archivos nuevos producen exactamente el mismo esquema.
 2. **Usuarios y roles.** Crea los usuarios en Supabase > Authentication y asigna el rol
@@ -198,6 +199,21 @@ Al tomar una foto de **repuesto retirado** o **instalado**, primero se elige de 
 bitácora las fotos se agrupan «Por repuesto» (retirado | instalado) y el cliente las ve igual en su enlace. Las fotos
 anteriores a la fase 5 quedan «sin asignar» y se ligan con el selector «Asignar a…». Si se quita un repuesto de la
 orden, sus fotos se conservan. Sin ejecutar `fase5.sql` todo sigue funcionando, solo sin el vínculo.
+
+**Costo de compra al subir la foto del repuesto instalado** (fase 11). Si el repuesto no está en la orden («Otro») o su
+línea no tiene costo cargado, antes de la cámara la app pide **qué repuesto es** y **cuánto costó** (o «Sin costo: el
+cliente trajo la pieza»). Después de subir la foto registra ese valor como un **egreso ligado a la orden** (gasto de
+categoría «Repuesto»; funciona sin conexión por la misma cola): baja el margen de la orden («Repuestos comprados aparte»),
+la rentabilidad por orden y la utilidad del balance, **sin pasar por el inventario**. Si el repuesto ya tiene costo cargado
+en la orden no se vuelve a pedir (no se cuenta dos veces). Anular el egreso (con motivo) lo saca de las cuentas.
+Con la foto subida aparece **«Avisar por WhatsApp»**: un mensaje con el enlace de seguimiento, donde el cliente ve el
+avance y la foto de la pieza instalada. El portal nunca muestra costos de compra ni egresos (lo comprueba una prueba).
+
+## Por cobrar (los que deben)
+
+En **Órdenes**, el filtro **Deben** muestra solo las órdenes con saldo pendiente (no canceladas, con total y saldo > 0),
+las más antiguas primero, con el total que deben y un acceso a **Por cobrar** (`/cartera`), que las agrupa por cliente con el
+recordatorio por WhatsApp. Se combina con la búsqueda por placa o cliente y con el estado.
 
 ## Reglas contables
 

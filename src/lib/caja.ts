@@ -5,6 +5,7 @@ export const CATEGORIAS: CategoriaGasto[] = [
   "alimentacion_refrigerio",
   "flete_acarreo",
   "herramienta_consumible",
+  "repuesto",
   "otros",
 ];
 
@@ -13,6 +14,7 @@ export const CATEGORIA_LABEL: Record<CategoriaGasto, string> = {
   alimentacion_refrigerio: "Alimentación",
   flete_acarreo: "Flete",
   herramienta_consumible: "Herramienta",
+  repuesto: "Repuesto",
   otros: "Otros",
 };
 

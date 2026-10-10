@@ -1733,7 +1733,7 @@ v_saldo_ordenes (security_invoker=true)
           GROUP BY pagos_orden.orden_id) p ON p.orden_id = o.id;
 
 -- ENUMS
-categoria_gasto: ayudante,alimentacion_refrigerio,flete_acarreo,herramienta_consumible,otros
+categoria_gasto: ayudante,alimentacion_refrigerio,flete_acarreo,herramienta_consumible,otros,repuesto
 estado_cotizacion: borrador,enviada,aprobada,rechazada,convertida
 estado_orden: recibido,diagnostico,en_proceso,listo,entregado,cancelado
 medio_pago: efectivo,transferencia,tarjeta,otro

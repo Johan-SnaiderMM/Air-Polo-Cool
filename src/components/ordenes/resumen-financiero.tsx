@@ -14,6 +14,8 @@ type Props = {
   repuestosPrecio: number;
   /** Suma de cantidad × costo_unitario (costo real de compra). */
   repuestosCosto: number;
+  /** Repuestos comprados aparte para esta orden (egresos «repuesto», fuera del inventario). */
+  repuestosAparte?: number;
   totalCobrado: number;
 };
 
@@ -39,6 +41,7 @@ export function ResumenFinanciero({
   manoObra,
   repuestosPrecio,
   repuestosCosto,
+  repuestosAparte = 0,
   totalCobrado,
 }: Props) {
   const [pendiente, iniciar] = useTransition();
@@ -46,7 +49,7 @@ export function ResumenFinanciero({
 
   const totalSugerido = redondearDinero(manoObra + repuestosPrecio);
   const sincronizado = redondearDinero(totalCobrado) === totalSugerido;
-  const margen = redondearDinero(totalCobrado - repuestosCosto);
+  const margen = redondearDinero(totalCobrado - repuestosCosto - repuestosAparte);
 
   function actualizar() {
     setMensaje(null);
@@ -73,6 +76,9 @@ export function ResumenFinanciero({
       <dl className="space-y-2 rounded-xl bg-stone-50 p-3 text-sm">
         <Fila etiqueta="Total cobrado (registrado)" valor={formatearMoneda(totalCobrado)} />
         <Fila etiqueta="Costo real de repuestos" valor={formatearMoneda(repuestosCosto)} />
+        {repuestosAparte > 0 && (
+          <Fila etiqueta="Repuestos comprados aparte" valor={formatearMoneda(repuestosAparte)} />
+        )}
         <Fila etiqueta="Margen bruto" valor={formatearMoneda(margen)} />
       </dl>
 

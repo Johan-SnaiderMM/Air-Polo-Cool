@@ -1,4 +1,4 @@
-import { Ellipsis, HardHat, Truck, Utensils, Wrench, type LucideIcon } from "lucide-react";
+import { Ellipsis, HardHat, PackageCheck, Truck, Utensils, Wrench, type LucideIcon } from "lucide-react";
 import type { CategoriaGasto } from "@/types/database";
 
 export const CATEGORIA_ICONO: Record<CategoriaGasto, LucideIcon> = {
@@ -6,5 +6,6 @@ export const CATEGORIA_ICONO: Record<CategoriaGasto, LucideIcon> = {
   alimentacion_refrigerio: Utensils,
   flete_acarreo: Truck,
   herramienta_consumible: Wrench,
+  repuesto: PackageCheck,
   otros: Ellipsis,
 };

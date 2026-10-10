@@ -4,16 +4,23 @@ import { useRef, useState } from "react";
 import {
   Camera,
   FileText,
+  MessageCircle,
   Snowflake,
   PackageCheck,
   PackageX,
   Thermometer,
+  X,
   type LucideIcon,
 } from "lucide-react";
+import { useAutor } from "@/components/sync/autor-provider";
 import { useSync } from "@/components/sync/sync-provider";
+import { PosMonto } from "@/components/ui/pos-monto";
+import { hoyBogota } from "@/lib/caja";
+import { pideCostoRepuesto, validarCostoRepuesto } from "@/lib/costo-repuesto";
 import { nuevoId } from "@/lib/offline/operaciones";
 import { comprimirImagen } from "@/lib/imagen";
-import { TIPO_EVIDENCIA_LABEL } from "@/lib/ordenes";
+import { formatearMoneda, TIPO_EVIDENCIA_LABEL } from "@/lib/ordenes";
+import { enlaceWhatsApp, mensajeRepuestoInstalado } from "@/lib/whatsapp";
 import type { TipoEvidencia } from "@/types/database";
 
 // Botones neutros: el tipo de foto se distingue por icono y etiqueta, no por color.
@@ -27,20 +34,65 @@ const BOTONES: { tipo: TipoEvidencia; icono: LucideIcon }[] = [
 
 type Mensaje = { tipo: "ok" | "error"; texto: string };
 
-export type RepuestoFoto = { id: string; nombre: string };
+export type RepuestoFoto = {
+  id: string;
+  nombre: string;
+  /** Costo de compra ya cargado en esa línea (cantidad × costo unitario). Si es 0, al fotografiarlo se pide. */
+  costo: number;
+};
+
+/** Datos para sugerir el aviso por WhatsApp (sin teléfono no se ofrece). Nunca incluye costos. */
+export type ClienteAviso = {
+  nombre: string;
+  telefono: string;
+  /** "Chevrolet Spark GT 2018" */
+  vehiculo: string;
+  placa: string;
+  urlPublica: string;
+};
 
 const ES_DE_REPUESTO: TipoEvidencia[] = ["repuesto_viejo", "repuesto_nuevo"];
 const SIN_REPUESTO = "ninguno";
 
-export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuestos: RepuestoFoto[] }) {
+/** Lo que el panel de costo deja listo para registrar junto con la foto del repuesto instalado. */
+type CostoPendiente = { nombre: string; monto: number };
+
+export function CapturaFotos({
+  ordenId,
+  repuestos,
+  aviso = null,
+}: {
+  ordenId: string;
+  repuestos: RepuestoFoto[];
+  aviso?: ClienteAviso | null;
+}) {
   const { registrar } = useSync();
+  const { autor } = useAutor();
   const inputRef = useRef<HTMLInputElement>(null);
   const tipoActivo = useRef<TipoEvidencia>("ingreso");
+  const costoRef = useRef<CostoPendiente | null>(null);
   const [subiendo, setSubiendo] = useState<TipoEvidencia | null>(null);
   const [mensaje, setMensaje] = useState<Mensaje | null>(null);
   // "" = aún no elige; SIN_REPUESTO = foto de algo que no está en la lista.
   const [repuestoId, setRepuestoId] = useState("");
   const elegido = repuestos.find((r) => r.id === repuestoId);
+
+  // Panel que pide el costo de compra antes de la foto del repuesto instalado.
+  const [pidiendoCosto, setPidiendoCosto] = useState(false);
+  const [nombreOtro, setNombreOtro] = useState("");
+  const [digitosCosto, setDigitosCosto] = useState("");
+  const [sinCosto, setSinCosto] = useState(false);
+  const [errorCosto, setErrorCosto] = useState<string | null>(null);
+
+  // Sugerencia de WhatsApp tras subir la foto del repuesto instalado.
+  const [sugerencia, setSugerencia] = useState<{ repuesto: string | null } | null>(null);
+
+  const nombreRepuesto = elegido?.nombre ?? nombreOtro.trim();
+
+  function abrirSelector(tipo: TipoEvidencia) {
+    tipoActivo.current = tipo;
+    inputRef.current?.click();
+  }
 
   function abrirCamara(tipo: TipoEvidencia) {
     if (subiendo) return;
@@ -49,8 +101,39 @@ export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuesto
       return;
     }
     setMensaje(null);
-    tipoActivo.current = tipo;
-    inputRef.current?.click();
+    setSugerencia(null);
+    costoRef.current = null;
+
+    // Repuesto instalado: si su costo aún no está registrado (no está en la lista o quedó en $0), se pide ahora.
+    if (pideCostoRepuesto(tipo, elegido)) {
+      setErrorCosto(null);
+      setPidiendoCosto(true);
+      return;
+    }
+    abrirSelector(tipo);
+  }
+
+  function confirmarCosto() {
+    const r = validarCostoRepuesto({
+      yaEnOrden: !!elegido,
+      nombre: nombreRepuesto,
+      monto: Number(digitosCosto || "0"),
+      sinCosto,
+    });
+    if (!r.ok) {
+      setErrorCosto(r.error);
+      return;
+    }
+    setErrorCosto(null);
+    costoRef.current = r.valor;
+    setPidiendoCosto(false);
+    abrirSelector("repuesto_nuevo");
+  }
+
+  function cancelarCosto() {
+    setPidiendoCosto(false);
+    setErrorCosto(null);
+    costoRef.current = null;
   }
 
   async function alSeleccionar(e: React.ChangeEvent<HTMLInputElement>) {
@@ -59,6 +142,8 @@ export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuesto
     if (!archivo) return;
 
     const tipo = tipoActivo.current;
+    const costo = tipo === "repuesto_nuevo" ? costoRef.current : null;
+    costoRef.current = null;
     setSubiendo(tipo);
     setMensaje(null);
 
@@ -74,7 +159,8 @@ export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuesto
             orden_id: ordenId,
             tipo,
             extension,
-            notas: null,
+            // Un repuesto que no está en la orden lleva su nombre como leyenda de la foto.
+            notas: costo && !elegido ? costo.nombre : null,
             orden_repuesto_id: ES_DE_REPUESTO.includes(tipo) && elegido ? elegido.id : null,
           },
         },
@@ -82,14 +168,46 @@ export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuesto
       );
       if (r.estado === "error") {
         setMensaje({ tipo: "error", texto: r.error });
-      } else {
-        setMensaje({
-          tipo: "ok",
-          texto:
-            r.estado === "sincronizado"
-              ? `${TIPO_EVIDENCIA_LABEL[tipo]}${elegido && ES_DE_REPUESTO.includes(tipo) ? ` · ${elegido.nombre}` : ""} guardada (${Math.round(blob.size / 1024)} KB).`
-              : `${TIPO_EVIDENCIA_LABEL[tipo]} guardada en el teléfono; se subirá al volver la conexión.`,
-        });
+        return;
+      }
+
+      const guardada =
+        r.estado === "sincronizado"
+          ? `${TIPO_EVIDENCIA_LABEL[tipo]}${elegido && ES_DE_REPUESTO.includes(tipo) ? ` · ${elegido.nombre}` : ""} guardada (${Math.round(blob.size / 1024)} KB).`
+          : `${TIPO_EVIDENCIA_LABEL[tipo]} guardada en el teléfono; se subirá al volver la conexión.`;
+
+      // El costo de compra se registra DESPUÉS de la foto (así un reintento de la foto no lo duplica) como un
+      // egreso ligado a la orden: baja el margen de la orden y el balance sin pasar por el inventario.
+      let textoCosto = "";
+      if (costo && costo.monto > 0) {
+        const g = await registrar(
+          {
+            tipo: "gasto.crear",
+            conArchivo: false,
+            datos: {
+              id: nuevoId(),
+              fecha: hoyBogota(),
+              monto: costo.monto,
+              categoria: "repuesto",
+              orden_id: ordenId,
+              descripcion: `Repuesto instalado: ${costo.nombre}`,
+              autor,
+            },
+          },
+          null
+        );
+        textoCosto =
+          g.estado === "error"
+            ? ` No se pudo registrar el costo (${g.error}): regístralo en Caja menor como «Repuesto» de esta orden.`
+            : ` Costo de ${formatearMoneda(costo.monto)} registrado como egreso de la orden.`;
+      }
+
+      setMensaje({ tipo: "ok", texto: guardada + textoCosto });
+      if (tipo === "repuesto_nuevo" && aviso) setSugerencia({ repuesto: elegido?.nombre ?? (costo?.nombre || null) });
+      if (tipo === "repuesto_nuevo") {
+        setNombreOtro("");
+        setDigitosCosto("");
+        setSinCosto(false);
       }
     } catch (err) {
       setMensaje({
@@ -100,6 +218,20 @@ export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuesto
       setSubiendo(null);
     }
   }
+
+  const hrefAviso =
+    sugerencia && aviso
+      ? enlaceWhatsApp(
+          aviso.telefono,
+          mensajeRepuestoInstalado({
+            cliente: aviso.nombre,
+            vehiculo: aviso.vehiculo,
+            placa: aviso.placa,
+            repuesto: sugerencia.repuesto,
+            urlPublica: aviso.urlPublica,
+          })
+        )
+      : null;
 
   return (
     <div className="space-y-3">
@@ -130,6 +262,73 @@ export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuesto
             <option value={SIN_REPUESTO}>Otro (no está en la lista)</option>
           </select>
         </label>
+      )}
+
+      {pidiendoCosto && (
+        <section aria-label="Costo del repuesto" className="space-y-3 rounded-2xl border border-stone-300 bg-stone-100 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[15px] font-semibold">Costo de compra del repuesto</p>
+              <p className="text-[13px] text-stone-600">
+                {elegido
+                  ? `«${elegido.nombre}» no tiene costo cargado.`
+                  : "Este repuesto no está en la orden."}{" "}
+                Lo que pagaste por la pieza queda como egreso de esta orden y baja su margen. El cliente no lo ve.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={cancelarCosto}
+              aria-label="Cancelar"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full active:bg-stone-200"
+            >
+              <X className="size-5" aria-hidden />
+            </button>
+          </div>
+
+          {!elegido && (
+            <label className="block space-y-1">
+              <span className="text-[13px] text-stone-600">¿Qué repuesto es?</span>
+              <input
+                value={nombreOtro}
+                onChange={(e) => setNombreOtro(e.target.value)}
+                maxLength={80}
+                autoComplete="off"
+                placeholder="Ej: Compresor, válvula de expansión…"
+                className="h-12 w-full rounded-xl border border-stone-200/80 bg-white px-4 text-[15px] outline-none focus:border-stone-400"
+              />
+            </label>
+          )}
+
+          {!sinCosto && (
+            <PosMonto id="costo-repuesto" etiqueta="¿Cuánto costó?" digitos={digitosCosto} onChange={setDigitosCosto} tamano="normal" />
+          )}
+
+          <label className="flex items-center gap-2 text-[13px] text-stone-600">
+            <input
+              type="checkbox"
+              checked={sinCosto}
+              onChange={(e) => setSinCosto(e.target.checked)}
+              className="size-4 accent-ink"
+            />
+            Sin costo (el cliente trajo la pieza)
+          </label>
+
+          {errorCosto && (
+            <p role="alert" className="rounded-lg bg-brick-50 px-3 py-2 text-sm text-brick-700">
+              {errorCosto}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={confirmarCosto}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink text-[15px] font-semibold text-white active:opacity-90"
+          >
+            <Camera className="size-5" aria-hidden />
+            Continuar y tomar la foto
+          </button>
+        </section>
       )}
 
       <div className="grid grid-cols-2 gap-3">
@@ -167,6 +366,32 @@ export function CapturaFotos({ ordenId, repuestos }: { ordenId: string; repuesto
         >
           {mensaje.texto}
         </p>
+      )}
+
+      {hrefAviso && (
+        <div className="space-y-2 rounded-2xl border border-sage-300 bg-sage-50 p-3">
+          <p className="text-[13px] text-sage-800">
+            Puedes avisarle al cliente del cambio de la pieza: recibirá el enlace para ver el avance y la foto (sin costos).
+          </p>
+          <div className="flex gap-2">
+            <a
+              href={hrefAviso}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-sage-600 text-[15px] font-semibold text-white active:bg-sage-700"
+            >
+              <MessageCircle className="size-5" aria-hidden />
+              Avisar por WhatsApp
+            </a>
+            <button
+              type="button"
+              onClick={() => setSugerencia(null)}
+              className="h-12 rounded-xl border border-sage-300 bg-white px-4 text-[14px] font-medium text-sage-800 active:bg-sage-50"
+            >
+              Ahora no
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

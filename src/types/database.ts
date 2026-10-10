@@ -31,6 +31,7 @@ export type CategoriaGasto =
   | "alimentacion_refrigerio"
   | "flete_acarreo"
   | "herramienta_consumible"
+  | "repuesto"
   | "otros";
 
 export type MedioPago = "efectivo" | "transferencia" | "tarjeta" | "otro";

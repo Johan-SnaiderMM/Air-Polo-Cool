@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import { listarOrdenes } from "@/lib/datos/ordenes";
+import { Dinero } from "@/components/ui/dinero";
+import { LIMITE_DEBEN, listarOrdenes } from "@/lib/datos/ordenes";
 import { ESTADOS_FILTRO, ESTADO_LABEL, esEstado } from "@/lib/ordenes";
 import { OrdenCard } from "@/components/ordenes/orden-card";
 import { OrdenesPendientes } from "@/components/sync/ordenes-pendientes";
@@ -12,10 +13,11 @@ export const metadata: Metadata = { title: "Órdenes" };
 
 const LIMITE = 50;
 
-function hrefFiltro(q: string, estado?: string) {
+function hrefFiltro(q: string, estado?: string, deben = false) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (estado) params.set("estado", estado);
+  if (deben) params.set("deben", "1");
   const qs = params.toString();
   return qs ? `/ordenes?${qs}` : "/ordenes";
 }
@@ -23,14 +25,20 @@ function hrefFiltro(q: string, estado?: string) {
 export default async function OrdenesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; estado?: string }>;
+  searchParams: Promise<{ q?: string; estado?: string; deben?: string }>;
 }) {
-  const { q: qCrudo, estado: estadoCrudo } = await searchParams;
+  const { q: qCrudo, estado: estadoCrudo, deben: debenCrudo } = await searchParams;
+  const soloDeben = debenCrudo === "1";
   const q = (qCrudo ?? "").trim();
   const estado = esEstado(estadoCrudo) ? estadoCrudo : undefined;
 
   const supabase = await createClient();
-  const { ordenes, saldoDe, error: errorConsulta } = await listarOrdenes(supabase, { q, estado, limite: LIMITE });
+  const { ordenes, saldoDe, totalDeben, error: errorConsulta } = await listarOrdenes(supabase, {
+    q,
+    estado,
+    limite: soloDeben ? LIMITE_DEBEN : LIMITE,
+    soloDeben,
+  });
 
   const chips: { valor?: string; label: string }[] = [
     { label: "Todos" },
@@ -56,18 +64,30 @@ export default async function OrdenesPage({
 
       <OrdenesPendientes />
 
-      <SearchBar inicial={q} ruta="/ordenes" extra={{ estado }} />
+      <SearchBar inicial={q} ruta="/ordenes" extra={{ estado, deben: soloDeben ? "1" : undefined }} />
 
       <nav
         aria-label="Filtrar por estado"
         className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
+        <Link
+          href={hrefFiltro(q, estado, !soloDeben)}
+          replace
+          aria-current={soloDeben ? "true" : undefined}
+          className={`flex h-11 shrink-0 items-center rounded-full border px-5 text-sm font-semibold transition-colors ${
+            soloDeben
+              ? "border-ochre-700 bg-ochre-700 text-white"
+              : "border-ochre-300 bg-ochre-50 text-ochre-800 active:bg-ochre-100"
+          }`}
+        >
+          Deben
+        </Link>
         {chips.map((chip) => {
           const activo = chip.valor === estado;
           return (
             <Link
               key={chip.label}
-              href={hrefFiltro(q, chip.valor)}
+              href={hrefFiltro(q, chip.valor, soloDeben)}
               replace
               aria-current={activo ? "true" : undefined}
               className={`flex h-11 shrink-0 items-center rounded-full border px-5 text-sm font-semibold transition-colors ${
@@ -82,6 +102,25 @@ export default async function OrdenesPage({
         })}
       </nav>
 
+      {soloDeben && !errorConsulta && (
+        <Link
+          href="/cartera"
+          className="flex items-center justify-between gap-3 rounded-2xl bg-ink p-4 text-paper active:opacity-90"
+        >
+          <span>
+            <span className="block text-[13px] text-stone-400">
+              {ordenes.length} {ordenes.length === 1 ? "orden con saldo" : "órdenes con saldo"} · las más antiguas primero
+            </span>
+            <span className="block text-2xl font-medium tracking-tight">
+              <Dinero valor={totalDeben} />
+            </span>
+          </span>
+          <span className="flex items-center gap-1 text-[13px] text-stone-300">
+            Ver por cliente <ChevronRight className="size-4" aria-hidden />
+          </span>
+        </Link>
+      )}
+
       {errorConsulta && (
         <p role="alert" className="rounded-lg bg-brick-50 px-3 py-2 text-sm text-brick-700">
           No se pudieron cargar las órdenes: {errorConsulta}
@@ -90,7 +129,9 @@ export default async function OrdenesPage({
 
       {!errorConsulta && ordenes.length === 0 && (
         <div className="rounded-2xl border border-dashed border-stone-300/70 bg-white p-8 text-center text-stone-500">
-          {q || estado
+          {soloDeben && !q && !estado
+            ? "Nadie debe nada. Todo está al día."
+            : q || estado || soloDeben
             ? "No hay órdenes que coincidan con la búsqueda."
             : "Aún no hay órdenes. Crea la primera con “Nueva orden”."}
         </div>
@@ -104,7 +145,7 @@ export default async function OrdenesPage({
         ))}
       </ul>
 
-      {ordenes.length === LIMITE && (
+      {!soloDeben && ordenes.length === LIMITE && (
         <p className="text-center text-xs text-stone-500">
           Mostrando las {LIMITE} más recientes. Afina la búsqueda para ver otras.
         </p>

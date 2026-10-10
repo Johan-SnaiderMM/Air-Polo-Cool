@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { cargarDetalleOrden } from "@/lib/datos/ordenes";
 import { mesesMantenimiento } from "@/lib/datos/mapeo";
+import { redondearDinero } from "@/lib/inventario";
 import { esUuid } from "@/lib/ordenes";
 import { BotonEliminarOrden } from "@/components/ordenes/boton-eliminar-orden";
 import { CambiarEstado } from "@/components/ordenes/cambiar-estado";
@@ -39,7 +40,7 @@ export default async function OrdenPage({
   const detalle = await cargarDetalleOrden(supabase, id);
   if (!detalle) notFound();
 
-  const { orden, lineas, repuestosPrecio, repuestosCosto, pagos, saldoPendiente, historial, evidencias, esAdmin, bloqueada, contexto } =
+  const { orden, lineas, repuestosPrecio, repuestosCosto, repuestosAparte, pagos, saldoPendiente, historial, evidencias, esAdmin, bloqueada, contexto } =
     detalle;
   const v = orden.vehiculos;
 
@@ -60,6 +61,18 @@ export default async function OrdenPage({
         sugerido: p === sugerida,
       }))
     : [];
+
+  // Aviso al cliente tras cambiar una pieza: solo enlace de seguimiento (el portal nunca muestra costos).
+  const avisoRepuesto =
+    contexto && v?.clientes
+      ? {
+          nombre: v.clientes.nombre,
+          telefono: contexto.telefono,
+          vehiculo: `${v.marca} ${v.modelo}${v.anio ? ` ${v.anio}` : ""}`,
+          placa: v.placa,
+          urlPublica: contexto.urlPublica,
+        }
+      : null;
 
   return (
     <section className="space-y-6">
@@ -143,7 +156,15 @@ export default async function OrdenPage({
 
       <div className="space-y-3">
         <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Bitácora fotográfica</h3>
-        <CapturaFotos ordenId={orden.id} repuestos={lineas.map((l) => ({ id: l.id, nombre: l.nombre }))} />
+        <CapturaFotos
+          ordenId={orden.id}
+          repuestos={lineas.map((l) => ({
+            id: l.id,
+            nombre: l.nombre,
+            costo: redondearDinero(l.cantidad_usada * l.costo_unitario),
+          }))}
+          aviso={avisoRepuesto}
+        />
         <GaleriaEvidencias
           evidencias={evidencias}
           repuestos={lineas.map((l) => ({ id: l.id, nombre: l.nombre }))}
@@ -169,6 +190,7 @@ export default async function OrdenPage({
           manoObra={orden.mano_obra}
           repuestosPrecio={repuestosPrecio}
           repuestosCosto={repuestosCosto}
+          repuestosAparte={repuestosAparte}
           totalCobrado={orden.total_cobrado}
         />
       </div>

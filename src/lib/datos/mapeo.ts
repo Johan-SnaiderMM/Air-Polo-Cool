@@ -88,6 +88,7 @@ export function armarLineas(filas: RepuestoFila[]): LineaRepuesto[] {
             tipo_unidad: r.inventario.tipo_unidad,
             cantidad_usada: r.cantidad_usada,
             precio_unitario: r.precio_unitario,
+            costo_unitario: r.costo_unitario,
           },
         ]
       : []

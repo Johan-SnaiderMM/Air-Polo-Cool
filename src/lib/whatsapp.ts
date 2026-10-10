@@ -181,3 +181,24 @@ export function mensajePagoRecibido(d: {
     `El servicio de tu vehículo (placa ${d.placa}) quedó pagado en su totalidad. Gracias por confiar en los servicios de Polo Air Cool, siempre es un gusto atenderte.`,
   ].join("\n\n");
 }
+
+/**
+ * Aviso de que se cambió una pieza, con el enlace de seguimiento (allí el cliente ve el avance y la foto del
+ * repuesto instalado). Nunca lleva costos: el costo de compra es interno.
+ */
+export function mensajeRepuestoInstalado(d: {
+  cliente: string;
+  /** "Chevrolet Spark GT 2018" */
+  vehiculo: string;
+  placa: string;
+  /** Nombre del repuesto, si se conoce. */
+  repuesto: string | null;
+  urlPublica: string;
+}): string {
+  const nombre = primerNombre(d.cliente);
+  const pieza = d.repuesto?.trim() ? `el repuesto ${d.repuesto.trim()}` : "un repuesto nuevo";
+  return [
+    `Hola ${nombre}, ya instalamos ${pieza} en tu ${d.vehiculo} (placa ${d.placa}). ✓`,
+    `Mira el avance y la foto de la pieza instalada aquí: ${d.urlPublica}`,
+  ].join("\n\n");
+}

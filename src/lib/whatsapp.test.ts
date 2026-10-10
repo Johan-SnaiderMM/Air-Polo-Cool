@@ -7,6 +7,7 @@ import {
   mensajeGarantia,
   mensajeMantenimiento,
   mensajePagoRecibido,
+  mensajeRepuestoInstalado,
   soloDigitos,
   urlPublicaOrden,
 } from "@/lib/whatsapp";
@@ -104,11 +105,29 @@ describe("sin emojis modernos (en teléfonos viejos salen como «?»)", () => {
     cotizacion: mensajeCotizacion({ cliente: "Ana", vehiculo: "Spark", placa: "X", manoObra: 1, items: [], total: 1, vigenteHasta: f }),
     cita: mensajeCita({ cliente: "Ana", vehiculo: "Spark", placa: "X", cuando: "hoy", tipo: "servicio" }),
     pago: mensajePagoRecibido({ cliente: "Ana", placa: "X", porTransferencia: true }),
+    repuesto: mensajeRepuestoInstalado({ cliente: "Ana", vehiculo: "Spark", placa: "X", repuesto: "Compresor", urlPublica: "u" }),
   };
   it.each(Object.entries(textos))("%s no lleva emojis modernos", (_nombre, texto) => {
     expect(texto).not.toMatch(moderno);
   });
   it("el visto del mensaje «listo» es ✓", () => {
     expect(textos.listo).toContain("listo para entrega. ✓");
+  });
+});
+
+describe("aviso de repuesto instalado", () => {
+  const d = { cliente: "Juan Pérez López", vehiculo: "Chevrolet Spark GT 2018", placa: "ABC123", urlPublica: "https://polo.example/orden/tok123" };
+  it("dice qué se instaló y lleva el enlace de seguimiento", () => {
+    const m = mensajeRepuestoInstalado({ ...d, repuesto: "Compresor" });
+    expect(m).toContain("Hola Juan, ya instalamos el repuesto Compresor en tu Chevrolet Spark GT 2018 (placa ABC123)");
+    expect(m).toContain("https://polo.example/orden/tok123");
+  });
+  it("sin nombre dice «un repuesto nuevo»", () => {
+    expect(mensajeRepuestoInstalado({ ...d, repuesto: null })).toContain("ya instalamos un repuesto nuevo en tu");
+    expect(mensajeRepuestoInstalado({ ...d, repuesto: "  " })).toContain("un repuesto nuevo");
+  });
+  it("nunca menciona costos ni dinero (el cliente solo ve avance y foto)", () => {
+    const m = mensajeRepuestoInstalado({ ...d, repuesto: "Compresor" });
+    expect(m).not.toMatch(/costo|\$|valor|precio|pesos/i);
   });
 });
