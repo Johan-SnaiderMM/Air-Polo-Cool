@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/server";
 import { cargarDetalleOrden } from "@/lib/datos/ordenes";
 import { mesesMantenimiento } from "@/lib/datos/mapeo";
 import { redondearDinero } from "@/lib/inventario";
-import { esUuid } from "@/lib/ordenes";
+import { esUuid, formatearMoneda } from "@/lib/ordenes";
 import { BotonEliminarOrden } from "@/components/ordenes/boton-eliminar-orden";
 import { CambiarEstado } from "@/components/ordenes/cambiar-estado";
 import { OrdenFormEditar } from "@/components/ordenes/orden-form-editar";
@@ -190,8 +190,14 @@ export default async function OrdenPage({
         />
       </div>
 
-      <div className="space-y-3">
-        <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Otros cargos al cliente</h3>
+      <Colapsable
+        titulo="Otros cargos al cliente"
+        resumen={
+          cargos.length > 0
+            ? `${cargos.length} ${cargos.length === 1 ? "cargo" : "cargos"} · ${formatearMoneda(cargosPrecio)}`
+            : "Gasolina, flete, parqueadero… · toca para agregar"
+        }
+      >
         <CargosOrden
           ordenId={orden.id}
           cargos={cargos.map((c) => ({
@@ -203,7 +209,7 @@ export default async function OrdenPage({
           bloqueada={bloqueada}
           puedeEliminar={esAdmin}
         />
-      </div>
+      </Colapsable>
 
       <div className="space-y-3">
         <h3 className="text-[12px] font-medium tracking-[0.08em] text-stone-500 uppercase">Resumen financiero</h3>
