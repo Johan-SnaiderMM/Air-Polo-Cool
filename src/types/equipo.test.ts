@@ -112,7 +112,7 @@ describe("perfiles de los usuarios que ya existían", () => {
     } finally {
       await otra.close();
     }
-  });
+  }, 120_000); // arma una segunda base con todas las migraciones: tarda varios segundos
 });
 
 describe("el autor lo estampa la base según la sesión", () => {

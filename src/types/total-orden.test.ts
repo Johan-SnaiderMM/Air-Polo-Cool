@@ -102,5 +102,5 @@ describe("migración sobre datos existentes", () => {
     } finally {
       await viejo.close();
     }
-  });
+  }, 120_000); // arma una segunda base con todas las migraciones: tarda varios segundos
 });
