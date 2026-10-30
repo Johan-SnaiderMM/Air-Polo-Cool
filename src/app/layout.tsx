@@ -41,6 +41,25 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
   },
+  // Vista previa al compartir el enlace (LinkedIn, WhatsApp): solo muestra el nombre y la tarjeta, nunca datos del taller.
+  // La imagen vive en `icons/` porque el proxy no pasa por ahí.
+  metadataBase: new URL("https://polo-air-cool.vercel.app"),
+  openGraph: {
+    type: "website",
+    locale: "es_CO",
+    siteName: "Polo Air Cool",
+    title: "Polo Air Cool",
+    description: "Órdenes, inventario y portal del cliente para el taller de aire acondicionado automotriz.",
+    images: [
+      {
+        url: "/icons/og.png",
+        width: 1200,
+        height: 627,
+        alt: "Polo Air Cool: órdenes, inventario y portal del cliente para el taller",
+      },
+    ],
+  },
+  twitter: { card: "summary_large_image", title: "Polo Air Cool", images: ["/icons/og.png"] },
 };
 
 export const viewport: Viewport = {
